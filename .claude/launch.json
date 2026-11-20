@@ -2,15 +2,6 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "fake",
-      "runtimeExecutable": "pnpm",
-      "runtimeArgs": [
-        "run",
-        "fake"
-      ],
-      "port": 5173
-    },
-    {
       "name": "dev",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": [

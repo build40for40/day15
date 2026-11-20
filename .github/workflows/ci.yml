@@ -26,15 +26,19 @@ jobs:
 
       - if: github.event_name == 'push'
         uses: build40for40/actions/deploy-worker@v1
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         with:
           api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           working-directory: workers/api
+          secrets: |
+            ANTHROPIC_API_KEY
           package-manager: ${{ steps.setup.outputs.package-manager }}
 
       - uses: build40for40/actions/preview-worker@v1
         with:
           api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           working-directory: workers/api
-          path: /day15/
+          path: /
           alias-length: "40"
           package-manager: ${{ steps.setup.outputs.package-manager }}

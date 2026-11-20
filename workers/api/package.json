@@ -2,18 +2,24 @@
   "name": "api",
   "version": "0.0.0",
   "private": true,
-  "description": "The day15 Worker: the API under /day15/api and the web app's static build.",
+  "description": "The day15 Worker: the agency API under /api, the MCP server under /mcp, and the web app's static build.",
   "type": "module",
   "scripts": {
     "dev": "mkdir -p ../../apps/web/dist && pnpm wrangler dev",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "wrangler": "env -u CLOUDFLARE_API_KEY -u CLOUDFLARE_EMAIL wrangler --profile 40for40"
+    "wrangler": "env -u CLOUDFLARE_API_KEY -u CLOUDFLARE_EMAIL wrangler --profile 40for40",
+    "evals": "vitest run --config evals/vitest.config.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.94",
+    "@cfworker/json-schema": "^4.1.6",
     "@day15/shared": "workspace:*",
-    "ai": "^7.0.159"
+    "@modelcontextprotocol/server": "2.4.0",
+    "agents": "0.33.0",
+    "ai": "^7.0.159",
+    "jose": "^6.2.18",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261102.1",

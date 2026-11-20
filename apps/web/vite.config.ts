@@ -4,19 +4,17 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 
-import { fakeApi } from './dev/fake-api'
+const worker = 'http://localhost:8787'
 
 export default defineConfig({
-  base: '/day15/',
-  build: {
-    outDir: 'dist/day15',
-  },
+  base: '/',
   server: {
     proxy: {
-      '/day15/api': 'http://localhost:8787',
+      '/api': worker,
+      '/mcp': worker,
     },
   },
-  plugins: [vue(), vueDevTools(), fakeApi()],
+  plugins: [vue(), vueDevTools()],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

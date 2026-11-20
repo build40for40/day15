@@ -1,89 +1,101 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 
-import BrainView from './coach/BrainView.vue'
-import CoachChat from './coach/CoachChat.vue'
-import { OTHER_SIDE, PARTIES, type Party } from '@day15/shared/schema'
+import { createProject, createTeam, getSession, type Project, type Team } from './api'
+import { currentUser, signIn, signOut } from './auth'
+import ProjectCard from './ProjectCard.vue'
 
-const params = new URLSearchParams(window.location.search)
-const projectId = ref(params.get('p') ?? '')
-const party = ref(PARTIES.find((option) => option === params.get('as')))
-// The team's behind-the-scenes view. Nothing on the page links to it.
-const brain = params.get('as') === 'brain'
-const failed = ref(false)
-const copied = ref(false)
+const loading = ref(true)
+const signedIn = ref(false)
+const team = ref<Team | null>(null)
+const projects = ref<Project[]>([])
+const teamName = ref('')
+const projectName = ref('')
+const busy = ref(false)
+const error = ref('')
 
-const linkFor = (side: Party) => `?p=${projectId.value}&as=${side}`
-
-const otherSide = computed(() => (party.value ? OTHER_SIDE[party.value] : undefined))
-const otherLink = computed(() =>
-  otherSide.value ? new URL(linkFor(otherSide.value), window.location.href).href : '',
-)
-
-/** Starts a new project and sits this person down on their side of it. */
-async function begin(side: Party) {
-  failed.value = false
+async function guard(run: () => Promise<void>) {
+  busy.value = true
+  error.value = ''
   try {
-    const response = await fetch(`${import.meta.env.BASE_URL}api/projects`, { method: 'POST' })
-    if (!response.ok) throw new Error(`The API answered ${response.status}`)
-    projectId.value = ((await response.json()) as { id: string }).id
-    party.value = side
-    window.history.replaceState(null, '', linkFor(side))
-  } catch {
-    failed.value = true
+    await run()
+  } catch (caught) {
+    error.value = caught instanceof Error ? caught.message : 'Something went wrong.'
+  } finally {
+    busy.value = false
   }
 }
 
-async function copyLink() {
-  await navigator.clipboard.writeText(otherLink.value)
-  copied.value = true
+async function load() {
+  const session = await getSession()
+  team.value = session.team
+  projects.value = session.projects
 }
+
+onMounted(async () => {
+  try {
+    signedIn.value = Boolean(await currentUser())
+    if (signedIn.value) await load()
+  } catch (caught) {
+    error.value = caught instanceof Error ? caught.message : 'Something went wrong.'
+  } finally {
+    loading.value = false
+  }
+})
+
+const makeTeam = () =>
+  guard(async () => {
+    team.value = (await createTeam(teamName.value)).team
+  })
+
+const makeProject = () =>
+  guard(async () => {
+    projects.value.push((await createProject(projectName.value)).project)
+    projectName.value = ''
+  })
 </script>
 
 <template>
-  <main :class="{ wide: brain }">
-    <h1>Expectation Manager</h1>
+  <main>
+    <header>
+      <h1>Expectation Manager</h1>
+      <button v-if="signedIn" type="button" class="quiet" @click="signOut()">Sign out</button>
+    </header>
 
-    <template v-if="projectId && brain">
-      <p class="lede">
-        Behind the scenes: which hat the coach had on for each question, and why. Neither side ever sees this.
+    <p v-if="loading" class="muted">One sec...</p>
+
+    <template v-else-if="!signedIn">
+      <p>
+        You and your client just shook on a pitch. Before the budget gets spent, a coach has a quiet word with
+        everyone, through their own AI, and finds the holes while they're still cheap to fill.
       </p>
-      <BrainView :project-id="projectId" />
-    </template>
-
-    <template v-else-if="projectId && party && otherSide">
-      <p class="lede">
-        You're here for the <strong>{{ party }}</strong> side. The coach asks you things worth settling now, before
-        anyone spends the budget finding out the hard way.
-      </p>
-      <aside>
-        <p>
-          The {{ otherSide }} gets their own quiet chat. Send them this link:
-          <a :href="otherLink">{{ otherLink }}</a>
-        </p>
-        <button type="button" @click="copyLink">{{ copied ? 'Copied' : 'Copy link' }}</button>
-      </aside>
-      <CoachChat :key="party" :party="party" :project-id="projectId" />
-    </template>
-
-    <template v-else-if="projectId">
-      <p class="lede">You've been sent a project. Which side are you on?</p>
-      <nav>
-        <a v-for="side in PARTIES" :key="side" :href="linkFor(side)">I'm the {{ side }}</a>
-      </nav>
+      <button type="button" @click="signIn()">Sign in</button>
     </template>
 
     <template v-else>
-      <p class="lede">
-        A coach has a quiet word with each side of a project, one at a time, and finds the holes while they're
-        still cheap to fill.
+      <p class="warning">
+        Heads up: everything added to a project is visible to everyone in it, both sides. Keep anything confidential
+        out of it.
       </p>
-      <p>Start a project. Which side are you on?</p>
-      <nav>
-        <button v-for="side in PARTIES" :key="side" type="button" @click="begin(side)">I'm the {{ side }}</button>
-      </nav>
-      <p v-if="failed" role="alert">That didn't work. Is the API running?</p>
+
+      <form v-if="!team" class="stack" @submit.prevent="makeTeam">
+        <h2>First, name your team</h2>
+        <input v-model="teamName" required maxlength="80" placeholder="Your agency" aria-label="Team name" />
+        <button type="submit" :disabled="busy || !teamName.trim()">Create team</button>
+      </form>
+
+      <template v-else>
+        <h2>{{ team.name }}</h2>
+        <form class="stack" @submit.prevent="makeProject">
+          <input v-model="projectName" required maxlength="80" placeholder="A project, like Orchard Dash" aria-label="Project name" />
+          <button type="submit" :disabled="busy || !projectName.trim()">Create project</button>
+        </form>
+        <p v-if="projects.length === 0" class="muted">No projects yet. Make one and invite the people in it.</p>
+        <ProjectCard v-for="project in projects" :key="project.id" :project="project" />
+      </template>
     </template>
+
+    <p v-if="error" class="error" role="alert">{{ error }}</p>
   </main>
 </template>
 
@@ -94,70 +106,72 @@ main {
   padding: 1.5rem 1rem 3rem;
 }
 
-main.wide {
-  max-width: 70rem;
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
 }
 
 h1 {
-  margin: 0 0 0.5rem;
-  font-size: 1.75rem;
+  margin: 0;
+  font-size: 1.5rem;
   line-height: 1.2;
 }
 
-.lede {
-  margin: 0 0 1.5rem;
+h2 {
+  margin: 1.25rem 0 0.5rem;
+  font-size: 1.25rem;
+}
+
+.muted {
   color: var(--muted);
 }
 
-nav {
+.warning {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+}
+
+.stack {
   display: grid;
   gap: 0.75rem;
 }
 
-nav a,
-nav button {
-  display: flex;
-  align-items: center;
-  min-height: 56px;
-  padding: 0 1.25rem;
-  border: 1px solid var(--ink);
-  border-radius: 0.75rem;
-  background: var(--card);
-  color: var(--ink);
+input,
+button {
   font: inherit;
+  padding: 0.6rem 0.75rem;
+  min-height: 2.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  background: var(--paper);
+  color: var(--ink);
+  min-width: 0;
+}
+
+button {
+  background: var(--accent);
+  color: #1c1d22;
   font-weight: 600;
-  text-decoration: none;
   cursor: pointer;
 }
 
-aside {
-  display: grid;
-  gap: 0.5rem;
-  margin-bottom: 1.5rem;
-  padding: 0.75rem 1rem;
-  border: 1px dashed var(--line);
-  border-radius: 0.75rem;
-  font-size: 0.9rem;
-}
-
-aside p {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-
-aside a {
-  color: inherit;
-}
-
-aside button {
-  justify-self: start;
-  min-height: 44px;
-  padding: 0 1rem;
-  border: 1px solid var(--ink);
-  border-radius: 999px;
-  background: var(--card);
+button.quiet {
+  background: transparent;
   color: var(--ink);
-  font: inherit;
-  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.error {
+  color: light-dark(#a3231b, #ff8f86);
 }
 </style>

@@ -1,48 +1,142 @@
 import { z } from 'zod'
 
-import { LENS_IDS } from './lenses'
+import { LENS_IDS, type LensId } from './lenses'
 
-export const PARTIES = ['agency', 'client'] as const
-export type Party = (typeof PARTIES)[number]
+export const SIDES = ['agency', 'client'] as const
+export type Side = (typeof SIDES)[number]
+export const sideSchema = z.enum(SIDES)
+export const OTHER_SIDE = { agency: 'client', client: 'agency' } as const satisfies Record<Side, Side>
 
-export const OTHER_SIDE = { agency: 'client', client: 'agency' } as const satisfies Record<Party, Party>
+/** The real people in a project. Any persona can sit on either side. */
+export const PERSONAS = ['agency_lead', 'marketing_lead', 'procurement', 'cfo', 'delivery_lead'] as const
+export type Persona = (typeof PERSONAS)[number]
+export const personaSchema = z.enum(PERSONAS)
 
-export const MAX_PROJECT_LENGTH = 1500
-export const MAX_ANSWER_LENGTH = 1500
-export const MAX_TURNS = 30
+export const PERSONA_NAMES: Record<Persona, string> = {
+  agency_lead: 'Agency lead',
+  marketing_lead: 'Marketing lead',
+  procurement: 'Procurement',
+  cfo: 'CFO',
+  delivery_lead: 'Delivery lead',
+}
 
-const lens = z.enum(LENS_IDS)
-export const partySchema = z.enum(PARTIES)
+/** The lens that simulates each persona. */
+export const PERSONA_LENS: Record<Persona, LensId> = {
+  agency_lead: 'agency',
+  marketing_lead: 'client',
+  procurement: 'procurement',
+  cfo: 'cfo',
+  delivery_lead: 'cto',
+}
 
-export const turnSchema = z.object({
-  lens,
-  question: z.string().trim().min(1).max(1000),
-  answer: z.string().trim().min(1).max(MAX_ANSWER_LENGTH),
+/** Every fact sits under one of these, taken from a client brief template. */
+export const TOPICS = [
+  'background',
+  'objective',
+  'audience',
+  'insight',
+  'kpis',
+  'budget',
+  'deliverables',
+  'timeline',
+  'sign_off',
+  'legal_ip',
+  'other',
+] as const
+export type Topic = (typeof TOPICS)[number]
+export const topicSchema = z.enum(TOPICS)
+
+export const lensSchema = z.enum(LENS_IDS)
+
+export const MAX_NAME_LENGTH = 80
+export const MAX_ITEM_LENGTH = 20_000
+export const MAX_STATEMENT_LENGTH = 1_000
+export const MAX_QUOTE_LENGTH = 1_000
+
+const id = z.number().int().positive()
+const timestamp = z.string()
+
+export const projectSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  ownerId: z.string(),
+  createdAt: timestamp,
 })
 
-/** What the page sends to get the coach's next question: who is talking, and the answer they just gave, if any. */
-export const coachRequestSchema = z.object({
-  party: partySchema,
-  project: z.string().trim().min(1).max(MAX_PROJECT_LENGTH),
-  turn: turnSchema.optional(),
+export const newParticipantSchema = z.object({
+  name: z.string().trim().min(1).max(MAX_NAME_LENGTH),
+  persona: personaSchema,
+  side: sideSchema,
 })
 
-/** What the page gets back. `lens` is the hat the brain chose, and is never shown. */
-export const coachReplySchema = z.object({
-  lens,
-  question: z.string(),
-  why: z.string(),
+export const participantSchema = newParticipantSchema.extend({
+  id,
+  createdAt: timestamp,
 })
 
-/** What the brain writes. `rationale` stays on the server: it can mention what the other side said. */
-export const brainReplySchema = z.object({
-  rationale: z.string(),
-  ...coachReplySchema.shape,
+/** Anything a person said or pasted, kept word for word. */
+export const itemSchema = z.object({
+  id,
+  participantId: id,
+  text: z.string(),
+  createdAt: timestamp,
+})
+
+export const FACT_STATUSES = ['proposed', 'confirmed', 'superseded'] as const
+export type FactStatus = (typeof FACT_STATUSES)[number]
+
+const factBody = {
+  topic: topicSchema,
+  statement: z.string().trim().min(1).max(MAX_STATEMENT_LENGTH),
+  /** The fact this one replaces. Nothing is edited: a change is a new fact. */
+  supersedes: id.nullable().optional(),
+}
+
+/** A fact the coach took from what a person said. It points at the item and the words it came from. */
+export const newPersonFactSchema = z.object({
+  authorKind: z.literal('person'),
+  participantId: id,
+  sourceItemId: id,
+  sourceQuote: z.string().trim().min(1).max(MAX_QUOTE_LENGTH),
+  status: z.enum(['proposed', 'confirmed']),
+  basedOn: z.array(id).optional(),
+  ...factBody,
+})
+
+/** A fact a lens worked out from other facts. Always proposed until a person confirms it. */
+export const newLensFactSchema = z.object({
+  authorKind: z.literal('lens'),
+  lensRunId: id,
+  basedOn: z.array(id).min(1),
+  ...factBody,
+})
+
+export const newFactSchema = z.discriminatedUnion('authorKind', [newPersonFactSchema, newLensFactSchema])
+
+export const factSchema = z.object({
+  id,
+  topic: topicSchema,
+  statement: z.string(),
+  /** `superseded` once a later fact replaces this one. */
+  status: z.enum(FACT_STATUSES),
+  /** The status it was written with, which never changes. */
+  statedAs: z.enum(['proposed', 'confirmed']),
+  authorKind: z.enum(['person', 'lens']),
+  participantId: id.nullable(),
+  lensRunId: id.nullable(),
+  lens: lensSchema.nullable(),
+  side: sideSchema.nullable(),
+  sourceItemId: id.nullable(),
+  sourceQuote: z.string().nullable(),
+  basedOn: z.array(id),
+  supersedes: id.nullable(),
+  supersededBy: id.nullable(),
+  createdAt: timestamp,
 })
 
 const coverageLevel = z.enum(['settled', 'thin', 'missing'])
 
-/** What one persona harness sends the brain. The field names match persona-harnesses/README.md. */
+/** What one lens reports. The field names match persona-harnesses/README.md. */
 export const personaReportSchema = z.object({
   coverage: z.array(z.object({ topic: z.string(), agency: coverageLevel, client: coverageLevel })),
   conflicts: z.array(
@@ -54,41 +148,87 @@ export const personaReportSchema = z.object({
       note: z.string(),
     }),
   ),
-  questions: z.array(
-    z.object({ ask: partySchema, find_out: z.string(), because: z.string(), priority: z.number() }),
-  ),
+  questions: z.array(z.object({ ask: sideSchema, find_out: z.string(), because: z.string(), priority: z.number() })),
   done: z.boolean(),
 })
 
-/** The behind-the-scenes view: both sides, with the hat and the reasoning behind every question. */
-const brainSideSchema = z.object({
-  project: z.string(),
-  turns: z.array(turnSchema.extend({ rationale: z.string().optional() })),
-  pending: z.object({ lens, question: z.string(), rationale: z.string() }).optional(),
-})
-export const brainViewSchema = z.object({
-  agency: brainSideSchema.optional(),
-  client: brainSideSchema.optional(),
-  /** The latest report from each persona harness. */
-  reports: z.partialRecord(lens, personaReportSchema).optional(),
+/** A fact a lens proposes, with the ids it was worked out from as the model sees them (`f12`). */
+export const proposedFactSchema = z.object({
+  topic: topicSchema,
+  statement: z.string(),
+  based_on: z.array(z.string()),
+  supersedes: z.string().nullable().optional(),
 })
 
-/** One side's half of a project. */
-export const sideSchema = z.object({
-  project: z.string(),
-  turns: z.array(turnSchema),
+export const lensReportSchema = personaReportSchema.extend({
+  proposed_facts: z.array(proposedFactSchema).optional(),
 })
 
-/** What a side gets back about its own conversation. Never the other side's words. */
-export const mySideSchema = sideSchema.extend({
-  otherSideStarted: z.boolean(),
+export const LENS_RUN_STATUSES = ['done', 'failed'] as const
+
+export const newLensRunSchema = z.object({
+  lens: lensSchema,
+  round: z.number().int().min(1),
+  /** The highest fact id the lens saw. */
+  watermark: z.number().int().min(0),
+  report: lensReportSchema.nullable(),
+  status: z.enum(LENS_RUN_STATUSES),
 })
 
-export type Turn = z.infer<typeof turnSchema>
-export type CoachRequest = z.infer<typeof coachRequestSchema>
-export type CoachReply = z.infer<typeof coachReplySchema>
-export type Side = z.infer<typeof sideSchema>
-export type MySide = z.infer<typeof mySideSchema>
-export type BrainReply = z.infer<typeof brainReplySchema>
-export type BrainView = z.infer<typeof brainViewSchema>
+export const lensRunSchema = newLensRunSchema.extend({ id, createdAt: timestamp })
+
+export const ASK_STATUSES = ['open', 'answered', 'dropped'] as const
+export type AskStatus = (typeof ASK_STATUSES)[number]
+
+/** Something the coach needs from one person. Only the coach asks people things. */
+export const newAskSchema = z.object({
+  addressedTo: id,
+  ask: z.string().trim().min(1).max(MAX_STATEMENT_LENGTH),
+  because: z.string().trim().max(MAX_STATEMENT_LENGTH),
+  lens: lensSchema.nullable(),
+})
+
+export const askSchema = newAskSchema.extend({
+  id,
+  status: z.enum(ASK_STATUSES),
+  /** The item that answered it. */
+  answeredBy: id.nullable(),
+  createdAt: timestamp,
+  closedAt: timestamp.nullable(),
+})
+
+export const closeAskSchema = z.object({
+  status: z.enum(['answered', 'dropped']),
+  answeredBy: id.nullable().optional(),
+})
+
+/** The whole room, as every model call reads it. */
+export const roomSnapshotSchema = z.object({
+  project: projectSchema,
+  participants: z.array(participantSchema),
+  items: z.array(itemSchema),
+  facts: z.array(factSchema),
+  asks: z.array(askSchema),
+  /** The newest finished run of each lens. */
+  latestRuns: z.partialRecord(lensSchema, lensRunSchema),
+  /** The highest fact id in the room. */
+  watermark: z.number().int().min(0),
+})
+
+export type Project = z.infer<typeof projectSchema>
+export type NewParticipant = z.infer<typeof newParticipantSchema>
+export type Participant = z.infer<typeof participantSchema>
+export type Item = z.infer<typeof itemSchema>
+export type NewPersonFact = z.infer<typeof newPersonFactSchema>
+export type NewLensFact = z.infer<typeof newLensFactSchema>
+export type NewFact = z.infer<typeof newFactSchema>
+export type Fact = z.infer<typeof factSchema>
 export type PersonaReport = z.infer<typeof personaReportSchema>
+export type ProposedFact = z.infer<typeof proposedFactSchema>
+export type LensReport = z.infer<typeof lensReportSchema>
+export type NewLensRun = z.infer<typeof newLensRunSchema>
+export type LensRun = z.infer<typeof lensRunSchema>
+export type NewAsk = z.infer<typeof newAskSchema>
+export type Ask = z.infer<typeof askSchema>
+export type CloseAsk = z.infer<typeof closeAskSchema>
+export type RoomSnapshot = z.infer<typeof roomSnapshotSchema>

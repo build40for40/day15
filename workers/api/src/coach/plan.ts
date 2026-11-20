@@ -1,0 +1,175 @@
+import { parseRef } from '@day15/shared/refs'
+import {
+  MAX_QUOTE_LENGTH,
+  MAX_STATEMENT_LENGTH,
+  type Ask,
+  type Fact,
+  type Item,
+  type NewAsk,
+  type NewPersonFact,
+  type Participant,
+  type RoomSnapshot,
+} from '@day15/shared/schema'
+import type { CoachTurnOutput, NextAskOutput } from './schema'
+import type { AskCandidate } from './select'
+
+/** Everything one coach call wants written to the room. */
+export interface NextAskPlan {
+  /** An open ask of this person's that stays as their next ask. */
+  keep: number | null
+  /** A new ask to add for this person. */
+  ask: NewAsk | null
+  /** Their other open asks, closed because the next ask replaces them. */
+  dropped: number[]
+  /** The question the person reads. */
+  text: string | null
+}
+
+export interface TurnPlan extends NextAskPlan {
+  facts: NewPersonFact[]
+  answered: number[]
+  noted: string
+}
+
+interface PlanContext {
+  room: RoomSnapshot
+  participant: Participant
+  candidates: AskCandidate[]
+}
+
+export function clip(text: string, max: number): string {
+  const trimmed = text.trim()
+  return trimmed.length > max ? `${trimmed.slice(0, max - 1).trimEnd()}…` : trimmed
+}
+
+const normalise = (text: string) =>
+  text
+    .toLowerCase()
+    .replace(/[‘’]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/\s+/g, ' ')
+    .replace(/^[\s"'.,]+|[\s"'.,]+$/g, '')
+
+/** The model's quote when it really is in the message, otherwise the message itself, so every fact keeps real words. */
+export function sourceQuote(quote: string, message: string): string {
+  const wanted = normalise(quote)
+  return wanted && normalise(message).includes(wanted) ? clip(quote, MAX_QUOTE_LENGTH) : clip(message, MAX_QUOTE_LENGTH)
+}
+
+/** A person may replace or confirm only their own facts or a lens's proposals, and each fact only once. */
+function replaceable(fact: Fact | undefined, participant: Participant, taken: Set<number>): fact is Fact {
+  return (
+    !!fact &&
+    fact.status !== 'superseded' &&
+    !taken.has(fact.id) &&
+    (fact.authorKind === 'lens' || fact.participantId === participant.id)
+  )
+}
+
+/** The facts to write from one message: new ones, corrections and confirmations of proposals. */
+export function planFacts(output: CoachTurnOutput, context: PlanContext & { item: Item }): NewPersonFact[] {
+  const { room, participant, item } = context
+  const byId = new Map(room.facts.map((fact) => [fact.id, fact]))
+  const taken = new Set<number>()
+  const facts: NewPersonFact[] = []
+  const base = { authorKind: 'person' as const, participantId: participant.id, sourceItemId: item.id }
+
+  for (const note of output.facts) {
+    const statement = clip(note.statement, MAX_STATEMENT_LENGTH)
+    if (!statement) continue
+    const replacesId = note.replaces ? parseRef('fact', note.replaces) : null
+    const target = replacesId ? byId.get(replacesId) : undefined
+    const supersedes = replaceable(target, participant, taken) ? target.id : undefined
+    if (supersedes) taken.add(supersedes)
+    facts.push({
+      ...base,
+      topic: note.topic,
+      statement,
+      sourceQuote: sourceQuote(note.quote, item.text),
+      status: note.tentative ? 'proposed' : 'confirmed',
+      ...(supersedes ? { supersedes } : {}),
+    })
+  }
+
+  for (const confirmation of output.confirmed) {
+    const id = parseRef('fact', confirmation.fact)
+    const target = id ? byId.get(id) : undefined
+    if (!replaceable(target, participant, taken) || target.status !== 'proposed') continue
+    taken.add(target.id)
+    facts.push({
+      ...base,
+      topic: target.topic,
+      statement: target.statement,
+      sourceQuote: sourceQuote(confirmation.quote, item.text),
+      status: 'confirmed',
+      supersedes: target.id,
+      ...(target.basedOn.length ? { basedOn: target.basedOn } : {}),
+    })
+  }
+  return facts
+}
+
+/** Open asks anywhere in the room that this message answered. */
+export function planAnswered(output: CoachTurnOutput, room: RoomSnapshot): number[] {
+  const open = new Set(room.asks.filter((ask) => ask.status === 'open').map((ask) => ask.id))
+  const answered = output.answered_asks.map((value) => parseRef('ask', value)).filter((id) => id !== null && open.has(id))
+  return [...new Set(answered as number[])]
+}
+
+/**
+ * Leaves this person exactly one open ask: the one the model chose, or one of theirs it asked again. When the model
+ * asks nothing, their oldest open ask stays, and failing that the best candidate becomes the ask.
+ */
+export function planNextAsk(next: NextAskOutput | null, context: PlanContext & { answered: number[] }): NextAskPlan {
+  const { room, participant, candidates, answered } = context
+  const open: Ask[] = room.asks.filter(
+    (ask) => ask.addressedTo === participant.id && ask.status === 'open' && !answered.includes(ask.id),
+  )
+  const others = (keep: number | null) => open.filter((ask) => ask.id !== keep).map((ask) => ask.id)
+  const text = next ? clip(next.ask, MAX_STATEMENT_LENGTH) : ''
+
+  if (next && text) {
+    const sameId = next.same_as ? parseRef('ask', next.same_as) : null
+    const same = open.find((ask) => ask.id === sameId)
+    if (same) return { keep: same.id, ask: null, dropped: others(same.id), text }
+    return {
+      keep: null,
+      ask: { addressedTo: participant.id, ask: text, because: clip(next.because, MAX_STATEMENT_LENGTH), lens: next.lens },
+      dropped: others(null),
+      text,
+    }
+  }
+
+  const oldest = open[0]
+  if (oldest) return { keep: oldest.id, ask: null, dropped: others(oldest.id), text: oldest.ask }
+
+  const best = candidates[0]
+  if (!best) return { keep: null, ask: null, dropped: [], text: null }
+  return {
+    keep: null,
+    ask: {
+      addressedTo: participant.id,
+      ask: clip(best.question, MAX_STATEMENT_LENGTH),
+      because: clip(best.because, MAX_STATEMENT_LENGTH),
+      lens: best.lens,
+    },
+    dropped: [],
+    text: best.question,
+  }
+}
+
+/** Everything one coach turn writes, worked out before anything is written. */
+export function planTurn(output: CoachTurnOutput, context: PlanContext & { item: Item }): TurnPlan {
+  const answered = planAnswered(output, context.room)
+  return {
+    facts: planFacts(output, context),
+    answered,
+    noted: output.noted.trim(),
+    ...planNextAsk(output.next_ask, { ...context, answered }),
+  }
+}
+
+/** What the person reads: what was noted, then the one question. */
+export function composeReply(lead: string, question: string | null): string {
+  return [lead.trim() || 'Got it, thanks.', question?.trim()].filter(Boolean).join('\n\n')
+}

@@ -4,21 +4,34 @@
   "account_id": "9b4d3e616e55585a0ae844f424717b43",
   "main": "src/index.ts",
   "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat"],
   // The persona harnesses are markdown, bundled into the Worker as text.
   "rules": [{ "type": "Text", "globs": ["**/*.md"], "fallthrough": true }],
   "assets": {
     "directory": "../../apps/web/dist",
-    "run_worker_first": ["/day15/api/*"]
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    // The old build40for40.com/day15 addresses reach the Worker too, which redirects them to the custom domain.
+    "run_worker_first": ["/api/*", "/mcp/*", "/day15", "/day15/*"]
   },
   "routes": [
+    // Deploying creates the custom domain and its DNS record.
+    { "pattern": "day15.build40for40.com", "custom_domain": true },
     { "pattern": "build40for40.com/day15", "zone_name": "build40for40.com" },
     { "pattern": "build40for40.com/day15/*", "zone_name": "build40for40.com" }
   ],
   "durable_objects": {
-    "bindings": [{ "name": "ROOMS", "class_name": "ProjectRoom" }]
+    "bindings": [
+      { "name": "ROOMS", "class_name": "ProjectRoom" },
+      { "name": "TEAMS", "class_name": "TeamDirectory" }
+    ]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ProjectRoom"] }],
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["ProjectRoom"] },
+    { "tag": "v2", "new_sqlite_classes": ["TeamDirectory"] }
+  ],
   "workers_dev": true,
   "preview_urls": true,
-  "observability": { "enabled": true }
+  // Every MCP address holds a person's key, so request URLs stay out of the logs: only console output is kept.
+  "observability": { "enabled": true, "logs": { "invocation_logs": false }, "traces": { "enabled": false } }
 }

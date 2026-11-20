@@ -1,42 +1,78 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import App from './App.vue'
 
-const ID = '00000000-0000-4000-8000-000000000000'
+const auth = vi.hoisted(() => ({ currentUser: vi.fn(), signIn: vi.fn(), signOut: vi.fn(), getAccessToken: vi.fn() }))
+vi.mock('./auth', () => auth)
 
-afterEach(() => {
-  vi.unstubAllGlobals()
-  window.history.replaceState(null, '', '/')
+const PROJECT_ID = '11111111-1111-4111-8111-111111111111'
+const ADDRESS = `https://day15.test/mcp/${PROJECT_ID}.fake-secret`
+
+const person = { id: 1, name: 'Alex', persona: 'agency_lead', side: 'agency', createdAt: '2026-11-20T09:00:00Z' }
+const team = { name: 'Fake Agency', ownerId: 'user_fake', createdAt: '2026-11-20T09:00:00Z' }
+
+function serve(session: unknown) {
+  const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+    const path = new URL(url, 'https://day15.test').pathname
+    if (path === '/api/session') return Response.json(session)
+    if (path === '/api/projects') {
+      return Response.json({ project: { id: PROJECT_ID, name: 'Orchard Dash', createdAt: 'x', participants: [] } }, { status: 201 })
+    }
+    if (path.endsWith('/people')) {
+      expect(JSON.parse(String(init?.body))).toEqual({ name: 'Alex', persona: 'agency_lead', side: 'agency' })
+      return Response.json({ participant: person, address: ADDRESS }, { status: 201 })
+    }
+    return Response.json({ error: 'Not found.' }, { status: 404 })
+  })
+  vi.stubGlobal('fetch', fetchMock)
+  return fetchMock
+}
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  auth.getAccessToken.mockResolvedValue('fake-token')
 })
 
 describe('App', () => {
-  it('starts a project on the side you pick and gives you a link for the other side', async () => {
-    const fetch = vi.fn((url: string, init?: RequestInit) =>
-      Promise.resolve(
-        init?.method === 'POST' && url.endsWith('api/projects')
-          ? Response.json({ id: ID })
-          : Response.json({ project: '', turns: [], otherSideStarted: false }),
-      ),
-    )
-    vi.stubGlobal('fetch', fetch)
-
+  it('offers sign in when nobody is signed in', async () => {
+    auth.currentUser.mockResolvedValue(null)
     const wrapper = mount(App)
-    await wrapper.findAll('nav button')[0]!.trigger('click')
     await flushPromises()
-
-    expect(window.location.search).toBe(`?p=${ID}&as=agency`)
-    expect(wrapper.text()).toContain('agency side')
-    expect(wrapper.get('aside a').attributes('href')).toContain(`?p=${ID}&as=client`)
-    expect(wrapper.find('#project').exists()).toBe(true)
+    await wrapper.get('button').trigger('click')
+    expect(auth.signIn).toHaveBeenCalled()
   })
 
-  it('asks which side you are on when the link only names a project', () => {
-    window.history.replaceState(null, '', `/?p=${ID}`)
+  it('warns that a project is visible to both sides', async () => {
+    auth.currentUser.mockResolvedValue({ id: 'user_fake' })
+    serve({ team: null, projects: [] })
     const wrapper = mount(App)
-    expect(wrapper.findAll('nav a').map((link) => link.attributes('href'))).toEqual([
-      `?p=${ID}&as=agency`,
-      `?p=${ID}&as=client`,
-    ])
+    await flushPromises()
+    expect(wrapper.text()).toContain('visible to everyone in it, both sides')
+    expect(wrapper.text()).toContain('name your team')
+  })
+
+  it('creates a project, adds a person and shows their address with a copy button', async () => {
+    auth.currentUser.mockResolvedValue({ id: 'user_fake' })
+    const fetchMock = serve({ team, projects: [] })
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('navigator', { clipboard: { writeText } })
+    const wrapper = mount(App)
+    await flushPromises()
+
+    await wrapper.get('input[aria-label="Project name"]').setValue('Orchard Dash')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Orchard Dash')
+
+    await wrapper.get('form.add input').setValue('Alex')
+    await wrapper.get('form.add').trigger('submit')
+    await flushPromises()
+
+    expect((wrapper.get('input.address').element as HTMLInputElement).value).toBe(ADDRESS)
+    const copyButton = wrapper.findAll('button').find((b) => b.text() === 'Copy address')!
+    await copyButton.trigger('click')
+    expect(writeText).toHaveBeenCalledWith(ADDRESS)
+    expect(fetchMock.mock.calls.every(([, init]) => (init?.headers as Record<string, string>).Authorization === 'Bearer fake-token')).toBe(true)
   })
 })
