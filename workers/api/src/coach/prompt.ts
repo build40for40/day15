@@ -15,6 +15,7 @@ import {
 import coachHarness from '../../../../persona-harnesses/coach.md'
 import coachReference from '../../../../persona-harnesses/coach-reference.md'
 import motherAgent from '../../../../persona-harnesses/mother-agent.md'
+import aboutALine from '../../../../persona-harnesses/about-a-line.md'
 import { renderRoom } from '../room/render'
 import { heardFrom, lensGaps, speakersFor, type AskCandidate } from './select'
 
@@ -119,12 +120,13 @@ export function renderAssessment(previous: Assessment | null | undefined): strin
   ].join('\n')
 }
 
-/** Room first, then the lens reports, then the coach's own harness. */
+/** Room first, then the lens reports, then the coach's own harness, then what it knows about A-Line. */
 export function coachInstructions(room: RoomSnapshot): SystemModelMessage[] {
   return [
     { role: 'system', content: renderRoom(room), providerOptions: CACHED },
     { role: 'system', content: renderReports(room) },
     { role: 'system', content: renderHarness() },
+    { role: 'system', content: aboutALine.trim() },
   ]
 }
 

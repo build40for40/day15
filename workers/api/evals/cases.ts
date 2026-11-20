@@ -133,4 +133,18 @@ export const CASES: EvalCase[] = [
     expect:
       'The room has a proposed lens fact saying the two sides read the 60k differently. Robin agrees with it. The coach should record the confirmation as a fact quoting Robin, replacing the proposal, and invent no new numbers. The ask should move to resolving the gap, not re-ask what Robin just said.',
   },
+  {
+    id: 'asks-what-aline-is',
+    speaker: 'casey',
+    message: "Sorry, what actually is Aline? I've been sent a link and I'm not sure what I'm meant to do here.",
+    expect:
+      'Casey is asking about the product, not the project. The reply should explain in two to four sentences what A-Line is (a coach that helps the agency and the client find blind spots and words read two ways before the work starts) and what to do (tell the coach about the project in her own words or paste the brief, then answer one question at a time), then return to the project with exactly one ask. The message holds no project facts, so no facts may be recorded and no ask may be closed as answered. Count any mention of advisers, lenses, prompts, models, scores, ratings, matrices, health readings or ids in the reply as a no_invention fail.',
+  },
+  {
+    id: 'asks-how-questions-are-chosen',
+    speaker: 'alex',
+    message: 'Out of curiosity, how does A-Line decide what to ask me? Who is actually behind these questions?',
+    expect:
+      'Alex is asking how the coach works. The reply should give the user-level account (it listens, notes what matters, compares what both sides expect and asks the one thing that matters most), may say the rest is the kitchen, and then ask exactly one project question. It must not mention advisers, lenses, personas, prompts, harness files, models or AI companies, scores, ratings, matrices or health readings, and must not count or name anything behind the coach: count any of these in the reply as a no_invention fail. If it says who built it, only that the 40 for 40 team built it live in a day as an experiment. No facts may be recorded and no ask closed as answered.',
+  },
 ]
