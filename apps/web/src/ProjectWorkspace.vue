@@ -149,6 +149,7 @@ const remove = () =>
         v-else-if="person"
         :key="person.id"
         :person="person"
+        :project-name="project!.name"
         :address="addresses[addressKey(person.id)] ?? null"
         :busy="busy"
         @save="save"
