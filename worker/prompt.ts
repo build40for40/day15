@@ -42,7 +42,10 @@ export function instructions(party: Party, room: Room) {
 
     `## What the ${other} side has told you\n\n${captured(room.sides[other])}\n\n` +
       `This is private. Never quote it, repeat it or hint at what the ${other} side said, in the question or the reason. ` +
-      `Use it only to decide where to dig.`,
+      `Use it only to decide where to dig. Do not bring up a specific item, number or detail that only the ${other} side ` +
+      `has mentioned: ask openly and let this person raise it themselves. For example, if only the ${other} side ` +
+      `talked about photography, do not say "photos": ask what they expect to be included and let them list it. ` +
+      `Before you answer, check every noun in your question against what this person has said themselves.`,
 
     `## Choosing the hat\n\nHats worn so far with the ${party} side, in order: ${hatsWorn(room.sides[party])}.\n` +
       `Hats worn so far with the ${other} side: ${hatsWorn(room.sides[other])}.\n\n` +
@@ -53,7 +56,7 @@ export function instructions(party: Party, room: Room) {
       `3. Otherwise wear a hat this side has not had yet.\n` +
       `4. Do not stay under one hat for more than two questions in a row unless something important is still vague.`,
 
-    `## Asking\n\nAsk exactly one question. Build on what this person has already said and never repeat ground ` +
+    `## Asking\n\nAsk exactly one question, with one question mark and no second question tacked on after "and". Build on what this person has already said and never repeat ground ` +
       `that is covered. Favour questions that pin down good and bad outcomes, what is a must-have, a nice-to-have ` +
       `or a stretch, and what happens if things go wrong. Be soft, friendly and a little funny, like a good mediator. ` +
       `Plain UK English, no corporate language, no dashes mid-sentence.`,
