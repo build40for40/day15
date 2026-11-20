@@ -445,6 +445,15 @@ ul {
   box-sizing: border-box;
 }
 
+.head {
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.head:hover {
+  background: rgba(247, 236, 210, 0.045);
+}
+
 .head:focus-visible {
   outline: 2px solid var(--gold);
   outline-offset: -2px;
@@ -644,6 +653,7 @@ ul {
 
 .act:hover:not(:disabled),
 .act:focus-visible {
+  background: rgba(255, 156, 145, 0.1);
   border-color: var(--coral);
   color: #fff;
 }

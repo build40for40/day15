@@ -553,8 +553,9 @@ defineExpose({ fly, announce, show: show_ })
   transition: box-shadow 0.3s, opacity 0.3s, transform 0.15s;
 }
 
-.orb:hover {
+.orb:hover:not(:disabled) {
   transform: scale(1.05);
+  background: radial-gradient(circle at 40% 35%, #fff9f6, #ffdcd4 60%, #ffb7ac);
 }
 
 .orb:focus-visible {
@@ -654,6 +655,10 @@ defineExpose({ fly, announce, show: show_ })
   font-weight: 600;
   color: var(--coral);
   text-decoration: underline;
+}
+
+.see:hover:not(:disabled) {
+  background: none;
 }
 
 .see:focus-visible {

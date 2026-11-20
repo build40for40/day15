@@ -113,7 +113,8 @@ a.share {
   max-width: 100%;
 }
 
-button:hover:not(:disabled) {
+/* Zero specificity, so a button that styles itself (a card row, a pill, the dock) keeps its own hover instead of turning cream. */
+:where(button:hover:not(:disabled)) {
   background: #fff7e2;
 }
 
