@@ -70,6 +70,12 @@ export class ProjectRoom extends DurableObject<Env> {
   read() {
     return this.store.read()
   }
+  assessment() {
+    return this.store.assessment()
+  }
+  saveAssessment(...args: Args<'saveAssessment'>) {
+    return this.store.saveAssessment(...args)
+  }
   saveLensRun(...args: Args<'saveLensRun'>) {
     return this.store.saveLensRun(...args)
   }

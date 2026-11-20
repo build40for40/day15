@@ -1,7 +1,16 @@
 import { generateText, Output, type SystemModelMessage } from 'ai'
 import type { z } from 'zod'
 
-import type { Ask, Fact, NewParticipant, NewPersonFact, Participant, RoomSnapshot } from '@day15/shared/schema'
+import { fullMatrix, health, type AreaRating } from '@day15/shared/alignment'
+import {
+  SIDES,
+  type Ask,
+  type Fact,
+  type NewParticipant,
+  type NewPersonFact,
+  type Participant,
+  type RoomSnapshot,
+} from '@day15/shared/schema'
 import type { CoachReply, CoachTurn, Env, OpeningBrief, OpeningBriefFn, RoomStub } from '../contracts'
 import { anthropicModel, logModelError, ModelUnavailableError, PROVIDER_OPTIONS } from '../model'
 import { composeReply, planNextAsk, planTurn, type NextAskPlan } from './plan'
@@ -96,6 +105,20 @@ async function writeNextAsk(room: RoomStub, participant: Participant, plan: Next
   return { closed, next }
 }
 
+/** Keeps the mother agent's matrix and works out the health reading. Losing it never loses the turn. */
+async function saveAssessment(room: RoomStub, snapshot: RoomSnapshot, itemId: number, ratings: AreaRating[] | undefined) {
+  if (!ratings?.length) return
+  const spoken = new Set(
+    snapshot.items.map((item) => snapshot.participants.find((person) => person.id === item.participantId)?.side),
+  )
+  const areas = fullMatrix(ratings)
+  try {
+    await room.saveAssessment({ itemId, areas, health: health(areas, SIDES.every((side) => spoken.has(side))) })
+  } catch (error) {
+    console.error('Coach assessment write failed:', error instanceof Error ? error.name : 'Unknown error')
+  }
+}
+
 export async function runCoachTurn(
   generate: Generate,
   room: RoomStub,
@@ -105,13 +128,14 @@ export async function runCoachTurn(
   const item = await room.addItem(participant.id, message)
   const snapshot = await readRoom(room)
   const candidates = askCandidates(snapshot, participant)
+  const previous = await room.assessment()
 
   const output = await ask(
     generate,
     'Coach turn',
     {
       instructions: coachInstructions(snapshot),
-      prompt: turnPrompt(snapshot, participant, item, candidates),
+      prompt: turnPrompt(snapshot, participant, item, candidates, previous),
       schema: coachTurnOutputSchema,
       name: 'coach_turn',
     },
@@ -129,9 +153,10 @@ export async function runCoachTurn(
   if (plan.resolvedQuestions.length) await room.resolveQuestions(plan.resolvedQuestions, item.id)
   if (plan.priorities.length) await room.setQuestionPriorities(plan.priorities)
   const next = await writeNextAsk(room, participant, plan)
+  await saveAssessment(room, snapshot, item.id, output.alignment)
 
   return {
-    reply: composeReply(plan.noted, plan.text),
+    reply: composeReply(plan.noted, plan.text, plan.explain),
     itemId: item.id,
     noted,
     people,
@@ -158,7 +183,7 @@ export async function runOpeningBrief(generate: Generate, room: RoomStub, partic
 
   const plan = planNextAsk(output.next_ask, { room: snapshot, participant, candidates, answered: [] })
   const { next } = await writeNextAsk(room, participant, plan)
-  return { reply: composeReply(output.reply, plan.text), ask: next }
+  return { reply: composeReply(output.reply, plan.text, plan.explain), ask: next }
 }
 
 export const coachTurn: CoachTurn = (env, room, participant, message) =>

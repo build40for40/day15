@@ -161,4 +161,9 @@ describe('composeReply', () => {
     expect(composeReply('Noted the tone. ', 'Who signs off?')).toBe('Noted the tone.\n\nWho signs off?')
     expect(composeReply('', null)).toBe('Got it, thanks.')
   })
+
+  it('puts an explanation between the two, and drops it when there is no question', () => {
+    expect(composeReply('Noted.', 'Who owns it?', ' Running costs matter. ')).toBe('Noted.\n\nRunning costs matter.\n\nWho owns it?')
+    expect(composeReply('Noted.', null, 'Running costs matter.')).toBe('Noted.')
+  })
 })

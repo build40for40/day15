@@ -43,8 +43,53 @@ describe('runCoachTurn', () => {
     const [roomText, reports, harness] = calls[0]!.instructions.map((part) => part.content)
     expect(roomText).toMatch(/^# The data room for "/)
     expect(reports).toMatch(/^# Where the five advisers stand/)
-    expect(harness).toMatch(/^# Coach harness/)
+    expect(harness).toMatch(/^# Your two harnesses/)
+    expect(harness).toContain('# Mother agent')
+    expect(harness).toContain('# Coach harness')
     expect(calls[0]!.prompt).toContain('We mean the tone.')
+  })
+
+  it("keeps the mother agent's matrix and health reading, away from every view of the room", async () => {
+    const { room, stub, people } = await fixtureRoom()
+    const casey = people.casey.participant
+    const { generate, calls } = fake({
+      facts: [],
+      answered_asks: [],
+      confirmed: [],
+      alignment: [
+        { area: 'scope', rating: 'high', misalignment: 'The two sides list different things as included.' },
+        { area: 'budget', rating: 'medium', misalignment: 'Whether VAT is in the figure.' },
+      ],
+      noted: 'Thanks.',
+      next_ask: {
+        explain: 'On projects like this, running costs often sit in nobody\'s budget.',
+        ask: 'Who pays for hosting after launch?',
+        because: 'Running cost with no owner.',
+        lens: 'cfo',
+        same_as: null,
+      },
+    })
+
+    const reply = await runCoachTurn(generate, stub, casey, 'Nothing new from me.')
+
+    expect(reply.reply).toBe(
+      "Thanks.\n\nOn projects like this, running costs often sit in nobody's budget.\n\nWho pays for hosting after launch?",
+    )
+    expect(reply.ask!.ask).toBe('Who pays for hosting after launch?')
+
+    const kept = await room.assessment()
+    expect(kept!.itemId).toBe(reply.itemId)
+    expect(kept!.areas).toHaveLength(7)
+    expect(kept!.areas[1]).toMatchObject({ area: 'scope', rating: 'high' })
+    expect(kept!.areas[0]).toMatchObject({ area: 'goal_and_success', rating: 'low' })
+    expect(kept!.health!.band).toBe('red')
+    expect(JSON.stringify(await room.read())).not.toContain('The two sides list different things as included.')
+
+    expect(calls[0]!.prompt).toContain('You have not rated this project yet.')
+    const again = fake({ facts: [], answered_asks: [], confirmed: [], noted: 'Ok.', next_ask: null })
+    await runCoachTurn(again.generate, stub, casey, 'Still nothing.')
+    expect(again.calls[0]!.prompt).toContain('- Scope (scope): high. The two sides list different things as included.')
+    expect((await room.assessment())!.itemId).toBe(reply.itemId)
   })
 
   it('adds people the message named with no link, without duplicating anyone already listed', async () => {

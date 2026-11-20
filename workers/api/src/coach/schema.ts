@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { areaRatingSchema } from '@day15/shared/alignment'
 import { LENS_IDS } from '@day15/shared/lenses'
 import { personaSchema, SIDES, topicSchema } from '@day15/shared/schema'
 
@@ -22,6 +23,13 @@ const confirmationSchema = z.object({
 })
 
 export const nextAskSchema = z.object({
+  explain: z
+    .string()
+    .optional()
+    .describe(
+      'Only when you are educating, as your harness describes: one short paragraph of plain explanation given before ' +
+        'the question, in a form the person could reuse with their own colleagues. Otherwise leave it out.',
+    ),
   ask: z.string().describe('Exactly one question for this person, in your voice. Never two things at once.'),
   because: z.string().describe('One short sentence on why it matters, for the team. Not shown to the person.'),
   lens: z.enum(LENS_IDS).nullable().describe('The adviser whose need this serves, or null.'),
@@ -32,6 +40,7 @@ export const nextAskSchema = z.object({
   question: z
     .string()
     .nullable()
+    .optional()
     .describe('The id (like q7) of the open question this ask chases, or null when it chases none.'),
 })
 
@@ -70,6 +79,14 @@ export const coachTurnOutputSchema = z.object({
     .array(reprioritySchema)
     .optional()
     .describe('Open questions whose priority should change after this message. Empty when none should.'),
+  alignment: z
+    .array(areaRatingSchema)
+    .optional()
+    .describe(
+      'Your priority matrix after this message: one rating for each of the seven areas in your harness. For high and ' +
+        'medium, say what the misalignment is in one plain line and give its cause. For the team only, never shown ' +
+        'to either side.',
+    ),
   noted: z.string().describe('One or two warm sentences playing back what you noted. No question here.'),
   next_ask: nextAskSchema.nullable().describe('The one next thing you need from this person, or null if nothing.'),
 })

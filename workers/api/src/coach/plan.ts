@@ -20,6 +20,9 @@ import type { CoachTurnOutput, NextAskOutput } from './schema'
 import type { AskCandidate } from './select'
 
 /** Everything one coach call wants written to the room. */
+/** Room for one short paragraph. */
+const MAX_EXPLAIN_LENGTH = 1200
+
 export interface NextAskPlan {
   /** An open ask of this person's that stays as their next ask. */
   keep: number | null
@@ -29,6 +32,8 @@ export interface NextAskPlan {
   dropped: number[]
   /** The question the person reads. */
   text: string | null
+  /** What the coach explains before the question, when it is educating. Read once, not kept with the ask. */
+  explain?: string
 }
 
 export interface TurnPlan extends NextAskPlan {
@@ -183,8 +188,10 @@ export function planNextAsk(next: NextAskOutput | null, context: PlanContext & {
   if (next && text) {
     const sameId = next.same_as ? parseRef('ask', next.same_as) : null
     const same = open.find((ask) => ask.id === sameId)
-    if (same) return { keep: same.id, ask: null, dropped: others(same.id), text }
+    const explain = next.explain?.trim() ? clip(next.explain, MAX_EXPLAIN_LENGTH) : undefined
+    if (same) return { keep: same.id, ask: null, dropped: others(same.id), text, explain }
     return {
+      explain,
       keep: null,
       ask: {
         addressedTo: participant.id,
@@ -232,7 +239,7 @@ export function planTurn(output: CoachTurnOutput, context: PlanContext & { item:
   }
 }
 
-/** What the person reads: what was noted, then the one question. */
-export function composeReply(lead: string, question: string | null): string {
-  return [lead.trim() || 'Got it, thanks.', question?.trim()].filter(Boolean).join('\n\n')
+/** What the person reads: what was noted, then anything the coach explains, then the one question. */
+export function composeReply(lead: string, question: string | null, explain?: string): string {
+  return [lead.trim() || 'Got it, thanks.', question ? explain?.trim() : '', question?.trim()].filter(Boolean).join('\n\n')
 }

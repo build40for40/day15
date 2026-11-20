@@ -12,18 +12,34 @@ Neither the agency nor the client ever sees a persona, its name or its report. T
 | `personas/procurement.md` | Procurement | The agreement, and the bad day |
 | `personas/delivery.md` | Delivery | The promise being buildable |
 
-## Drafts that are not wired in yet
+## The mother agent
 
-Two of Samira's files sit here for review. Nothing loads them, so they change nothing about how the app behaves.
+[`mother-agent.md`](mother-agent.md) is Samira's AIM for the one voice people talk to. The Worker loads it together with `coach.md`, and the two split the job:
 
-- [`mother-agent.md`](mother-agent.md): her AIM for the one voice people talk to, which is the role `coach.md` plays today. It adds the signals from the project stories, a priority matrix with High, Medium and Low ratings and an overall health reading, and a way to explain an issue to one side discreetly. It assumes each side's conversation is private, which the shared room does not do today.
-- [`personas/delivery-procurement-finance.md`](personas/delivery-procurement-finance.md): one persona covering what `cfo.md`, `delivery.md` and `procurement.md` cover between them, for a version with three lenses and not five.
+- **The mother agent is how the coach thinks and speaks:** who it is and its limits as a mediator, its four phases and four tools, the signals it listens for from the project stories, its priority matrix and ratings, how it chooses and words the next ask, and when it explains something before asking.
+- **`coach.md` is how the coach keeps the room:** taking facts from what a person says, corrections, confirmations and closing asks.
 
-Whether to move to three lenses, and how much of the mother agent goes into `coach.md`, is still to be decided between Samira and Ben.
+Where the two differ on what to ask, how to word it or how open to be about what the other side said, the mother agent wins. Where they differ on recording facts, `coach.md` wins. That rule is written once, in `workers/api/src/coach/prompt.ts`.
+
+Three things come out of it:
+
+- **An explanation before the question,** when the coach is educating. It is read once in the reply and is not stored with the ask.
+- **The priority matrix:** with every turn the coach rates the seven areas high, medium, low or aligned. The areas, weights and sums live in `packages/shared/src/alignment.ts`.
+- **The health reading,** worked out in code from those ratings, and absent until both sides have said something.
+
+The matrix and the reading are kept in the room but are not part of the room snapshot, so no tool, lens or page shows them. Only the coach reads them back, on its next turn. A view for the team does not exist yet.
+
+**Openness:** the mother agent's default is transparency, which fits the shared room: the coach may say what the other side said, fairly and in neutral words. It keeps back anything a person asked it to keep private. Nothing in the app lets a person mark something private yet, so that part rests on the coach's judgement alone.
+
+The file follows Samira's "A-line: Mother, agent instructions (draft v1)" card on Superthread: who Mother is, mediator not adviser, the four phases (interrogate, sort, find the cause, escalate), the four tools, tone of voice and what she produces.
+
+## A draft that is not wired in
+
+[`personas/delivery-procurement-finance.md`](personas/delivery-procurement-finance.md) is one persona covering what `cfo.md`, `delivery.md` and `procurement.md` cover between them, for a version with three lenses and not five. Nothing loads it.
 
 ## Who owns what
 
-- **The five files in `personas/`** are Samira's. Each is one persona's Actor, Instructions and Mission, and nothing else. Changes to who a persona is, what it covers or what it asks go there.
+- **The five files in `personas/` and `mother-agent.md`** are Samira's. Each is one persona's Actor, Instructions and Mission, and nothing else. Changes to who a persona is, what it covers or what it asks go there.
 - **`wrapper.md` and everything in this README below the AIM section** are Ben's: the shared wrapper, the report format and how the coach uses the reports. So are `coach.md` and `coach-reference.md`, the coach's own harness. It may change to fit the architecture without the persona files needing to.
 
 ## AIM: Actor, Instructions, Mission
