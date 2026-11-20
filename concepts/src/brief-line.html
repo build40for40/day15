@@ -1,0 +1,458 @@
+<title>Brief Line</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: platform-style header band, a Beck-style SVG map in a scroll card, departure board + map key side by side, then the shared dock. */
+:root {
+  --bg: #e6e9ef; --paper: #fafbfd; --panel: #ffffff; --fg: #14171f; --mut: #566077; --faint: #a9b1c2; --line: #d2d7e2;
+  --band: #14171f; --bandfg: #ffffff; --river: #bcd9ec; --park: #cde6cf; --stn-fill: #ffffff;
+  --board: #0d1017; --boardfg: #ffc94d; --boardmut: #8b93a8;
+  --gold: #c99a1e; --ok: #1fae63; --warn: #e89a00; --bad: #e0364a;
+  --font: 'Space Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b0e14; --paper: #131822; --panel: #171d29; --fg: #eef1f7; --mut: #9aa3b8; --faint: #4a5368; --line: #2a3144;
+    --band: #1b2230; --bandfg: #ffffff; --river: #1d3a57; --park: #1a3a2c; --stn-fill: #f6f8fc;
+    --board: #07090d; --boardfg: #ffc94d; --boardmut: #7c849a;
+    --gold: #f2c86b; --ok: #34d27b; --warn: #ffb020; --bad: #ff5468; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0b0e14; --paper: #131822; --panel: #171d29; --fg: #eef1f7; --mut: #9aa3b8; --faint: #4a5368; --line: #2a3144;
+  --band: #1b2230; --bandfg: #ffffff; --river: #1d3a57; --park: #1a3a2c; --stn-fill: #f6f8fc;
+  --board: #07090d; --boardfg: #ffc94d; --boardmut: #7c849a;
+  --gold: #f2c86b; --ok: #34d27b; --warn: #ffb020; --bad: #ff5468; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); padding-block: 20px 28px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 14px; min-width: 0; }
+.band { background: var(--band); color: var(--bandfg); display: flex; gap: 16px; align-items: center; padding: 14px 18px; border-radius: 4px; border-bottom: 5px solid var(--gold); }
+.band h1 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -.01em; }
+.band p { margin: 2px 0 0; font-size: 14px; color: #c3c9d8; max-width: 62ch; line-height: 1.4; }
+.roundel { flex: none; width: 46px; height: 46px; }
+.mapcard { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; overflow-x: auto; min-width: 0; }
+.mapcard:focus-visible, .stn:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.map { display: block; width: 100%; min-width: 820px; height: auto; }
+.lower { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 14px; }
+@media (max-width: 820px) { .lower { grid-template-columns: minmax(0, 1fr); } }
+.board { background: var(--board); border-radius: 6px; padding: 12px 14px; font-family: var(--mono); color: var(--boardfg); min-width: 0; min-height: 250px; }
+.board h2, .key h2 { margin: 0 0 8px; font: 600 12px var(--mono); letter-spacing: .14em; text-transform: uppercase; }
+.board h2 { color: #fff; display: flex; justify-content: space-between; gap: 8px; }
+.board h2 span { color: var(--boardmut); font-weight: 400; letter-spacing: .04em; text-transform: none; }
+.brow { display: grid; grid-template-columns: 46px 118px minmax(0, 1fr) 92px; gap: 10px; padding: 6px 0; border-top: 1px solid #232a3a; font-size: 12px; line-height: 1.35; animation: rowin .35s ease-out; }
+.brow .t { color: var(--boardmut); }
+.brow .d { color: #fff; }
+.brow .m { color: var(--boardfg); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.brow .s { text-align: right; font-weight: 600; font-size: 11px; letter-spacing: .04em; }
+.s.ok { color: #46e08e; } .s.late { color: #ff6a7b; } .s.priv { color: #8fb4ff; } .s.all { color: var(--boardfg); }
+.bempty { color: var(--boardmut); font-size: 12px; padding: 6px 0; }
+@media (max-width: 560px) { .brow { grid-template-columns: 40px minmax(0, 1fr) 78px; } .brow .d { display: none; } }
+.key { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; min-width: 0; }
+.key h2 { color: var(--mut); }
+.key ul { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 6px; font-size: 13px; }
+.key li { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.key li small { color: var(--mut); }
+.sw { flex: none; width: 34px; height: 8px; border-radius: 4px; }
+.key svg { flex: none; }
+.dockwrap .emd, .dockwrap .emx { --em-bg: var(--paper); --em-panel: var(--panel); --em-fg: var(--fg); --em-mut: var(--mut); --em-line: var(--line); --em-acc: var(--gold); --em-ok: var(--ok); --em-warn: var(--warn); --em-bad: var(--bad); --em-font: var(--font); --em-mono: var(--mono); }
+.foot { color: var(--mut); font: 12px var(--mono); }
+/* map text */
+.sl { font: 600 12.5px var(--font); fill: var(--fg); paint-order: stroke; stroke: var(--paper); stroke-width: 4px; stroke-linejoin: round; }
+.sl.faint { fill: var(--faint); font-weight: 500; }
+.lbl { font: 500 11px var(--font); fill: var(--mut); paint-order: stroke; stroke: var(--paper); stroke-width: 4px; }
+.geo { font: italic 11px var(--font); fill: var(--faint); }
+.mono { font-family: var(--mono); }
+.blink { animation: blink 1s ease-in-out infinite; }
+.pop { transform-box: fill-box; transform-origin: center; animation: pop .5s cubic-bezier(.3, 1.6, .5, 1); }
+.talkring { transform-box: fill-box; transform-origin: center; animation: talk 1.2s ease-out 2; fill: none; }
+.choosing { animation: dash 1.2s linear infinite; }
+.fade { animation: fadeout 2.6s ease-in forwards; }
+.drawin { stroke-dasharray: var(--len); stroke-dashoffset: var(--len); animation: draw .9s ease-out forwards; }
+@keyframes blink { 50% { opacity: .25; } }
+@keyframes pop { from { transform: scale(.2); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes talk { from { transform: scale(1); opacity: .9; } to { transform: scale(2); opacity: 0; } }
+@keyframes dash { to { stroke-dashoffset: -14; } }
+@keyframes fadeout { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes rowin { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .blink, .pop, .talkring, .choosing, .brow { animation: none; }
+  .fade { animation: none; }
+  .drawin { animation: none; stroke-dashoffset: 0; }
+}
+</style>
+
+<div class="wrap">
+  <header class="band">
+    <svg class="roundel" viewBox="0 0 46 46" aria-hidden="true"><circle cx="23" cy="23" r="17" fill="none" stroke="#f2c86b" stroke-width="6"/><rect x="2" y="17" width="42" height="12" rx="2" fill="#ffffff"/><text x="23" y="26.5" text-anchor="middle" font-family="Space Grotesk, sans-serif" font-weight="700" font-size="8" fill="#14171f">BRIEF</text></svg>
+    <div>
+      <h1>Brief Line</h1>
+      <p>Five stakeholder lines run to one terminus called Project Truth. Every station is a decision. Watch each one get a stop as people speak, and clear when they agree.</p>
+    </div>
+  </header>
+
+  <div class="mapcard" tabindex="0" role="region" aria-label="Transit map of the project. Scroll sideways on a narrow screen.">
+    <svg class="map" id="map" viewBox="0 0 1000 640" xmlns="http://www.w3.org/2000/svg" role="group" aria-label="Five lines to Project Truth"></svg>
+  </div>
+
+  <div class="lower">
+    <section class="board" aria-label="Departure board" aria-live="polite">
+      <h2>Departures <span id="clock">08:00</span></h2>
+      <div id="rows"><div class="bempty">Waiting for the first service.</div></div>
+    </section>
+    <section class="key" aria-label="Map key">
+      <h2>Map key</h2>
+      <ul id="lines"></ul>
+      <ul>
+        <li><svg width="26" height="22" viewBox="-13 -11 26 22" aria-hidden="true"><circle r="6" fill="none" stroke="var(--faint)" stroke-dasharray="2 2" stroke-width="1.5"/></svg><span>Not asked yet</span></li>
+        <li><svg width="26" height="22" viewBox="-13 -11 26 22" aria-hidden="true"><circle r="11" fill="none" stroke="var(--warn)" stroke-dasharray="3 2" stroke-width="1.3"/><circle r="7" fill="var(--stn-fill)" stroke="#a67cff" stroke-width="3"/></svg><span>One side has said it</span></li>
+        <li><svg width="26" height="22" viewBox="-13 -11 26 22" aria-hidden="true"><line x1="0" y1="0" x2="9" y2="-8" stroke="#ff7a59" stroke-width="3.5"/><line x1="0" y1="0" x2="9" y2="8" stroke="#35c9e0" stroke-width="3.5"/><circle r="8" fill="var(--stn-fill)" stroke="var(--fg)" stroke-width="3"/><circle r="3" fill="var(--ok)"/></svg><span>Interchange: agreed</span></li>
+        <li><svg width="26" height="22" viewBox="-13 -11 26 22" aria-hidden="true"><circle r="8" fill="var(--stn-fill)" stroke="var(--bad)" stroke-width="3.5"/></svg><span>Signal failure: in conflict</span></li>
+      </ul>
+    </section>
+  </div>
+
+  <section class="dockwrap" id="dock" aria-label="Controls and exports"></section>
+  <div class="foot">Concept for Expectation Manager, Day 15</div>
+</div>
+
+<!--ENGINE-->
+<script>
+(function () {
+  'use strict';
+  var CAST = EM.CAST, SEC = EM.SECTIONS, NS = 'http://www.w3.org/2000/svg';
+  var reduce = false;
+  try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+  function S(tag, attrs, parent) { var n = document.createElementNS(NS, tag); for (var k in attrs) n.setAttribute(k, attrs[k]); if (parent) parent.appendChild(n); return n; }
+  function T(txt, attrs, parent) { var n = S('text', attrs, parent); n.textContent = txt; return n; }
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+  /* ---------- map data, defined once ---------- */
+  var LINES = {
+    client:      { pts: [[40, 70], [300, 70], [370, 140], [465, 235], [465, 305]] },
+    cfo:         { pts: [[960, 70], [700, 70], [630, 140], [535, 235], [535, 305]] },
+    agency:      { pts: [[40, 250], [120, 250], [200, 330], [440, 330]] },
+    delivery:    { pts: [[960, 430], [880, 430], [780, 330], [560, 330]] },
+    procurement: { pts: [[40, 590], [380, 590], [500, 470], [500, 355]] }
+  };
+  var ST = {
+    goal:        { line: 'client',      x: 120, y: 70,  lab: 'above' },
+    audience:    { line: 'client',      x: 230, y: 70,  lab: 'above' },
+    success:     { line: 'client',      x: 400, y: 170, lab: 'right' },
+    budget:      { line: 'cfo',         x: 870, y: 70,  lab: 'above' },
+    contingency: { line: 'cfo',         x: 770, y: 70,  lab: 'above' },
+    scope:       { line: 'agency',      x: 85,  y: 250, lab: 'above' },
+    signoff:     { line: 'agency',      x: 260, y: 330, lab: 'below' },
+    feedback:    { line: 'agency',      x: 360, y: 330, lab: 'below' },
+    done:        { line: 'delivery',    x: 830, y: 380, lab: 'right' },
+    timeline:    { line: 'delivery',    x: 680, y: 330, lab: 'above' },
+    ownership:   { line: 'procurement', x: 140, y: 590, lab: 'above' },
+    disagree:    { line: 'procurement', x: 290, y: 590, lab: 'above' }
+  };
+  var TICK_ANGLES = [-45, 45, 135, -135];
+  var RING = 'M44,14 H956 L986,44 V596 L956,626 H44 L14,596 V44 Z';
+  var TERM = { x: 440, y: 305, w: 120, h: 50 };
+
+  var svg = document.getElementById('map');
+  var gBg = S('g', {}, svg), gRing = S('g', {}, svg), gLines = S('g', {}, svg), gSiding = S('g', {}, svg), gTerm = S('g', {}, svg),
+      gStn = S('g', {}, svg), gTags = S('g', {}, svg), gTrains = S('g', {}, svg), gOver = S('g', {}, svg);
+
+  /* background: river and park */
+  S('path', { d: 'M-10,505 C150,470 260,540 400,500 S640,470 760,520 S940,560 1010,520', fill: 'none', stroke: 'var(--river)', 'stroke-width': 26, 'stroke-linecap': 'round' }, gBg);
+  T('River Scope', { x: 620, y: 487, class: 'geo' }, gBg);
+  S('rect', { x: 770, y: 140, width: 150, height: 70, rx: 18, fill: 'var(--park)' }, gBg);
+  T('Slack Gardens', { x: 845, y: 180, 'text-anchor': 'middle', class: 'geo' }, gBg);
+
+  /* Wisp's express: a gold loop that calls on every line */
+  var ringPath = S('path', { d: RING, fill: 'none', stroke: 'var(--gold)', 'stroke-width': 3, 'stroke-dasharray': '10 7', opacity: .75, 'stroke-linejoin': 'round' }, gRing);
+  var wb = S('g', {}, gRing);
+  S('circle', { cx: 500, cy: 14, r: 13, fill: 'var(--gold)', stroke: 'var(--paper)', 'stroke-width': 3 }, wb);
+  T('W', { x: 500, y: 19, 'text-anchor': 'middle', style: 'font:700 14px var(--font);fill:#14171f' }, wb);
+  T('Wisp express. Calls on every line.', { x: 522, y: 19, class: 'lbl' }, wb);
+
+  /* lines */
+  var linePath = {}, badge = {};
+  Object.keys(LINES).forEach(function (id) {
+    var L = LINES[id], c = CAST[id].color;
+    var d = L.pts.map(function (p, i) { return (i ? 'L' : 'M') + p[0] + ',' + p[1]; }).join(' ');
+    linePath[id] = S('path', { d: d, fill: 'none', stroke: c, 'stroke-width': 9, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, gLines);
+    var s = L.pts[0], g = S('g', {}, gLines);
+    var ring = S('circle', { cx: s[0], cy: s[1], r: 15, stroke: c, 'stroke-width': 3, class: 'talkring', opacity: 0 }, g);
+    S('circle', { cx: s[0], cy: s[1], r: 15, fill: c, stroke: 'var(--paper)', 'stroke-width': 3 }, g);
+    T(CAST[id].name.charAt(0), { x: s[0], y: s[1] + 5, 'text-anchor': 'middle', style: 'font:700 14px var(--font);fill:#14171f' }, g);
+    var right = s[0] > 500;
+    T(CAST[id].name + ' · ' + CAST[id].tag, { x: right ? s[0] + 16 : s[0] - 16, y: s[1] + 32, 'text-anchor': right ? 'end' : 'start', class: 'lbl' }, g);
+    badge[id] = ring;
+    L.len = linePath[id].getTotalLength();
+  });
+
+  /* where along each line is each station */
+  function nearestFrac(path, x, y) {
+    var len = path.getTotalLength(), best = 0, bd = 1e9, i, p, d;
+    for (i = 0; i <= 700; i++) { p = path.getPointAtLength(len * i / 700); d = (p.x - x) * (p.x - x) + (p.y - y) * (p.y - y); if (d < bd) { bd = d; best = i / 700; } }
+    return best;
+  }
+  Object.keys(ST).forEach(function (id) { ST[id].frac = nearestFrac(linePath[ST[id].line], ST[id].x, ST[id].y); });
+
+  /* terminus */
+  var termBox = S('rect', { x: TERM.x, y: TERM.y, width: TERM.w, height: TERM.h, rx: 5, fill: 'var(--stn-fill)', stroke: 'var(--fg)', 'stroke-width': 3.5 }, gTerm);
+  var termName = T('Project Truth', { x: 500, y: 325, 'text-anchor': 'middle', style: 'font:700 13px var(--font);fill:#14171f' }, gTerm);
+  var cells = [];
+  SEC.forEach(function (s, i) { cells.push(S('rect', { x: 446 + i * 9.5, y: 335, width: 8, height: 12, rx: 1.5, fill: 'var(--faint)' }, gTerm)); });
+  var termSub = T('', { x: 500, y: 374, 'text-anchor': 'middle', class: 'lbl' }, gTerm);
+
+  /* stations */
+  Object.keys(ST).forEach(function (id) {
+    var st = ST[id];
+    st.g = S('g', { class: 'stn', tabindex: 0, role: 'img' }, gStn);
+  });
+
+  var choosing = {}, gen = 0;
+  function statusLabel(st) { return EM.STATUS_TEXT[st]; }
+
+  function renderStation(id, popIt) {
+    var st = ST[id], sec = session.state.sections[id], g = st.g, col = CAST[st.line].color, status = sec.status;
+    while (g.firstChild) g.removeChild(g.firstChild);
+    g.setAttribute('aria-label', sec.label + ': ' + statusLabel(status) + (sec.value ? '. ' + sec.value : ''));
+    var tt = S('title', {}, g); tt.textContent = sec.label + ' (' + statusLabel(status) + ')' + (sec.value ? '\n' + sec.value : '');
+    var x = st.x, y = st.y;
+    if (status === 'empty') {
+      S('circle', { cx: x, cy: y, r: 6, fill: 'var(--paper)', stroke: 'var(--faint)', 'stroke-width': 1.6, 'stroke-dasharray': '2 2' }, g);
+    } else {
+      sec.by.filter(function (p) { return p !== st.line; }).forEach(function (p, i) {
+        var a = TICK_ANGLES[i % 4] * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a);
+        S('line', { x1: x + ca * 9, y1: y + sa * 9, x2: x + ca * 19, y2: y + sa * 19, stroke: CAST[p].color, 'stroke-width': 4.5, 'stroke-linecap': 'round' }, g);
+      });
+      if (status === 'amber') {
+        S('circle', { cx: x, cy: y, r: 13, fill: 'none', stroke: 'var(--warn)', 'stroke-width': 1.5, 'stroke-dasharray': '3 2.5' }, g);
+        S('circle', { cx: x, cy: y, r: 8, fill: 'var(--stn-fill)', stroke: col, 'stroke-width': 3.5 }, g);
+      } else if (status === 'green') {
+        S('circle', { cx: x, cy: y, r: 11, fill: 'var(--stn-fill)', stroke: 'var(--fg)', 'stroke-width': 3.5 }, g);
+        S('circle', { cx: x, cy: y, r: 3.8, fill: 'var(--ok)' }, g);
+      } else if (status === 'conflict') {
+        var cg = S('g', { class: 'blink' }, g);
+        S('circle', { cx: x, cy: y, r: 11, fill: 'var(--stn-fill)', stroke: 'var(--bad)', 'stroke-width': 4 }, cg);
+        T('!', { x: x, y: y + 4.5, 'text-anchor': 'middle', style: 'font:700 13px var(--font);fill:#e0364a' }, cg);
+      }
+    }
+    if (choosing[id]) S('circle', { cx: x, cy: y, r: 20, fill: 'none', stroke: 'var(--gold)', 'stroke-width': 2.5, 'stroke-dasharray': '4 3', class: 'choosing' }, g);
+    var lx = x, ly, anc = 'middle';
+    if (st.lab === 'above') ly = y - 18; else if (st.lab === 'below') ly = y + 26; else { lx = x + 17; ly = y + 4; anc = 'start'; }
+    T(sec.label, { x: lx, y: ly, 'text-anchor': anc, class: 'sl' + (status === 'empty' ? ' faint' : '') }, g);
+    if (popIt && !reduce) { g.setAttribute('class', 'stn'); void g.getBoundingClientRect(); g.setAttribute('class', 'stn pop'); }
+  }
+
+  function renderTerminus() {
+    var p = session.progress();
+    SEC.forEach(function (s, i) {
+      var st = session.state.sections[s.id].status;
+      cells[i].setAttribute('fill', st === 'green' ? 'var(--ok)' : st === 'amber' ? 'var(--warn)' : st === 'conflict' ? 'var(--bad)' : 'var(--faint)');
+    });
+    termSub.textContent = p.green + ' of ' + p.total + ' platforms open';
+  }
+
+  /* ---------- tags, flags, delay boards ---------- */
+  var tags = {}, boards = {};
+  function tagY(id) { var st = ST[id]; return st.lab === 'below' ? st.y + 46 : st.y - 50; }
+  function setTag(id, text) {
+    if (tags[id]) { tags[id].remove(); delete tags[id]; }
+    var st = ST[id], g = S('g', {}, gTags), w = Math.min(230, text.length * 6.4 + 18), y = tagY(id);
+    S('rect', { x: st.x - w / 2, y: y - 9, width: w, height: 18, rx: 9, fill: 'var(--paper)', stroke: CAST[st.line].color, 'stroke-width': 2 }, g);
+    T('→ ' + text, { x: st.x, y: y + 4, 'text-anchor': 'middle', style: 'font:500 10.5px var(--font);fill:var(--fg)' }, g);
+    if (!reduce) g.setAttribute('class', 'pop');
+    tags[id] = g;
+  }
+  function flag(id, text, color) {
+    var st = ST[id], g = S('g', { class: 'fade' }, gOver), up = st.lab === 'below';
+    var w = text.length * 6.6 + 16, fx = st.x + 12, fy = up ? st.y - 32 : st.y + 14;
+    S('line', { x1: st.x + 9, y1: up ? st.y - 8 : st.y + 8, x2: fx, y2: up ? fy + 16 : fy, stroke: color, 'stroke-width': 2 }, g);
+    S('rect', { x: fx, y: fy, width: w, height: 16, rx: 3, fill: color }, g);
+    T(text, { x: fx + 8, y: fy + 12, style: 'font:700 10.5px var(--font);fill:#10131c' }, g);
+    var myGen = gen; setTimeout(function () { if (myGen === gen) g.remove(); }, 2700);
+  }
+  function wrap(s, n) { var out = [], line = ''; s.split(' ').forEach(function (w) { if ((line + ' ' + w).trim().length > n && line) { out.push(line); line = w; } else line = (line + ' ' + w).trim(); }); if (line) out.push(line); return out; }
+  function delayBoard(ev) {
+    clearBoard(ev.section);
+    var st = ST[ev.section], rows = [], i;
+    wrap(CAST[ev.a].name + ': ' + ev.aText, 31).forEach(function (l) { rows.push(l); });
+    wrap(CAST[ev.b].name + ': ' + ev.bText, 31).forEach(function (l) { rows.push(l); });
+    var h = 24 + rows.length * 13 + 6, w = 214;
+    var bx = clamp(st.x - w / 2, 10, 1000 - w - 10), by = st.y < 400 ? st.y + 36 : st.y - 36 - h;
+    var g = S('g', {}, gOver);
+    S('line', { x1: st.x, y1: st.y + (by > st.y ? 12 : -12), x2: clamp(st.x, bx + 6, bx + w - 6), y2: by > st.y ? by : by + h, stroke: 'var(--bad)', 'stroke-width': 2 }, g);
+    S('rect', { x: bx, y: by, width: w, height: h, rx: 4, fill: 'var(--board)', stroke: 'var(--bad)', 'stroke-width': 2 }, g);
+    T('DELAY · ' + session.state.sections[ev.section].label.toUpperCase(), { x: bx + 8, y: by + 15, style: 'font:600 10px var(--mono);fill:#ff6a7b;letter-spacing:.04em' }, g);
+    for (i = 0; i < rows.length; i++) T(rows[i], { x: bx + 8, y: by + 30 + i * 13, style: 'font:400 10px var(--mono);fill:#ffc94d' }, g);
+    if (!reduce) g.setAttribute('class', 'pop');
+    boards[ev.section] = { g: g, x: bx, y: by, w: w, h: h };
+  }
+  function clearBoard(id) {
+    var b = boards[id]; if (!b) return;
+    delete boards[id]; b.g.remove();
+    var g = S('g', { class: 'fade' }, gOver);
+    S('rect', { x: b.x, y: b.y, width: b.w, height: 26, rx: 4, fill: 'var(--board)', stroke: 'var(--ok)', 'stroke-width': 2 }, g);
+    T('NOW DEPARTING', { x: b.x + 10, y: b.y + 17, style: 'font:600 11px var(--mono);fill:#46e08e;letter-spacing:.06em' }, g);
+    var myGen = gen; setTimeout(function () { if (myGen === gen) g.remove(); }, 2700);
+  }
+
+  /* ---------- the siding for the budget choice (the points) ---------- */
+  var siding = null, blade = null;
+  function clearSiding() { if (siding) { siding.remove(); siding = null; } if (blade) { blade.remove(); blade = null; } }
+  function drawSiding(index) {
+    clearSiding();
+    var col = CAST.cfo.color, g = S('g', {}, gSiding), d, label, len = 160;
+    if (index === 0) { d = 'M722,70 L752,100 H800'; label = 'Microsite and events: not running'; }
+    else if (index === 1) { d = 'M722,70 L752,100 H820 L850,70'; label = '£215k, board approved'; }
+    else { d = 'M722,70 L752,100 H860'; label = 'Phase 2: microsite, £35k'; }
+    var p = S('path', { d: d, fill: 'none', stroke: col, 'stroke-width': 7, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', class: 'drawin', style: '--len:' + len }, g);
+    if (index === 2) { p.setAttribute('stroke-dasharray', '14 8'); p.classList.remove('drawin'); p.style.opacity = 0; p.style.transition = 'opacity .8s'; setTimeout(function () { p.style.opacity = 1; }, 30); S('circle', { cx: 860, cy: 100, r: 6, fill: 'var(--paper)', stroke: col, 'stroke-width': 3 }, g); }
+    if (index === 0) S('line', { x1: 806, y1: 90, x2: 806, y2: 110, stroke: 'var(--fg)', 'stroke-width': 4, 'stroke-linecap': 'round' }, g);
+    T(label, { x: 786, y: 121, 'text-anchor': 'middle', style: 'font:600 11px var(--font);fill:var(--fg)', class: 'sl' }, g);
+    siding = g;
+    /* the points blade swings from straight to diverging */
+    blade = S('line', { x1: 722, y1: 70, x2: 740, y2: 70, stroke: 'var(--fg)', 'stroke-width': 4, 'stroke-linecap': 'round' }, gSiding);
+    var t0 = performance.now(), myGen = gen;
+    function swing(now) {
+      if (myGen !== gen || !blade) return;
+      var u = reduce ? 1 : Math.min(1, (now - t0) / 700);
+      blade.setAttribute('x2', 722 + 18 * Math.cos(u * Math.PI / 4)); blade.setAttribute('y2', 70 + 18 * Math.sin(u * Math.PI / 4));
+      if (u < 1) requestAnimationFrame(swing);
+    }
+    requestAnimationFrame(swing);
+  }
+
+  /* ---------- trains ---------- */
+  var trains = [], raf = null;
+  function ease(u) { return u < .5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2; }
+  function addTrain(path, color, ms, o) {
+    o = o || {};
+    if (reduce) { if (o.onEnd) setTimeout(o.onEnd, Math.min(ms, 400)); return; }
+    var g = S('g', {}, gTrains);
+    S('rect', { x: -9, y: -5, width: 18, height: 10, rx: 3.5, fill: color, stroke: 'var(--paper)', 'stroke-width': 1.5 }, g);
+    S('rect', { x: 2, y: -3, width: 4.5, height: 6, rx: 1, fill: '#fff', opacity: .9 }, g);
+    if (o.stripe) S('rect', { x: -7, y: -1.2, width: 9, height: 2.4, fill: '#fff', opacity: .95 }, g);
+    trains.push({ g: g, p: path, len: path.getTotalLength(), t0: performance.now(), ms: ms, from: o.from === undefined ? 0 : o.from, to: o.to === undefined ? 1 : o.to, loop: !!o.loop, onEnd: o.onEnd, gen: gen });
+    if (!raf) raf = requestAnimationFrame(frame);
+  }
+  function frame(now) {
+    raf = null;
+    for (var i = trains.length - 1; i >= 0; i--) {
+      var t = trains[i];
+      if (t.gen !== gen) { t.g.remove(); trains.splice(i, 1); continue; }
+      var u = (now - t.t0) / t.ms, done = false;
+      if (t.loop) u = u % 1; else if (u >= 1) { u = 1; done = true; }
+      var f = t.from + (t.to - t.from) * (t.loop ? u : ease(u)), s = t.len * f, dir = t.to >= t.from ? 1 : -1;
+      var p = t.p.getPointAtLength(s), q = t.p.getPointAtLength(clamp(s + dir * 3, 0, t.len));
+      var a = Math.atan2(q.y - p.y, q.x - p.x) * 180 / Math.PI;
+      if (q.x === p.x && q.y === p.y) a = 0;
+      t.g.setAttribute('transform', 'translate(' + p.x.toFixed(1) + ',' + p.y.toFixed(1) + ') rotate(' + a.toFixed(1) + ')');
+      if (done) { t.g.remove(); trains.splice(i, 1); if (t.onEnd) t.onEnd(); }
+    }
+    if (trains.length) raf = requestAnimationFrame(frame);
+  }
+  function startAmbient() { addTrain(ringPath, 'var(--gold)', 42000, { loop: true, stripe: true }); }
+
+  /* ---------- departure board ---------- */
+  var rowsEl = document.getElementById('rows'), clockEl = document.getElementById('clock'), minutes = 8 * 60, boardRows = [];
+  function clock() { var h = Math.floor(minutes / 60) % 24, m = minutes % 60; return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m; }
+  function addRow(d, text, cls, label) {
+    minutes += 2; clockEl.textContent = clock();
+    boardRows.unshift({ t: clock(), d: d, m: text, cls: cls, s: label });
+    boardRows = boardRows.slice(0, 6);
+    rowsEl.innerHTML = '';
+    boardRows.forEach(function (r) {
+      var row = EM.el('div', { class: 'brow' }, [EM.el('span', { class: 't', text: r.t }), EM.el('span', { class: 'd', text: r.d }), EM.el('span', { class: 'm', text: r.m }), EM.el('span', { class: 's ' + r.cls, text: r.s })]);
+      rowsEl.appendChild(row);
+    });
+  }
+  function resetBoard() { minutes = 8 * 60; clockEl.textContent = clock(); boardRows = []; rowsEl.innerHTML = '<div class="bempty">Waiting for the first service.</div>'; }
+
+  /* ---------- legend of lines ---------- */
+  var linesUl = document.getElementById('lines');
+  EM.PEOPLE.forEach(function (id) {
+    var c = CAST[id];
+    linesUl.appendChild(EM.el('li', {}, [EM.el('span', { class: 'sw', style: 'background:' + c.color }), EM.el('span', {}, [c.name + ' ', EM.el('small', { text: c.role })])]));
+  });
+  linesUl.appendChild(EM.el('li', {}, [EM.el('span', { class: 'sw', style: 'background:repeating-linear-gradient(90deg,var(--gold) 0 10px,transparent 10px 16px)' }), EM.el('span', {}, ['Wisp ', EM.el('small', { text: 'Express, calls on every line' })])]));
+
+  /* ---------- wiring ---------- */
+  var session = EM.createSession();
+  EM.mountDock(document.getElementById('dock'), session);
+
+  function resetVisuals() {
+    gen++;
+    trains.forEach(function (t) { t.g.remove(); }); trains = [];
+    [gTags, gOver].forEach(function (g) { while (g.firstChild) g.removeChild(g.firstChild); });
+    tags = {}; boards = {}; choosing = {}; clearSiding();
+    resetBoard();
+    Object.keys(ST).forEach(function (id) { renderStation(id); });
+    renderTerminus(); termBox.setAttribute('stroke', 'var(--fg)'); termName.textContent = 'Project Truth';
+    startAmbient();
+  }
+  function pulse(id) {
+    var r = badge[id]; if (!r) return;
+    r.setAttribute('opacity', 1); r.classList.remove('talkring'); void r.getBoundingClientRect(); r.classList.add('talkring');
+  }
+
+  session.on(function (ev) {
+    switch (ev.type) {
+      case 'say': {
+        var from = CAST[ev.from], toName = ev.to === 'all' ? 'Everyone' : CAST[ev.to].name;
+        addRow(from.name + ' → ' + toName, ev.text, ev.channel === 'private' ? 'priv' : 'all', ev.channel === 'private' ? 'ONE TO ONE' : 'ALL STATIONS');
+        var ms = clamp(ev.ms * 0.92, 1500, 3600);
+        if (ev.from !== 'coach') { pulse(ev.from); addTrain(linePath[ev.from], from.color, ms, { from: 0, to: 1 }); }
+        else if (ev.to !== 'all') { addTrain(linePath[ev.to], 'var(--gold)', ms, { from: 1, to: 0, stripe: true }); pulse(ev.to); }
+        else addTrain(ringPath, 'var(--gold)', Math.max(ms, 3200), { from: 0.02, to: 1.0, stripe: true });
+        break;
+      }
+      case 'set': {
+        renderStation(ev.section, ev.prev === 'empty' || (ev.status === 'green' && ev.prev !== 'green'));
+        renderTerminus();
+        if (ev.status !== 'conflict' && boards[ev.section]) clearBoard(ev.section);
+        break;
+      }
+      case 'agree': {
+        var st = ST[ev.section], myGen = gen;
+        addRow('Platform ' + (SEC.map(function (s) { return s.id; }).indexOf(ev.section) + 1), session.state.sections[ev.section].label + ': agreed', 'ok', 'ARRIVED');
+        addTrain(linePath[st.line], CAST[st.line].color, 1600, { from: 0, to: st.frac, stripe: true, onEnd: function () { if (myGen === gen) flag(ev.section, 'Agreed', 'var(--ok)'); } });
+        break;
+      }
+      case 'conflict': {
+        delayBoard(ev);
+        addRow('Signal failure', CAST[ev.a].name + ': ' + ev.aText + ' / ' + CAST[ev.b].name + ': ' + ev.bText, 'late', 'DELAYED');
+        break;
+      }
+      case 'choice': {
+        choosing[ev.section] = true; renderStation(ev.section);
+        addRow('Points', ev.prompt, 'all', 'YOUR CALL');
+        if (ev.section === 'budget') {
+          clearSiding();
+          blade = S('line', { x1: 722, y1: 70, x2: 740, y2: 70, stroke: 'var(--gold)', 'stroke-width': 4, 'stroke-linecap': 'round', class: 'blink' }, gSiding);
+        }
+        break;
+      }
+      case 'resolved': {
+        delete choosing[ev.section]; renderStation(ev.section);
+        addRow('Points set', ev.option.label + '. ' + ev.option.note, 'ok', 'SWITCHED');
+        if (ev.section === 'budget') drawSiding(ev.index); else setTag(ev.section, ev.option.label);
+        break;
+      }
+      case 'done': {
+        termBox.setAttribute('stroke', 'var(--gold)'); termName.textContent = 'All aboard';
+        addRow('Project Truth', ev.text, 'ok', 'ALL ABOARD');
+        var myGen2 = gen;
+        EM.PEOPLE.forEach(function (id, i) { setTimeout(function () { if (myGen2 === gen) addTrain(linePath[id], CAST[id].color, 2600, { from: 0, to: 1, stripe: true }); }, i * 350); });
+        break;
+      }
+      case 'reset': resetVisuals(); break;
+    }
+  });
+
+  resetVisuals();
+})();
+</script>

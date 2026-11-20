@@ -1,0 +1,412 @@
+<title>Side Chats</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Nunito:wght@700;800&display=swap">
+<style>
+/* Layout concept: a chat app with three zones. Private threads left, the group room in the middle, Wisp's pinned project truth on the right. Phones get three tabs. */
+:root{
+  --bg:#eceef6; --panel:#ffffff; --panel2:#f4f5fb; --fg:#1d2033; --mut:#5f6580; --line:#dcdff0;
+  --acc:#5a4fd6; --gold:#e0a919; --wisp-bg:#fff3cc; --wisp-line:#f2c86b; --wisp-ink:#4a3a08;
+  --bub:#eef0f9; --ok:#1f9d5b; --warn:#c98300; --bad:#d6334a;
+  --display:'Nunito',ui-rounded,'SF Pro Rounded',system-ui,sans-serif;
+  --text:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12131f; --panel:#1b1d2e; --panel2:#232643; --fg:#eceeff; --mut:#a3a8c8; --line:#33375c;
+  --acc:#9a92ff; --gold:#f2c86b; --wisp-bg:#3a3016; --wisp-line:#f2c86b; --wisp-ink:#ffe9ae;
+  --bub:#262a48; --ok:#4fd28d; --warn:#ffb020; --bad:#ff6b7d; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12131f; --panel:#1b1d2e; --panel2:#232643; --fg:#eceeff; --mut:#a3a8c8; --line:#33375c;
+  --acc:#9a92ff; --gold:#f2c86b; --wisp-bg:#3a3016; --wisp-line:#f2c86b; --wisp-ink:#ffe9ae;
+  --bub:#262a48; --ok:#4fd28d; --warn:#ffb020; --bad:#ff6b7d; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--text);font-size:14px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 28px}
+.app{max-width:1180px;margin:0 auto;display:grid;gap:14px;min-width:0}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+button{font-family:inherit;color:inherit}
+
+.top{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:baseline;justify-content:space-between}
+.top h1{font:800 28px/1.1 var(--display);margin:0;letter-spacing:-.01em}
+.top p{margin:0;color:var(--mut);max-width:62ch;text-wrap:balance}
+
+.tabs{display:none;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:4px}
+.tab{all:unset;cursor:pointer;flex:1;text-align:center;padding:9px 6px;border-radius:10px;font:700 14px var(--display);position:relative}
+.tab:focus-visible{outline:2px solid var(--acc)}
+.tab[aria-selected=true]{background:var(--acc);color:#fff}
+:root[data-theme="dark"] .tab[aria-selected=true]{color:#12131f}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .tab[aria-selected=true]{color:#12131f}}
+.badge{display:inline-block;min-width:18px;padding:1px 5px;margin-left:6px;border-radius:9px;background:var(--bad);color:#fff;font:700 11px/16px var(--text)}
+.badge[hidden]{display:none}
+
+.stage{display:grid;grid-template-columns:270px minmax(0,1fr) 310px;gap:12px;min-width:0}
+.pane{height:540px;background:var(--panel);border:1px solid var(--line);border-radius:18px;display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.ph{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:12px 14px 10px;border-bottom:1px solid var(--line)}
+.ph h2{margin:0;font:800 16px var(--display)}
+.ph span{color:var(--mut);font-size:12px}
+.scroll{flex:1;overflow-y:auto;min-height:0;padding:12px 12px 8px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){.scroll{scroll-behavior:auto}}
+
+.av{flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font:800 13px var(--display);color:#14162a}
+.av.sm{width:20px;height:20px;font-size:10px}
+.av.lg{width:34px;height:34px;font-size:14px}
+
+/* private rail */
+.threads{list-style:none;margin:0;padding:4px 6px;border-bottom:1px solid var(--line);display:grid;gap:1px}
+.row{all:unset;cursor:pointer;box-sizing:border-box;width:100%;display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:9px;align-items:center;padding:5px 8px;border-radius:10px}
+.row:hover{background:var(--panel2)}.row:focus-visible{outline:2px solid var(--acc)}
+.row[aria-current=true]{background:var(--panel2)}
+.row .nm{font-weight:600;font-size:13px;display:flex;gap:6px;align-items:baseline}
+.row .nm small{color:var(--mut);font-weight:400;font-size:11px}
+.row .pv{color:var(--mut);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.row .pv.ty{color:var(--acc);font-style:italic}
+.udot{width:9px;height:9px;border-radius:50%;background:var(--bad);display:block}
+.thead{display:flex;gap:8px;align-items:center;padding:8px 14px;border-bottom:1px solid var(--line);font:700 13px var(--display)}
+.thead small{font:400 12px var(--text);color:var(--mut)}
+.lock{margin:0;padding:9px 14px 11px;border-top:1px solid var(--line);font-size:12px;color:var(--mut);display:grid;grid-template-columns:auto 1fr;gap:2px 8px;align-items:center}
+.lock svg{width:14px;height:14px;grid-row:1/3;align-self:start;margin-top:2px}
+.lock b{color:var(--fg);font-weight:600}
+
+/* bubbles */
+.bub{max-width:88%;padding:8px 11px;border-radius:16px;background:var(--bub);word-wrap:break-word;overflow-wrap:anywhere;min-width:0}
+.dm{display:flex;flex-direction:column;gap:2px;align-items:flex-start}
+.dm.them{align-items:flex-end}
+.dm .bub{border-bottom-left-radius:5px}
+.dm.them .bub{border-bottom-left-radius:16px;border-bottom-right-radius:5px;background:color-mix(in srgb,var(--c) 22%,var(--panel))}
+.dm.wisp .bub,.msg.wisp .bub{background:var(--wisp-bg);color:var(--wisp-ink);border:1px solid var(--wisp-line)}
+.dm .who{font-size:11px;color:var(--mut);padding:0 4px}
+.msg{display:flex;gap:8px;align-items:flex-start}
+.msg .who{display:flex;gap:6px;align-items:baseline;font-size:12px;margin-bottom:1px}
+.msg .who b{font-weight:600}.msg .who small{color:var(--mut)}
+.msg.wisp .who small{color:var(--wisp-ink);opacity:.75}
+.msg p,.dm p{margin:0}
+.msg .bub{border-top-left-radius:5px}
+.reacts{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.reacts:empty{display:none}
+.rx{display:inline-flex;gap:3px;align-items:center;padding:1px 6px 1px 5px;border-radius:11px;background:var(--panel);border:1px solid var(--line);font-size:12px;color:var(--fg);animation:pop .25s ease-out}
+.rx i{display:inline-flex;font-style:normal}
+.rx .mini{width:12px;height:12px;border-radius:50%;margin-left:-3px;border:1px solid var(--panel)}
+.rx .mini:first-of-type{margin-left:0}
+@keyframes pop{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion: reduce){.rx,.card,.flash{animation:none!important}}
+
+.typing{display:inline-flex;gap:3px;align-items:center;vertical-align:middle}
+.typing i{width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.4;animation:dots 1s infinite}
+.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes dots{50%{opacity:1;transform:translateY(-2px)}}
+@media (prefers-reduced-motion: reduce){.typing i{animation:none;opacity:.7}}
+.tbar{min-height:26px;padding:2px 14px 8px;font-size:12px;color:var(--mut);display:flex;gap:6px;align-items:center}
+
+/* conflict + poll cards */
+.card{align-self:stretch;border-radius:14px;padding:10px 12px;animation:pop .3s ease-out}
+.card.conflict{border:2px solid var(--wisp-line);background:var(--wisp-bg);color:var(--wisp-ink)}
+.card h3{margin:0 0 6px;font:800 13px var(--display);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.card h3 span{font:500 12px var(--text);opacity:.8}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.q{background:var(--panel);color:var(--fg);border-radius:10px;padding:7px 9px;min-width:0;font-size:13px}
+.q b{display:flex;gap:6px;align-items:center;font-size:12px;margin-bottom:2px}
+.card .tail{margin:7px 0 0;font-size:12px}
+.card.poll{border:1px solid var(--line);background:var(--panel2)}
+.card.poll h3{font-size:14px;margin-bottom:8px}
+.po{all:unset;box-sizing:border-box;cursor:pointer;display:grid;gap:1px;width:100%;margin-top:6px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--panel);font-size:13px}
+.po:hover,.po:focus-visible{border-color:var(--gold)}
+.po:focus-visible{outline:2px solid var(--acc)}
+.po b{font-weight:600}.po span{color:var(--mut);font-size:12px}
+.po em{font:600 11px var(--mono);color:var(--warn);font-style:normal}
+.card.poll.closed .po{cursor:default;opacity:.55}
+.card.poll.closed .po.won{opacity:1;border-color:var(--ok)}
+.card.poll .foot{margin:8px 0 0;font:12px var(--mono);color:var(--mut)}
+
+/* pinned truth */
+.pin{padding:10px 12px 12px;display:grid;gap:8px;align-content:start}
+.trow{display:grid;grid-template-columns:12px minmax(0,1fr);gap:9px;padding:7px 9px;border-radius:11px;background:var(--panel2);border:1px solid transparent}
+.trow .d{width:10px;height:10px;border-radius:50%;margin-top:4px;background:var(--mut)}
+.trow .l{display:flex;justify-content:space-between;gap:6px;font:700 12px var(--display);align-items:baseline}
+.trow .l small{font:400 11px var(--text);color:var(--mut);white-space:nowrap}
+.trow .v{font-size:12.5px;margin-top:1px;overflow-wrap:anywhere}
+.trow.empty .v{color:var(--mut)}
+.trow .by{display:flex;margin-top:4px}
+.trow .by .av{margin-left:-5px;border:1.5px solid var(--panel2)}.trow .by .av:first-child{margin-left:0}
+.flash{animation:flash 1.4s ease-out}
+@keyframes flash{0%{background:color-mix(in srgb,var(--gold) 55%,var(--panel2));border-color:var(--gold)}100%{background:var(--panel2);border-color:transparent}}
+.axioms{margin-top:4px;padding:10px 12px;border-radius:12px;border:1px dashed var(--wisp-line);background:var(--wisp-bg);color:var(--wisp-ink)}
+.axioms h3{margin:0 0 6px;font:800 13px var(--display)}
+.axioms ul{margin:0;padding-left:16px;display:grid;gap:3px;font-size:12.5px}
+.axioms .none{font-size:12px;opacity:.8}
+.pinbar{display:flex;gap:6px;align-items:center;color:var(--mut);font-size:12px}
+.pinbar svg{width:13px;height:13px}
+
+.dockwrap .emd,.dockwrap .emx{--em-bg:var(--panel2);--em-panel:var(--panel);--em-fg:var(--fg);--em-mut:var(--mut);--em-line:var(--line);--em-acc:var(--gold);--em-ok:var(--ok);--em-warn:var(--warn);--em-bad:var(--bad);--em-font:var(--text);--em-mono:var(--mono);--em-radius:16px}
+footer{color:var(--mut);font-size:12px;text-align:center}
+
+@media (max-width:980px){
+  .tabs{display:flex}
+  .stage{grid-template-columns:minmax(0,1fr)}
+  .pane{display:none;height:min(72vh,560px);min-height:440px}
+  .pane.on{display:flex}
+  .pair{grid-template-columns:1fr}
+}
+</style>
+
+<div class="app">
+  <header class="top">
+    <h1>Side Chats</h1>
+    <p>Everyone gets a quiet word with Wisp first. What they agree on in the room lands in the pinned project truth.</p>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Chat views">
+    <button class="tab" role="tab" id="tab-room" data-tab="room" aria-selected="true">Room<span class="badge" hidden></span></button>
+    <button class="tab" role="tab" id="tab-private" data-tab="private" aria-selected="false">Private<span class="badge" hidden></span></button>
+    <button class="tab" role="tab" id="tab-truth" data-tab="truth" aria-selected="false">Truth<span class="badge" hidden></span></button>
+  </nav>
+
+  <main class="stage">
+    <section class="pane" id="pane-private" aria-labelledby="h-private">
+      <div class="ph"><h2 id="h-private">Private threads</h2><span>One to one with Wisp</span></div>
+      <ul class="threads" id="threads"></ul>
+      <div class="thead" id="thead"></div>
+      <div class="scroll" id="tscroll" aria-live="polite"></div>
+      <p class="lock">
+        <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="10" height="7" rx="1.8"/><path d="M5.2 7V5a2.8 2.8 0 0 1 5.6 0v2"/></svg>
+        <b>Nobody sees these but you and Wisp</b>
+        <span>Wisp reads every thread. The other four never see yours.</span>
+      </p>
+    </section>
+
+    <section class="pane on" id="pane-room" aria-labelledby="h-room">
+      <div class="ph"><h2 id="h-room">The room</h2><span>Maya, Jonah, Priya, Tomas, Kai and Wisp</span></div>
+      <div class="scroll" id="rscroll" aria-live="polite"></div>
+      <div class="tbar" id="rtype"></div>
+    </section>
+
+    <section class="pane" id="pane-truth" aria-labelledby="h-truth">
+      <div class="ph"><h2 id="h-truth">Pinned: Project truth</h2><span id="tcount">0 of 12</span></div>
+      <div class="scroll pin" id="pin"></div>
+    </section>
+  </main>
+
+  <div class="dockwrap" id="dock"></div>
+  <footer>Concept for Expectation Manager, Day 15</footer>
+</div>
+
+<!--ENGINE-->
+<script>
+(function () {
+  'use strict';
+  var EM = window.EM, C = EM.CAST, el = EM.el;
+  var session = EM.createSession();
+  var gen = 0;
+  var threads, selected, userPicked, activeTab, roomLast, roomTyping, deferred, poll, unread;
+  var threadsEl = document.getElementById('threads'), theadEl = document.getElementById('thead'), tscroll = document.getElementById('tscroll');
+  var rscroll = document.getElementById('rscroll'), rtype = document.getElementById('rtype'), pinEl = document.getElementById('pin'), tcount = document.getElementById('tcount');
+  var tabBtns = Array.prototype.slice.call(document.querySelectorAll('.tab'));
+  var panes = { private: document.getElementById('pane-private'), room: document.getElementById('pane-room'), truth: document.getElementById('pane-truth') };
+
+  function av(id, cls) { var c = C[id]; return el('span', { class: 'av' + (cls ? ' ' + cls : ''), style: 'background:' + c.color, 'aria-hidden': 'true', text: id === 'coach' ? '✦' : c.name.charAt(0) }); }
+  function toBottom(n) { n.scrollTop = n.scrollHeight; }
+  function typingDots() { return el('span', { class: 'typing', 'aria-hidden': 'true' }, [el('i'), el('i'), el('i')]); }
+
+  function init() {
+    gen++;
+    threads = {}; EM.PEOPLE.forEach(function (p) { threads[p] = { msgs: [], unread: 0, typing: null }; });
+    selected = 'client'; userPicked = false; activeTab = activeTab || 'room';
+    roomLast = null; roomTyping = null; deferred = []; poll = null; unread = { room: 0, private: 0, truth: 0 };
+    rscroll.innerHTML = ''; rtype.innerHTML = '';
+    renderRail(); renderThread(); renderPin(null); renderBadges();
+  }
+
+  /* tabs (phone) */
+  function showTab(t) {
+    activeTab = t; unread[t] = 0;
+    tabBtns.forEach(function (b) { b.setAttribute('aria-selected', String(b.dataset.tab === t)); });
+    Object.keys(panes).forEach(function (k) { panes[k].classList.toggle('on', k === t); });
+    renderBadges();
+    toBottom(t === 'room' ? rscroll : t === 'private' ? tscroll : pinEl);
+  }
+  tabBtns.forEach(function (b) { b.addEventListener('click', function () { showTab(b.dataset.tab); }); });
+  function bump(t) { if (activeTab !== t) { unread[t]++; renderBadges(); } }
+  function renderBadges() {
+    tabBtns.forEach(function (b) {
+      var n = unread[b.dataset.tab] || 0, bd = b.querySelector('.badge');
+      bd.hidden = !n; bd.textContent = n > 9 ? '9+' : String(n);
+    });
+  }
+
+  /* private rail and thread */
+  function renderRail() {
+    threadsEl.innerHTML = '';
+    EM.PEOPLE.forEach(function (p) {
+      var t = threads[p], last = t.msgs[t.msgs.length - 1], c = C[p];
+      var pv = t.typing ? el('span', { class: 'pv ty' }, [(C[t.typing].name) + ' is typing ', typingDots()]) : el('span', { class: 'pv', text: last ? (last.from === 'coach' ? 'Wisp: ' : '') + last.text : 'No messages yet' });
+      var btn = el('button', { class: 'row', 'aria-current': String(p === selected), 'aria-label': 'Private thread with ' + c.name + (t.unread ? ', unread' : ''), onclick: function () { selected = p; userPicked = true; t.unread = 0; renderRail(); renderThread(); } }, [
+        av(p, 'lg'),
+        el('span', { style: 'min-width:0' }, [el('span', { class: 'nm' }, [c.name, el('small', { text: c.tag })]), pv]),
+        t.unread ? el('span', { class: 'udot' }) : el('span')
+      ]);
+      threadsEl.appendChild(el('li', {}, [btn]));
+    });
+  }
+  function renderThread() {
+    var t = threads[selected], c = C[selected];
+    theadEl.innerHTML = '';
+    theadEl.appendChild(av(selected));
+    theadEl.appendChild(el('span', {}, [c.name + ' and Wisp ', el('small', { text: c.role })]));
+    tscroll.innerHTML = '';
+    if (!t.msgs.length && !t.typing) tscroll.appendChild(el('p', { style: 'color:var(--mut);margin:auto;text-align:center;font-size:12px', text: 'Wisp has not said hello to ' + c.name + ' yet.' }));
+    t.msgs.forEach(function (m) {
+      var isW = m.from === 'coach';
+      tscroll.appendChild(el('div', { class: 'dm ' + (isW ? 'wisp' : 'them'), style: '--c:' + c.color }, [
+        el('span', { class: 'who', text: isW ? 'Wisp' : c.name }), el('div', { class: 'bub' }, [el('p', { text: m.text })])
+      ]));
+    });
+    if (t.typing) {
+      tscroll.appendChild(el('div', { class: 'dm ' + (t.typing === 'coach' ? 'wisp' : 'them'), style: '--c:' + c.color }, [el('div', { class: 'bub' }, [typingDots()])]));
+    }
+    toBottom(tscroll);
+  }
+
+  /* room */
+  function setRoomTyping(who) {
+    rtype.innerHTML = '';
+    if (!who) return;
+    rtype.appendChild(el('span', { text: (who === 'coach' ? 'Wisp' : C[who].name) + ' is typing' })); rtype.appendChild(typingDots());
+  }
+  function addReact(m, emoji, who) {
+    if (!m) return;
+    var r = m.rx[emoji];
+    if (!r) { r = m.rx[emoji] = { people: [], node: null }; r.node = el('span', { class: 'rx', title: emoji }); m.reacts.appendChild(r.node); }
+    if (r.people.indexOf(who) >= 0) return;
+    r.people.push(who);
+    r.node.innerHTML = '';
+    r.node.appendChild(el('i', { text: emoji, 'aria-hidden': 'true' }));
+    r.people.forEach(function (p) { r.node.appendChild(el('span', { class: 'mini', style: 'background:' + C[p].color })); });
+    r.node.setAttribute('aria-label', emoji + ' from ' + r.people.map(function (p) { return C[p].name; }).join(', '));
+    toBottom(rscroll);
+  }
+  function addRoomMsg(from, text) {
+    var c = C[from], isW = from === 'coach';
+    var reacts = el('div', { class: 'reacts' });
+    var node = el('div', { class: 'msg' + (isW ? ' wisp' : '') }, [
+      av(from),
+      el('div', { class: 'bub' }, [el('div', { class: 'who' }, [el('b', { text: c.name }), el('small', { text: c.tag })]), el('p', { text: text }), reacts])
+    ]);
+    rscroll.appendChild(node);
+    roomLast = { from: from, reacts: reacts, rx: {} };
+    toBottom(rscroll);
+  }
+  function applyAgree(ev) {
+    if (!roomLast) return;
+    if (ev.section === 'disagree') ev.by.forEach(function (p) { addReact(roomLast, '🍍', p); });
+    else {
+      ev.by.forEach(function (p) { if (p !== roomLast.from && p !== 'coach') addReact(roomLast, '👍', p); });
+      addReact(roomLast, '✨', 'coach');
+    }
+  }
+
+  function onSay(ev) {
+    var my = gen, priv = ev.channel === 'private';
+    var key = priv ? (ev.from === 'coach' ? ev.to : ev.from) : null;
+    var delay = Math.min(1100, Math.max(350, (ev.ms || 1500) * 0.3));
+    if (priv) {
+      threads[key].typing = ev.from; renderRail(); if (key === selected) renderThread();
+    } else { roomTyping = ev.from; setRoomTyping(ev.from); }
+    setTimeout(function () {
+      if (my !== gen) return;
+      if (priv) {
+        var t = threads[key]; t.typing = null; t.msgs.push({ from: ev.from, text: ev.text });
+        if (!userPicked) selected = key; else if (key !== selected) t.unread++;
+        renderRail(); if (key === selected) renderThread();
+        bump('private');
+      } else {
+        roomTyping = null; setRoomTyping(null);
+        addRoomMsg(ev.from, ev.text); bump('room');
+        var q = deferred; deferred = []; q.forEach(applyAgree);
+      }
+    }, delay);
+  }
+
+  function onConflict(ev) {
+    var a = C[ev.a], b = C[ev.b], sec = session.state.sections[ev.section];
+    function quote(id, txt) { return el('div', { class: 'q' }, [el('b', {}, [av(id, 'sm'), C[id].name]), '“' + txt + '”']); }
+    rscroll.appendChild(el('div', { class: 'card conflict', role: 'group', 'aria-label': 'Wisp stepped in' }, [
+      el('h3', {}, [av('coach', 'sm'), 'Wisp stepped in', el('span', { text: sec.label })]),
+      el('div', { class: 'pair' }, [quote(ev.a, ev.aText), quote(ev.b, ev.bText)]),
+      el('p', { class: 'tail', text: a.name + ' and ' + b.name + ' are both right about something. Wisp is looking for where it meets.' })
+    ]));
+    toBottom(rscroll); bump('room');
+  }
+
+  function onChoice(ev) {
+    var opts = [];
+    var foot = el('p', { class: 'foot', text: '' });
+    ev.options.forEach(function (o, i) {
+      var kids = [el('b', { text: o.label }), el('span', { text: o.note })];
+      if (i === ev.rec) kids.push(el('em', { text: 'Wisp suggests' }));
+      opts.push(el('button', { class: 'po', onclick: function () { session.choose(i); } }, kids));
+    });
+    var node = el('div', { class: 'card poll', role: 'group', 'aria-label': 'Poll from Wisp' }, [
+      el('h3', {}, [av('coach', 'sm'), 'Wisp asks: ', ev.prompt])
+    ].concat(opts, [foot]));
+    rscroll.appendChild(node); poll = { node: node, opts: opts, foot: foot };
+    toBottom(rscroll); bump('room');
+  }
+  function onResolved(ev) {
+    if (!poll) return;
+    poll.node.classList.add('closed');
+    poll.opts.forEach(function (b, i) { b.disabled = true; b.tabIndex = -1; if (i === ev.index) b.classList.add('won'); });
+    poll.foot.textContent = 'Settled: ' + ev.option.label;
+    poll = null;
+  }
+
+  /* pinned truth */
+  function renderPin(changed) {
+    var st = session.state, g = 0;
+    pinEl.innerHTML = '';
+    pinEl.appendChild(el('div', { class: 'pinbar' }, [pinIcon(), 'Wisp pinned this. It fills in as people agree.']));
+    EM.SECTIONS.forEach(function (s) {
+      var x = st.sections[s.id]; if (x.status === 'green') g++;
+      var by = el('div', { class: 'by' }, x.by.map(function (p) { return av(p, 'sm'); }));
+      var row = el('div', { class: 'trow' + (x.status === 'empty' ? ' empty' : '') + (changed === s.id ? ' flash' : '') }, [
+        el('span', { class: 'd', style: 'background:' + EM.STATUS_COLOR[x.status] }),
+        el('div', {}, [
+          el('div', { class: 'l' }, [el('span', { text: s.label }), el('small', { text: EM.STATUS_TEXT[x.status] })]),
+          el('div', { class: 'v', text: x.value || 'Not asked yet' }), x.by.length ? by : null
+        ])
+      ]);
+      pinEl.appendChild(row);
+    });
+    var ax = el('div', { class: 'axioms' }, [el('h3', { text: 'Axioms so far' })]);
+    if (!st.axioms.length) ax.appendChild(el('p', { class: 'none', text: 'Short rules of thumb appear here as each point is agreed.' }));
+    else ax.appendChild(el('ul', {}, st.axioms.map(function (a) { return el('li', { text: a.text }); })));
+    pinEl.appendChild(ax);
+    tcount.textContent = g + ' of ' + EM.SECTIONS.length;
+  }
+  function pinIcon() {
+    var n = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    n.setAttribute('viewBox', '0 0 16 16'); n.setAttribute('fill', 'currentColor'); n.setAttribute('aria-hidden', 'true');
+    var p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    p.setAttribute('d', 'M9.5 1.5l5 5-1.6.6-2.3 2.3.2 3-1 1-2.9-2.9-3.9 3.9-.7-.7 3.9-3.9-2.9-2.9 1-1 3-.2 2.3-2.3z');
+    n.appendChild(p); return n;
+  }
+
+  /* wiring */
+  session.on(function (ev) {
+    switch (ev.type) {
+      case 'say': onSay(ev); break;
+      case 'conflict': onConflict(ev); break;
+      case 'choice': onChoice(ev); break;
+      case 'countdown': if (poll) poll.foot.textContent = 'Wisp picks the suggestion in ' + ev.value + 's. Tap an option to choose.'; break;
+      case 'resolved': onResolved(ev); break;
+      case 'set': renderPin(ev.section); bump('truth'); break;
+      case 'agree': if (roomTyping) deferred.push(ev); else applyAgree(ev); break;
+      case 'reset': init(); break;
+    }
+  });
+
+  init();
+  EM.mountDock(document.getElementById('dock'), session);
+})();
+</script>

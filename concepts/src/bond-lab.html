@@ -1,0 +1,419 @@
+<title>Bond Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  /* Layout: a blueprint stage with five atoms on a ring and the project-truth molecule growing at the centre; readout above, legend and axiom tags around, dock below. */
+  :root {
+    color-scheme: dark;
+    --bg: #08131f; --stage: #0a1a2a; --grid: #12304a; --ink: #d7ecff; --mut: #86a3bd; --line: #1d3a54;
+    --gold: #f2c86b; --panel: #0d1d2e; --ok: #34d27b; --warn: #ffb020; --bad: #ff4d5e;
+    --font: 'Bricolage Grotesque', system-ui, sans-serif;
+    --mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+  }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg); color: var(--ink); font-family: var(--font);
+    padding-block: 20px 28px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; display: grid; gap: 14px; min-width: 0; }
+  .wrap .emd, .wrap .emx {
+    --em-bg: #0a1a2a; --em-panel: #0d1d2e; --em-fg: #d7ecff; --em-mut: #86a3bd; --em-line: #1d3a54;
+    --em-acc: #f2c86b; --em-ok: #34d27b; --em-warn: #ffb020; --em-bad: #ff4d5e;
+    --em-font: 'Bricolage Grotesque', system-ui, sans-serif; --em-mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+    --em-radius: 10px;
+  }
+  .kick { font: 600 11px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--gold); margin: 0 0 8px; }
+  h1 { margin: 0; font-weight: 800; font-size: clamp(32px, 6.5vw, 54px); line-height: 1; letter-spacing: -.02em; text-wrap: balance; }
+  .sub { margin: 10px 0 0; max-width: 62ch; color: var(--mut); font-size: 15px; line-height: 1.5; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 0; padding: 0; list-style: none; font: 12px/1.3 var(--mono); color: var(--mut); }
+  .legend li { display: flex; align-items: center; gap: 7px; min-width: 0; }
+  .sw { flex: none; width: 10px; height: 10px; border-radius: 50%; }
+  .sw.hollow { background: none; border: 1.5px dashed var(--mut); }
+  .sw.halo { background: radial-gradient(circle, #fff 0 25%, var(--gold) 45%, transparent 75%); width: 14px; height: 14px; }
+  .syms { margin: 0; font: 11px/1.6 var(--mono); color: var(--mut); }
+  .syms b { color: var(--ink); font-weight: 600; }
+  .stage { border: 1px solid var(--line); border-radius: 12px; background: var(--stage); overflow: hidden; min-width: 0; }
+  .hud { display: flex; flex-wrap: wrap; gap: 6px 26px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line); font-family: var(--mono); }
+  .hud div { display: grid; gap: 2px; min-width: 0; }
+  .hud small { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--mut); }
+  .hud b { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .hud .bar { width: 120px; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; margin-top: 5px; }
+  .hud .bar i { display: block; height: 100%; width: 0; background: var(--ok); transition: width .5s; }
+  canvas { display: block; width: 100%; height: clamp(440px, 58vw, 560px); }
+  .axioms { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+  .ax { font: 12px/1.35 var(--mono); border: 1px solid var(--line); border-left-width: 3px; padding: 5px 9px; border-radius: 4px; background: var(--panel); max-width: 100%; }
+  .ax b { color: var(--gold); font-weight: 600; margin-right: 6px; }
+  .ax-empty { font: 12px var(--mono); color: var(--mut); padding: 5px 0; }
+  .foot { margin: 0; font: 11px var(--mono); color: var(--mut); }
+  :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { .hud .bar i { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="kick">Expectation Manager · Day 15</p>
+    <h1>Bond Lab</h1>
+    <p class="sub">Five people are atoms. Every agreement is a bond. Watch the project truth grow into a molecule as Wisp draws each side out one at a time.</p>
+  </header>
+  <ul class="legend" aria-label="Legend">
+    <li><span class="sw hollow"></span>Not asked yet: drifting loose</li>
+    <li><span class="sw" style="background:var(--warn)"></span>One side said it: orbits one atom</li>
+    <li><span class="sw" style="background:var(--bad)"></span>Conflict: atoms repel and spark</li>
+    <li><span class="sw" style="background:var(--ok)"></span>Agreed: shared electron, bond, new atom in the molecule</li>
+    <li><span class="sw halo"></span>Wisp, the coach photon, carries energy to each atom</li>
+    <li><span class="sw" style="background:var(--mut);width:5px;height:5px"></span>Small inner dots: what that person protects</li>
+  </ul>
+  <p class="syms" id="syms"></p>
+  <section class="stage" aria-label="Bond Lab stage">
+    <div class="hud" aria-live="polite">
+      <div><small>Molecule</small><b id="hMol">Project truth, 0 of 12 bonds</b></div>
+      <div><small>Bond energy</small><b id="hEn">0 kJ/mol</b></div>
+      <div><small>Stability</small><b id="hSt">0%</b><span class="bar"><i id="hBar"></i></span></div>
+    </div>
+    <canvas id="cv" aria-label="Five stakeholder atoms forming bonds and a shared molecule as they agree"></canvas>
+  </section>
+  <div class="axioms" id="axioms" aria-label="Axioms agreed so far"></div>
+  <div id="dock"></div>
+  <p class="foot">Concept for Expectation Manager, Day 15</p>
+</div>
+
+<!--ENGINE-->
+<script>
+(function () {
+  'use strict';
+  var EMx = window.EM, CAST = EMx.CAST, PEOPLE = EMx.PEOPLE, SECS = EMx.SECTIONS, SC = EMx.STATUS_COLOR;
+  var CODE = { goal: 'Go', audience: 'Au', success: 'Su', scope: 'Sc', budget: 'Bu', contingency: 'Ct', signoff: 'Sg', feedback: 'Fb', done: 'Dn', timeline: 'Tl', ownership: 'Ow', disagree: 'Di' };
+  var TOPICS = {
+    client: ['why', 'for whom', 'success', 'failure'], agency: ['freedom', 'feedback', 'sign-off', 'change'],
+    cfo: ['price', 'cushion', 'payment', 'return'], procurement: ['approvals', 'in writing', 'ownership', 'stop word'],
+    delivery: ['done', 'jargon', 'risks', 'dates']
+  };
+  var MONO = "'IBM Plex Mono',ui-monospace,Menlo,monospace", SANS = "'Bricolage Grotesque',system-ui,sans-serif";
+  var INK = '#d7ecff', MUT = '#86a3bd', DARK = '#08131f', LOOSE = '#4d6a85';
+  var cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+  var reduce = false; try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { /* ignore */ }
+  var W = 600, H = 440, S = 1, dpr = 1, t = 0, done = false;
+  var atoms, parts, bonds, nodes, edges, sparks, pulses, rings, conflicts, wisp, choice, link;
+
+  var symEl = document.getElementById('syms');
+  symEl.innerHTML = '<b>Symbols</b> ' + SECS.map(function (s) { return '<b>' + CODE[s.id] + '</b> ' + EMx.esc(s.label.toLowerCase()); }).join(' · ');
+
+  function rnd(a, b) { return a + Math.random() * (b - a); }
+  function rgba(h, a) { var n = parseInt(h.slice(1), 16); return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')'; }
+  function size() {
+    var r = cv.getBoundingClientRect();
+    W = Math.max(280, r.width || 600); H = Math.max(300, r.height || 440);
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    S = Math.max(0.6, Math.min(1.2, Math.min(W, H) / 460));
+  }
+  function anchor(i) { var a = -Math.PI / 2 + i * 2 * Math.PI / 5; return { x: W / 2 + Math.cos(a) * W * 0.37, y: H / 2 + Math.sin(a) * H * 0.34 }; }
+
+  /* ---------- scene state ---------- */
+  function resetScene() {
+    atoms = {}; parts = {}; bonds = {}; nodes = []; edges = []; sparks = []; pulses = []; rings = []; conflicts = {};
+    choice = null; link = null; done = false;
+    PEOPLE.forEach(function (id, i) {
+      var a = anchor(i);
+      atoms[id] = { id: id, x: a.x, y: a.y, vx: 0, vy: 0, fx: 0, fy: 0, i: i, r: 24, glow: 0, ph: rnd(0, 6.28), col: CAST[id].color };
+    });
+    SECS.forEach(function (s) {
+      parts[s.id] = { id: s.id, x: rnd(0.1, 0.9) * W, y: rnd(0.12, 0.88) * H, vx: rnd(-14, 14), vy: rnd(-14, 14), mode: 'loose', a: null, b: null, owner: null, k: 0, ph: rnd(0, 6.28), ang: rnd(0, 6.28), lens: s.lens };
+    });
+    wisp = { x: W / 2, y: H / 2 - 100 * S, tx: W / 2, ty: H / 2 - 100 * S, tint: CAST.coach.color };
+    var st = session.state.sections;
+    SECS.forEach(function (s) { var x = st[s.id]; if (x.status !== 'empty') setSec(s.id, x.status, x.by.slice(), true); });
+    refreshAx(); hud();
+  }
+  function snap(x, y, col, n) { if (reduce) n = Math.round(n / 3); for (var i = 0; i < n; i++) { var a = rnd(0, 6.28), v = rnd(40, 150); sparks.push({ x: x, y: y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: rnd(0.4, 0.9), max: 0.9, col: col }); } }
+  function setSec(id, status, by, quiet) {
+    var p = parts[id]; if (!p) return;
+    if (status === 'amber') { p.mode = 'orbit'; p.owner = by[0]; }
+    else if (status === 'conflict') { p.mode = 'conflict'; if (by.length >= 2) { p.a = by[0]; p.b = by[1]; } if (by.length >= 2) conflicts[id] = conflicts[id] || { a: by[0], b: by[1], aText: '', bText: '' }; }
+    else if (status === 'green') {
+      p.mode = 'bond'; p.a = by[0]; p.b = by[1] || by[0]; delete conflicts[id];
+      for (var j = 1; j < by.length; j++) {
+        var key = [by[0], by[j]].sort().join('|');
+        var b = bonds[key] || (bonds[key] = { a: by[0], b: by[j], secs: [], flash: 0 });
+        if (b.secs.indexOf(id) < 0) b.secs.push(id);
+        b.flash = quiet ? 0 : 1;
+      }
+      var A = atoms[p.a], B = atoms[p.b];
+      if (!nodes.some(function (n) { return n.id === id; })) {
+        var n = { id: id, x: (A.x + B.x) / 2 + rnd(-8, 8), y: (A.y + B.y) / 2 + rnd(-8, 8), vx: 0, vy: 0, col: CAST[p.lens].color, sym: CODE[id], born: quiet ? t - 2 : t };
+        nodes.push(n);
+        var ni = nodes.length - 1;
+        if (ni > 0) edges.push([ni, ni - 1]);
+        if (ni > 2 && ni % 2 === 0) edges.push([ni, ni - 3]);
+      }
+      if (!quiet) { snap((A.x + B.x) / 2, (A.y + B.y) / 2, '#f2c86b', 16); snap((A.x + B.x) / 2, (A.y + B.y) / 2, SC.green, 10); rings.push({ x: (A.x + B.x) / 2, y: (A.y + B.y) / 2, r: 6, max: 60 * S, life: 1, col: SC.green }); }
+    }
+  }
+
+  /* ---------- events ---------- */
+  function pulse(from, to, col, delay) { pulses.push({ from: from, to: to, p: -(delay || 0), dur: 0.8, col: col }); }
+  function near(a) { var c = { x: W / 2, y: H / 2 }; var dx = c.x - a.x, dy = c.y - a.y, d = Math.hypot(dx, dy) || 1; return { x: a.x + dx / d * 48 * S, y: a.y + dy / d * 48 * S }; }
+  var session = EMx.createSession();
+  function onSay(ev) {
+    var coachTalking = ev.from === 'coach';
+    if (coachTalking) wisp.tint = ev.hat ? CAST[ev.hat].color : CAST.coach.color;
+    if (coachTalking) {
+      if (ev.to === 'all') { wisp.tx = W / 2; wisp.ty = H / 2 - 100 * S; PEOPLE.forEach(function (id, i) { pulse(wisp, atoms[id], CAST.coach.color, i * 0.08); }); rings.push({ x: W / 2, y: H / 2, r: 10, max: 150 * S, life: 1, col: CAST.coach.color }); }
+      else { var tp = near(atoms[ev.to]); wisp.tx = tp.x; wisp.ty = tp.y; pulse(wisp, atoms[ev.to], CAST.coach.color, 0); atoms[ev.to].glow = 1; link = { id: ev.to, until: t + ev.ms / 1000 }; }
+    } else {
+      var a = atoms[ev.from]; a.glow = 1;
+      if (ev.to === 'coach') { var np = near(a); wisp.tx = np.x; wisp.ty = np.y; pulse(a, wisp, a.col, 0); link = { id: ev.from, until: t + ev.ms / 1000 }; }
+      else { pulse(a, { x: W / 2, y: H / 2 }, a.col, 0); rings.push({ x: a.x, y: a.y, r: a.r, max: a.r * 2.4, life: 1, col: a.col }); wisp.tx = W / 2; wisp.ty = H / 2 - 100 * S; }
+    }
+  }
+  session.on(function (ev) {
+    switch (ev.type) {
+      case 'say': onSay(ev); break;
+      case 'set': setSec(ev.section, ev.status, ev.by, false); if (ev.axiom) refreshAx(); hud(); break;
+      case 'conflict':
+        conflicts[ev.section] = { a: ev.a, b: ev.b, aText: ev.aText, bText: ev.bText };
+        parts[ev.section].a = ev.a; parts[ev.section].b = ev.b; parts[ev.section].mode = 'conflict';
+        hud(); break;
+      case 'choice': choice = { prompt: ev.prompt, section: ev.section, born: t }; hud(); break;
+      case 'resolved':
+        choice = null; rings.push({ x: W / 2, y: H / 2, r: 10, max: 190 * S, life: 1, col: CAST.coach.color }, { x: W / 2, y: H / 2, r: 4, max: 120 * S, life: 1, col: INK });
+        nodes.forEach(function (n) { n.vx += rnd(-90, 90); n.vy += rnd(-90, 90); });
+        snap(W / 2, H / 2, CAST.coach.color, 24); break;
+      case 'done': done = true; wisp.tx = W / 2; wisp.ty = H / 2 - 100 * S; rings.push({ x: W / 2, y: H / 2, r: 10, max: 230 * S, life: 1.4, col: SC.green }); hud(); break;
+      case 'reset': resetScene(); break;
+      default: break;
+    }
+  });
+
+  /* ---------- HTML readout and axiom tags ---------- */
+  var hMol = document.getElementById('hMol'), hEn = document.getElementById('hEn'), hSt = document.getElementById('hSt'), hBar = document.getElementById('hBar');
+  function hud() {
+    var p = session.progress(), pct = Math.round(p.green / p.total * 100);
+    var en = -(p.green * 42) + p.conflicts * 60;
+    hMol.textContent = done ? 'Project truth, stable molecule, 12 of 12 bonds' : 'Project truth, ' + p.green + ' of ' + p.total + ' bonds';
+    hEn.textContent = (en > 0 ? '+' : en < 0 ? '−' : '') + Math.abs(en) + ' kJ/mol' + (p.conflicts ? ' (unstable)' : '');
+    hSt.textContent = pct + '%'; hBar.style.width = pct + '%';
+  }
+  var axEl = document.getElementById('axioms');
+  function refreshAx() {
+    axEl.innerHTML = '';
+    var list = session.state.axioms;
+    if (!list.length) { axEl.appendChild(EMx.el('span', { class: 'ax-empty', text: 'Axioms appear here as formula tags when a bond forms.' })); return; }
+    list.forEach(function (a, i) {
+      var lens = session.state.sections[a.section].lens;
+      axEl.appendChild(EMx.el('span', { class: 'ax', style: 'border-left-color:' + CAST[lens].color }, [EMx.el('b', { text: 'Ax' + (i + 1) }), a.text]));
+    });
+  }
+
+  /* ---------- physics ---------- */
+  function update(dt) {
+    var r = Math.max(21, 25 * S), i, id, k;
+    var greens = session.progress().green;
+    PEOPLE.forEach(function (aid, ai) {
+      var a = atoms[aid]; a.r = r; a.glow = Math.max(0, a.glow - dt * 1.4);
+      var an = anchor(ai); a.fx = (an.x - a.x) * 2.2; a.fy = (an.y - a.y) * 2.2;
+      PEOPLE.forEach(function (oid) {
+        if (oid === aid) return; var b = atoms[oid], dx = a.x - b.x, dy = a.y - b.y, d = Math.hypot(dx, dy) || 1, f = 90000 * S * S / (d * d + 500);
+        a.fx += dx / d * f; a.fy += dy / d * f;
+      });
+    });
+    Object.keys(bonds).forEach(function (key) {
+      var b = bonds[key], A = atoms[b.a], B = atoms[b.b], dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy) || 1;
+      var L = Math.max(r * 2 + 34 * S, (190 - 26 * b.secs.length) * S), f = (d - L) * 1.4;
+      A.fx += dx / d * f; A.fy += dy / d * f; B.fx -= dx / d * f; B.fy -= dy / d * f;
+      b.flash = Math.max(0, b.flash - dt * 1.4);
+    });
+    Object.keys(conflicts).forEach(function (cid) {
+      var c = conflicts[cid], A = atoms[c.a], B = atoms[c.b]; if (!A || !B) return;
+      var dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy) || 1, f = 150 * S;
+      A.fx -= dx / d * f; A.fy -= dy / d * f; B.fx += dx / d * f; B.fy += dy / d * f;
+      if (!reduce) { A.fx += rnd(-60, 60); A.fy += rnd(-60, 60); B.fx += rnd(-60, 60); B.fy += rnd(-60, 60); }
+      if (Math.random() < dt * 28) { var m = Math.random(); sparks.push({ x: A.x + dx * m, y: A.y + dy * m, vx: rnd(-70, 70), vy: rnd(-70, 70), life: 0.5, max: 0.5, col: SC.conflict }); }
+    });
+    PEOPLE.forEach(function (aid) { var a = atoms[aid]; a.vx = (a.vx + a.fx * dt) * Math.exp(-3 * dt); a.vy = (a.vy + a.fy * dt) * Math.exp(-3 * dt); a.x += a.vx * dt; a.y += a.vy * dt; });
+
+    var cx = W / 2, cy = H / 2, inst = reduce ? 0 : (1 - greens / 12) * 14 + (choice ? 30 : 0);
+    nodes.forEach(function (n, ni) {
+      var ax = (cx - n.x) * 2.2, ay = (cy - n.y) * 2.2;
+      nodes.forEach(function (m, mi) { if (mi === ni) return; var dx = n.x - m.x, dy = n.y - m.y, d2 = dx * dx + dy * dy + 200, d = Math.sqrt(d2), f = 3200 * S * S / d2; ax += dx / d * f * 10; ay += dy / d * f * 10; });
+      n.fx = ax + (Math.random() - 0.5) * inst * 10; n.fy = ay + (Math.random() - 0.5) * inst * 10;
+    });
+    edges.forEach(function (e) {
+      var n = nodes[e[0]], m = nodes[e[1]], dx = m.x - n.x, dy = m.y - n.y, d = Math.hypot(dx, dy) || 1, f = (d - 44 * S) * 14;
+      n.fx += dx / d * f; n.fy += dy / d * f; m.fx -= dx / d * f; m.fy -= dy / d * f;
+    });
+    nodes.forEach(function (n) { n.vx = (n.vx + n.fx * dt) * Math.exp(-2.5 * dt); n.vy = (n.vy + n.fy * dt) * Math.exp(-2.5 * dt); var sp = Math.hypot(n.vx, n.vy); if (sp > 260) { n.vx *= 260 / sp; n.vy *= 260 / sp; } n.x += n.vx * dt; n.y += n.vy * dt; });
+
+    var counts = {};
+    SECS.forEach(function (s) {
+      var p = parts[s.id], tx = p.x, ty = p.y, lerp = 0;
+      if (p.mode === 'loose') {
+        p.vx += rnd(-30, 30) * dt; p.vy += rnd(-30, 30) * dt;
+        var sp = Math.hypot(p.vx, p.vy); if (sp > 22) { p.vx *= 22 / sp; p.vy *= 22 / sp; }
+        p.x += p.vx * dt; p.y += p.vy * dt;
+        if (p.x < 14 || p.x > W - 14) { p.vx = -p.vx; p.x = Math.max(14, Math.min(W - 14, p.x)); }
+        if (p.y < 14 || p.y > H - 14) { p.vy = -p.vy; p.y = Math.max(14, Math.min(H - 14, p.y)); }
+      } else if (p.mode === 'orbit' && atoms[p.owner]) {
+        var oa = atoms[p.owner]; k = counts[p.owner] || 0; counts[p.owner] = k + 1; p.k = k; p.ang += dt * (1.4 + 0.2 * k);
+        var rad = oa.r + 22 * S + 11 * S * k; tx = oa.x + Math.cos(p.ang + p.ph) * rad; ty = oa.y + Math.sin(p.ang + p.ph) * rad; lerp = 6;
+      } else if (p.mode === 'conflict') {
+        var A = atoms[p.a], B = atoms[p.b];
+        if (A && B) { var s2 = Math.sin(t * 9 + p.ph) * 0.38; tx = (A.x + B.x) / 2 + (B.x - A.x) * s2 + rnd(-3, 3); ty = (A.y + B.y) / 2 + (B.y - A.y) * s2 + rnd(-3, 3); lerp = 10; }
+      } else if (p.mode === 'bond') {
+        var A2 = atoms[p.a], B2 = atoms[p.b], sw = Math.sin(t * 2.2 + p.ph) * 0.3;
+        tx = (A2.x + B2.x) / 2 + (B2.x - A2.x) * sw; ty = (A2.y + B2.y) / 2 + (B2.y - A2.y) * sw; lerp = 8;
+      }
+      if (lerp) { var q = Math.min(1, dt * lerp); p.x += (tx - p.x) * q; p.y += (ty - p.y) * q; }
+    });
+
+    var wq = Math.min(1, dt * 2.2); wisp.x += (wisp.tx + Math.cos(t * 1.3) * 10 * S - wisp.x) * wq; wisp.y += (wisp.ty + Math.sin(t * 1.7) * 8 * S - wisp.y) * wq;
+    for (i = sparks.length - 1; i >= 0; i--) { var sp2 = sparks[i]; sp2.life -= dt; sp2.x += sp2.vx * dt; sp2.y += sp2.vy * dt; sp2.vx *= Math.exp(-2 * dt); sp2.vy *= Math.exp(-2 * dt); if (sp2.life <= 0) sparks.splice(i, 1); }
+    for (i = pulses.length - 1; i >= 0; i--) { pulses[i].p += dt / pulses[i].dur; if (pulses[i].p >= 1) pulses.splice(i, 1); }
+    for (i = rings.length - 1; i >= 0; i--) { var rg = rings[i]; rg.life -= dt * 0.9; rg.r += (rg.max - rg.r) * Math.min(1, dt * 3); if (rg.life <= 0) rings.splice(i, 1); }
+    if (sparks.length > 400) sparks.splice(0, sparks.length - 400);
+  }
+
+  /* ---------- drawing ---------- */
+  function glow(x, y, R, col, a) { var g = ctx.createRadialGradient(x, y, 0, x, y, R); g.addColorStop(0, rgba(col, a)); g.addColorStop(1, rgba(col, 0)); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, R, 0, 6.2832); ctx.fill(); }
+  function txt(s, x, y, font, col, align) { ctx.font = font; ctx.fillStyle = col; ctx.textAlign = align || 'center'; ctx.textBaseline = 'middle'; ctx.fillText(s, x, y); }
+  function wrap(s, n) {
+    var w = s.split(' '), lines = [''], li = 0;
+    w.forEach(function (x) { if ((lines[li] + ' ' + x).trim().length > n && li < 1) { li++; lines[li] = x; } else lines[li] = (lines[li] + ' ' + x).trim(); });
+    if (lines[1] && lines[1].length > n) lines[1] = lines[1].slice(0, n - 1) + '…';
+    return lines;
+  }
+  function drawGrid() {
+    ctx.fillStyle = '#0a1a2a'; ctx.fillRect(0, 0, W, H);
+    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(30,70,105,.45)'; ctx.beginPath();
+    for (var x = 0.5; x < W; x += 28) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
+    for (var y = 0.5; y < H; y += 28) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
+    ctx.stroke(); ctx.strokeStyle = 'rgba(40,95,140,.5)'; ctx.beginPath();
+    for (var x2 = 0.5; x2 < W; x2 += 140) { ctx.moveTo(x2, 0); ctx.lineTo(x2, H); }
+    for (var y2 = 0.5; y2 < H; y2 += 140) { ctx.moveTo(0, y2); ctx.lineTo(W, y2); }
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(215,236,255,.16)'; ctx.setLineDash([4, 6]); ctx.beginPath(); ctx.arc(W / 2, H / 2, 112 * S, 0, 6.2832); ctx.stroke(); ctx.setLineDash([]);
+    txt('PROJECT TRUTH', W / 2, H / 2 + 124 * S, '600 9px ' + MONO, 'rgba(134,163,189,.8)');
+  }
+  function drawBonds() {
+    Object.keys(bonds).forEach(function (key) {
+      var b = bonds[key], A = atoms[b.a], B = atoms[b.b], dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy) || 1, nx = -dy / d, ny = dx / d, n = Math.min(3, b.secs.length);
+      var g = ctx.createLinearGradient(A.x, A.y, B.x, B.y); g.addColorStop(0, rgba(A.col, 0.95)); g.addColorStop(1, rgba(B.col, 0.95));
+      if (b.flash > 0) { ctx.strokeStyle = 'rgba(255,255,255,' + b.flash * 0.55 + ')'; ctx.lineWidth = (4 + 12 * b.flash) * S; ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.stroke(); }
+      ctx.strokeStyle = g; ctx.lineWidth = 2 * S;
+      for (var i = 0; i < n; i++) { var off = (i - (n - 1) / 2) * 5 * S; ctx.beginPath(); ctx.moveTo(A.x + nx * off, A.y + ny * off); ctx.lineTo(B.x + nx * off, B.y + ny * off); ctx.stroke(); }
+    });
+    ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]);
+    Object.keys(conflicts).forEach(function (cid) {
+      var c = conflicts[cid], A = atoms[c.a], B = atoms[c.b]; if (!A || !B) return;
+      ctx.strokeStyle = rgba(SC.conflict, 0.85); ctx.beginPath(); ctx.moveTo(A.x, A.y);
+      for (var i = 1; i < 9; i++) { var m = i / 9; ctx.lineTo(A.x + (B.x - A.x) * m + rnd(-5, 5) * S, A.y + (B.y - A.y) * m + rnd(-5, 5) * S); }
+      ctx.lineTo(B.x, B.y); ctx.stroke();
+    });
+    ctx.setLineDash([]);
+  }
+  function drawMolecule() {
+    edges.forEach(function (e) {
+      var n = nodes[e[0]], m = nodes[e[1]];
+      ctx.strokeStyle = 'rgba(215,236,255,.14)'; ctx.lineWidth = 6 * S; ctx.beginPath(); ctx.moveTo(n.x, n.y); ctx.lineTo(m.x, m.y); ctx.stroke();
+      var g = ctx.createLinearGradient(n.x, n.y, m.x, m.y); g.addColorStop(0, rgba(n.col, 0.95)); g.addColorStop(1, rgba(m.col, 0.95));
+      ctx.strokeStyle = g; ctx.lineWidth = 2.4 * S; ctx.beginPath(); ctx.moveTo(n.x, n.y); ctx.lineTo(m.x, m.y); ctx.stroke();
+    });
+    nodes.forEach(function (n) {
+      var age = Math.max(0, t - n.born), pop = 1 + 0.35 * Math.sin(Math.min(1, age * 2.5) * Math.PI), rad = 12 * S * pop * Math.min(1, age * 4 + 0.05);
+      glow(n.x, n.y, rad * (done ? 3 + Math.sin(t * 3) * 0.4 : 2.2), n.col, done ? 0.5 : 0.35);
+      ctx.fillStyle = n.col; ctx.beginPath(); ctx.arc(n.x, n.y, rad, 0, 6.2832); ctx.fill();
+      var g = ctx.createRadialGradient(n.x - rad * 0.35, n.y - rad * 0.35, 1, n.x, n.y, rad); g.addColorStop(0, 'rgba(255,255,255,.55)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(n.x, n.y, rad, 0, 6.2832); ctx.fill();
+      txt(n.sym, n.x, n.y + 0.5, '800 ' + Math.max(9, 10 * S) + 'px ' + SANS, DARK);
+    });
+  }
+  function drawAtom(a) {
+    var c = a.col, r = a.r, tp = TOPICS[a.id];
+    glow(a.x, a.y, r * 2.8, c, 0.3 + a.glow * 0.4);
+    ctx.lineWidth = 1; ctx.strokeStyle = rgba(c, 0.3); ctx.beginPath(); ctx.arc(a.x, a.y, r + 9 * S, 0, 6.2832); ctx.stroke();
+    tp.forEach(function (_, k) { var an = t * 0.6 + k * 6.2832 / tp.length + a.ph; ctx.fillStyle = rgba(c, 0.9); ctx.beginPath(); ctx.arc(a.x + Math.cos(an) * (r + 9 * S), a.y + Math.sin(an) * (r + 9 * S), 2.4 * S, 0, 6.2832); ctx.fill(); });
+    var orb = 0; SECS.forEach(function (s) { if (parts[s.id].mode === 'orbit' && parts[s.id].owner === a.id) orb++; });
+    for (var k = 0; k < orb; k++) { ctx.strokeStyle = rgba(SC.amber, 0.22); ctx.beginPath(); ctx.arc(a.x, a.y, r + 22 * S + 11 * S * k, 0, 6.2832); ctx.stroke(); }
+    ctx.fillStyle = c; ctx.beginPath(); ctx.arc(a.x, a.y, r, 0, 6.2832); ctx.fill();
+    var g = ctx.createRadialGradient(a.x - r * 0.35, a.y - r * 0.4, 1, a.x, a.y, r); g.addColorStop(0, 'rgba(255,255,255,.5)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(a.x, a.y, r, 0, 6.2832); ctx.fill();
+    ctx.lineWidth = 1.5; ctx.strokeStyle = DARK; ctx.beginPath(); ctx.arc(a.x, a.y, r, 0, 6.2832); ctx.stroke();
+    txt(CAST[a.id].name, a.x, a.y - 3 * S, '800 ' + Math.max(11, 12.5 * S) + 'px ' + SANS, DARK);
+    txt(CAST[a.id].tag.toUpperCase().slice(0, 11), a.x, a.y + 8 * S, '600 ' + Math.max(7, 7.5 * S) + 'px ' + MONO, DARK);
+  }
+  function drawParts() {
+    SECS.forEach(function (s) {
+      var p = parts[s.id], loose = p.mode === 'loose';
+      var col = loose ? LOOSE : p.mode === 'orbit' ? SC.amber : p.mode === 'conflict' ? SC.conflict : SC.green, rad = (loose ? 6 : 8) * S;
+      if (!loose) glow(p.x, p.y, rad * 3, col, 0.5);
+      if (loose) { ctx.setLineDash([2, 2]); ctx.strokeStyle = rgba(MUT, 0.8); ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(p.x, p.y, rad, 0, 6.2832); ctx.stroke(); ctx.setLineDash([]); }
+      else { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(p.x, p.y, rad, 0, 6.2832); ctx.fill(); }
+      txt(CODE[s.id], p.x, p.y + 0.5, '600 ' + Math.max(8, 8.5 * S) + 'px ' + MONO, loose ? MUT : DARK);
+    });
+  }
+  function drawWisp() {
+    var c = wisp.tint, x = wisp.x, y = wisp.y, R = 30 * S;
+    glow(x, y, R * 1.6, c, 0.5); glow(x, y, R * 0.7, '#ffffff', 0.55);
+    ctx.fillStyle = '#fff8e0'; ctx.beginPath();
+    for (var i = 0; i < 8; i++) { var an = i * Math.PI / 4 - Math.PI / 2, rr = i % 2 ? 3 * S : 10 * S; ctx.lineTo(x + Math.cos(an) * rr, y + Math.sin(an) * rr); }
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = rgba(c, 0.5); ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y, R * 0.8, 0, 6.2832); ctx.stroke();
+    for (var k = 0; k < 3; k++) { var a2 = t * 2 + k * 2.094; ctx.fillStyle = rgba(c, 0.95); ctx.beginPath(); ctx.arc(x + Math.cos(a2) * R * 0.8, y + Math.sin(a2) * R * 0.8, 2.2 * S, 0, 6.2832); ctx.fill(); }
+    txt('Wisp', x, y + R * 0.8 + 11 * S, '600 ' + Math.max(9, 9.5 * S) + 'px ' + MONO, rgba(c, 0.95));
+  }
+  function drawFx() {
+    if (link && t < link.until && atoms[link.id]) { var a = atoms[link.id]; ctx.setLineDash([3, 5]); ctx.strokeStyle = rgba(CAST.coach.color, 0.55); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(wisp.x, wisp.y); ctx.lineTo(a.x, a.y); ctx.stroke(); ctx.setLineDash([]); }
+    pulses.forEach(function (p) {
+      if (p.p < 0) return;
+      for (var k = 0; k < 3; k++) { var q = Math.max(0, p.p - k * 0.05), x = p.from.x + (p.to.x - p.from.x) * q, y = p.from.y + (p.to.y - p.from.y) * q; ctx.fillStyle = rgba(p.col, 0.9 - k * 0.3); ctx.beginPath(); ctx.arc(x, y, (4 - k) * S, 0, 6.2832); ctx.fill(); }
+    });
+    rings.forEach(function (g) { ctx.strokeStyle = rgba(g.col, Math.max(0, Math.min(1, g.life)) * 0.7); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(g.x, g.y, g.r, 0, 6.2832); ctx.stroke(); });
+    sparks.forEach(function (s) { ctx.fillStyle = rgba(s.col, Math.max(0, s.life / s.max)); ctx.fillRect(s.x - 1.5, s.y - 1.5, 3, 3); });
+  }
+  function drawConflictLabels() {
+    var fs = Math.max(10, 10 * S);
+    Object.keys(conflicts).forEach(function (cid) {
+      var c = conflicts[cid], A = atoms[c.a], B = atoms[c.b]; if (!A || !B || !c.aText) return;
+      var dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy) || 1, nx = -dy / d, ny = dx / d;
+      [[A, c.aText, 0.3, 1], [B, c.bText, 0.7, -1]].forEach(function (it) {
+        var lines = wrap(it[1], W < 520 ? 16 : 22), x = A.x + dx * it[2] + nx * 26 * S * it[3], y = A.y + dy * it[2] + ny * 26 * S * it[3];
+        ctx.font = '600 ' + fs + 'px ' + MONO; var w = 0; lines.forEach(function (l) { w = Math.max(w, ctx.measureText(l).width); });
+        w += 12; var h = lines.length * (fs + 3) + 6;
+        x = Math.max(w / 2 + 4, Math.min(W - w / 2 - 4, x)); y = Math.max(h / 2 + 4, Math.min(H - h / 2 - 4, y));
+        ctx.fillStyle = 'rgba(8,19,31,.88)'; ctx.fillRect(x - w / 2, y - h / 2, w, h); ctx.strokeStyle = rgba(SC.conflict, 0.8); ctx.lineWidth = 1; ctx.strokeRect(x - w / 2 + 0.5, y - h / 2 + 0.5, w - 1, h - 1);
+        lines.forEach(function (l, li) { txt(l, x, y - h / 2 + 3 + (fs + 3) * (li + 0.5) + 1, '600 ' + fs + 'px ' + MONO, '#ff8d98'); });
+      });
+    });
+  }
+  function drawChoice() {
+    if (!choice) return;
+    var cx = W / 2, cy = H / 2, R = 108 * S;
+    ctx.setLineDash([7, 7]); ctx.lineDashOffset = -t * 20; ctx.strokeStyle = rgba(CAST.coach.color, 0.5 + 0.3 * Math.sin(t * 4)); ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, 6.2832); ctx.stroke(); ctx.setLineDash([]); ctx.lineDashOffset = 0;
+    txt('?', cx, cy - 6, '800 ' + 34 * S + 'px ' + SANS, rgba(CAST.coach.color, 0.35 + 0.25 * Math.sin(t * 4)));
+    var lines = wrap(choice.prompt, W < 520 ? 22 : 30), fs = Math.max(10, 10 * S);
+    lines.forEach(function (l, i) { txt(l, cx, cy + 28 * S + i * (fs + 3), '600 ' + fs + 'px ' + MONO, CAST.coach.color); });
+    txt('molecule unstable: pick below', cx, cy + 28 * S + 2 * (fs + 3) + 4, '400 ' + Math.max(9, 9 * S) + 'px ' + MONO, MUT);
+  }
+  function draw() {
+    drawGrid(); drawBonds(); drawMolecule();
+    PEOPLE.forEach(function (id) { drawAtom(atoms[id]); });
+    drawParts(); drawFx(); drawWisp(); drawChoice(); drawConflictLabels();
+  }
+
+  /* ---------- boot ---------- */
+  size(); resetScene();
+  EMx.mountDock(document.getElementById('dock'), session);
+  var rt = null;
+  function onResize() { var ow = W, oh = H; size(); if (ow !== W || oh !== H) { SECS.forEach(function (s) { var p = parts[s.id]; if (p.mode === 'loose') { p.x = Math.max(14, Math.min(W - 14, p.x * W / ow)); p.y = Math.max(14, Math.min(H - 14, p.y * H / oh)); } }); } }
+  if (window.ResizeObserver) new ResizeObserver(function () { clearTimeout(rt); rt = setTimeout(onResize, 60); }).observe(cv.parentNode); else window.addEventListener('resize', onResize);
+  var last = 0;
+  function frame(ts) { var dt = Math.min(0.033, (ts - last) / 1000 || 0.016); last = ts; t += dt; update(dt); draw(); requestAnimationFrame(frame); }
+  requestAnimationFrame(frame);
+})();
+</script>
