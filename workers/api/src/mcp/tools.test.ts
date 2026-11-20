@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { CoachError } from '../coach'
 import type { Env } from '../contracts'
 import { ModelUnavailableError } from '../model'
 import { FIXTURE_PROJECT } from '../room/fixture'
@@ -59,6 +60,14 @@ describe('tell_coach', () => {
     expect(await tellCoach(context, 'Launch is July.')).toEqual({ text: COACH_FAILED, isError: true })
     expect(ctx.waitUntil).not.toHaveBeenCalled()
     expect(JSON.stringify(log.mock.calls)).not.toContain('Launch')
+  })
+
+  it("passes on the coach's own failure message, which says the words were kept", async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const error = new CoachError('The coach lost its thread. What you said is saved, so try again in a moment.')
+    const { context } = await setup({ coachTurn: async () => Promise.reject(error) })
+    expect(await tellCoach(context, 'Launch is July.')).toEqual({ text: error.message, isError: true })
+    expect(log).not.toHaveBeenCalled()
   })
 })
 

@@ -21,6 +21,8 @@ export type DirectoryStub = DurableObjectStub<TeamDirectory>
 export const API_PATH = '/api'
 export const MCP_PATH = '/mcp'
 export const MAX_LENS_ROUNDS = 3
+/** Lens rounds run in `ctx.waitUntil`, which the runtime cuts off about 30 seconds after the response. */
+export const LENS_ROUNDS_BUDGET_MS = 25_000
 
 /** What the coach hands back after a person says something. */
 export interface CoachReply {
@@ -55,7 +57,10 @@ export type CoachTurn = (env: Env, room: RoomStub, participant: Participant, mes
 /** What the coach says when someone opens the room. */
 export type OpeningBriefFn = (env: Env, room: RoomStub, participant: Participant) => Promise<OpeningBrief>
 
-/** Runs all five lenses on one snapshot, again while a round adds proposed facts, at most MAX_LENS_ROUNDS times. Never throws. */
+/**
+ * Runs all five lenses on one snapshot, again while a round adds proposed facts, at most MAX_LENS_ROUNDS times and
+ * within LENS_ROUNDS_BUDGET_MS. Never throws.
+ */
 export type RunLensRounds = (env: Env, room: RoomStub) => Promise<void>
 
 /** Everything under MCP_PATH. */

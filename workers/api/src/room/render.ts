@@ -13,12 +13,11 @@ const list = (refs: string[]) =>
 /** One fact, readable on its own. Built only from what never changes once written, so old lines never move. */
 export function renderFact(fact: Fact, people: Map<number, Participant>): string {
   const head = `${ref('fact', fact.id)} [${fact.topic}]`
-  const status = fact.status === 'superseded' ? 'confirmed' : fact.status
   let source: string
   if (fact.authorKind === 'person') {
     const who = fact.participantId && people.get(fact.participantId)
     const by = who ? person(who) : ref('participant', fact.participantId ?? 0)
-    source = `${status === 'proposed' ? 'proposed, to be confirmed by' : 'said by'} ${by} in ${ref('item', fact.sourceItemId ?? 0)}`
+    source = `${fact.statedAs === 'proposed' ? 'proposed, to be confirmed by' : 'said by'} ${by} in ${ref('item', fact.sourceItemId ?? 0)}`
   } else {
     const lens = fact.lens ? `the ${LENS_NAMES[fact.lens]} lens` : 'a lens'
     source = `proposed by ${lens} in ${ref('lensRun', fact.lensRunId ?? 0)}`

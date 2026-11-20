@@ -51,6 +51,18 @@ describe('renderRoom', () => {
     expect(after).toContain('to p4 Robin Fakeworth, for the CFO lens: Is VAT in that?')
   })
 
+  it('keeps a proposed fact\'s line as it was once a later fact replaces it', async () => {
+    const { room, people, items } = await fixtureRoom()
+    const pat = people.pat.participant.id
+    const said = { authorKind: 'person', participantId: pat, sourceItemId: items[3]!.id, sourceQuote: 'fixed' } as const
+    const [tentative] = await room.addFacts([{ ...said, status: 'proposed', topic: 'budget', statement: 'Probably about £40k.' }])
+    const line = async () => renderRoom((await room.read())!).split('\n').find((text) => text.startsWith(`f${tentative!.id} `))
+    const before = await line()
+    await room.addFacts([{ ...said, status: 'confirmed', topic: 'budget', statement: 'It is £40k.', supersedes: tentative!.id }])
+    expect(await line()).toBe(before)
+    expect(before).toContain('proposed, to be confirmed by Pat Notreal')
+  })
+
   it('renders an empty room', async () => {
     const { room } = await fixtureRoom()
     const snapshot = (await room.read())!

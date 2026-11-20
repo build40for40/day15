@@ -35,23 +35,37 @@ person in Claude or ChatGPT
 | `lens_runs` | Each lens run: lens, round, watermark (highest fact id it saw), report |
 | `asks` | What the coach needs from one person, open until answered or dropped |
 
-- Nothing is edited. A changed fact is a new row that supersedes the old one, and the old one reads as `superseded`.
+- Nothing is edited. A changed fact is a new row that supersedes the old one, and the old one reads as `superseded`. Its `statedAs` keeps the status it was written with, so its line in the room text never changes.
 - Every person fact points at the item and the quote it came from. Every lens fact points at the facts it was worked out from. Person and lens facts are always told apart.
 - Every fact has a topic from a client brief template: background, objective, audience, insight, kpis, budget, deliverables, timeline, sign_off, legal_ip, other.
 - Models see short per-project ids: `f12` a fact, `i3` an item, `p2` a person, `a4` an ask, `r5` a lens run.
 - **Loading the room into a model:** no retrieval, the whole room every time, through the one renderer in `workers/api/src/room/render.ts`. One fact per line, each readable alone, in id order. Facts only ever grow at the end, so the start of the text stays the same between calls and caches well. Room text goes first in a prompt, agent instructions after.
-- **Lens rounds:** after each coach turn, all five lenses run in parallel on one snapshot. If a round adds proposed facts, another round runs, up to 3. They run in the Worker through `ctx.waitUntil`, never inside the Durable Object, so slow model calls never block the room. A lease in the room lets one set of rounds run at a time.
+- **Lens rounds:** after each coach turn, all five lenses run in parallel on one snapshot. If a round adds proposed facts, another round runs, up to 3. They run in the Worker through `ctx.waitUntil`, never inside the Durable Object, so slow model calls never block the room. A lease in the room lets one set of rounds run at a time. The runtime cuts `waitUntil` off about 30 seconds after the response, so a set of rounds gets a 25 second budget (`LENS_ROUNDS_BUDGET_MS`): a round only starts with 8 seconds left, a model call still running at the end is aborted and saved as a failed run, and each lens's run is saved as soon as it answers. The lease runs out after a minute in case the runtime kills the Worker anyway. In practice that means round 1 and sometimes round 2, so moving lens rounds to a Durable Object alarm, a Queue or a Workflow is still an open decision.
 
 ### Who can get in
 
-- **People on a project** reach the MCP server at `/mcp/<projectId>.<secret>`. Only the hash of the secret is stored, so the address is shown once when the person is added (or when their key is reset). One function, `identify` in `workers/api/src/mcp/identify.ts`, works out who is calling, so OAuth can replace the key later without touching the tools.
+- **People on a project** reach the MCP server at `/mcp/<projectId>.<secret>`. Only the hash of the secret is stored, so the address is shown once when the person is added (or when their key is reset). Workers invocation logs and traces are off in `wrangler.jsonc`, so request URLs, and the keys in them, stay out of Workers Logs. A room only creates its tables when its project is created, so guessed project ids leave nothing stored. One function, `identify` in `workers/api/src/mcp/identify.ts`, works out who is calling, so OAuth can replace the key later without touching the tools.
 - **The agency owner** signs in with WorkOS AuthKit on the web page. The Worker checks the WorkOS access token with `jose`. One `TeamDirectory` Durable Object per owner, named by their WorkOS user id, holds the team name and its project list.
+
+### Team API
+
+The signed-in agency API under `/api`, every route behind the WorkOS Bearer token (401 without it): `GET /api/session`, `POST /api/team`, `GET` and `POST /api/projects`, `POST /api/projects/<id>/people`, and `POST /api/projects/<id>/people/<personId>/address` to reset a person's key.
 
 ### MCP tools
 
 - `open_room`: who you are, where the project stands, and what the coach most needs from you.
 - `tell_coach`: free text in, the coach's reply out.
 - `read_room`: facts and open conflicts, by topic.
+
+## Worker secrets
+
+Set each in production with `pnpm wrangler secret put <NAME>`, and locally in `workers/api/.dev.vars`. Every one is listed, empty, in `workers/api/.dev.vars.example`.
+
+| Secret | Needed | What it does |
+| --- | --- | --- |
+| `ANTHROPIC_API_KEY` | Yes, for the coach and the lenses | Without it the model-backed paths fail with `ModelUnavailableError` |
+| `ANTHROPIC_WORKSPACE_ID` | Only if the key isn't scoped to a workspace | Sent as the `anthropic-workspace-id` header |
+| `WORKOS_CLIENT_ID` | No | Overrides the WorkOS client the Worker picks from the request's host |
 
 ## Layout
 
@@ -110,11 +124,20 @@ All from the repo root.
 - CI (`.github/workflows/ci.yml`) tests and builds every push and PR, through the shared `build40for40/actions` (`setup`, `deploy-worker`, `preview-worker`). Pushes to `main` deploy to production. PRs upload a preview version and comment its public `workers.dev` link, which is named after the branch.
 - Deploys need the `CLOUDFLARE_API_TOKEN` secret on the repo. Without it CI still tests and builds, and skips deploying.
 - The Worker needs the `ANTHROPIC_API_KEY` Cloudflare secret, set once with `pnpm wrangler secret put ANTHROPIC_API_KEY`. Every Worker secret is listed, with an empty value, in `workers/api/.dev.vars.example`. `ANTHROPIC_WORKSPACE_ID` is optional: set it only when the key isn't scoped to a workspace, and the Worker sends it as the `anthropic-workspace-id` header.
-- Sign-in uses the shared WorkOS AuthKit application, picking the production client on `day15.build40for40.com` and the staging client elsewhere. Each client needs `https://day15.build40for40.com/` (and any preview origin) added as a redirect URI and origin.
+- Sign-in uses the shared WorkOS AuthKit application, picking the production client on `day15.build40for40.com` and the staging client elsewhere, in both `apps/web/src/auth.ts` and `workers/api/src/team/auth.ts`. Each client needs `https://day15.build40for40.com/` (and any preview origin) added as a redirect URI and origin.
+- Durable Objects: `ProjectRoom` (`ROOMS`) and `TeamDirectory` (`TEAMS`), both SQLite-backed through the `v1` and `v2` migrations in `wrangler.jsonc`. There is no D1 and no R2.
 
 ## Persona harnesses
 
 `persona-harnesses/` holds the five persona harnesses (client, agency, CFO, procurement, delivery) as plain markdown, with the shared wrapper and report format in its `README.md`. Each is written as AIM: Actor, Instructions, Mission. Samira owns the five persona files. Ben owns the shared wrapper, the report format and how they are wired in, so don't change those when asked to edit a persona. They are the lenses: the Worker bundles these files as they are (a `rules` entry in `wrangler.jsonc`, and a small plugin in `workers/api/vitest.config.ts` for tests), so editing a persona file changes what that lens does on the next deploy, with no code change. The `##` headings (Actor, Instructions, Mission) are checked by a test. Lens id `cto` is the delivery persona. The coach's own harness sits beside them as `coach.md`, with the background it leans on in `coach-reference.md`.
+
+## Parked
+
+Out of scope for now: privacy tiers (everything in a room is shared), OAuth for invited people, file upload, email nudges, clocks and milestones, a debate room, output documents (the project truth), voice, and any chat UI or visualisation in the web app.
+
+## History
+
+The first prototype was a web app with a chat UI, one coach wearing hidden hats chosen by the model, ElevenLabs voice agents and a visualisation. It has been replaced by the MCP coach over a shared data room with five headless lenses. Nothing of it is left in the code.
 
 ## The problem
 

@@ -2,3 +2,5 @@
 ANTHROPIC_API_KEY=
 # Only if the key is not scoped to a workspace. Starts with wrkspc_.
 ANTHROPIC_WORKSPACE_ID=
+# Only to override the WorkOS client the Worker picks from the request's host.
+WORKOS_CLIENT_ID=

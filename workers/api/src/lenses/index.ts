@@ -5,7 +5,7 @@ import type { RunLensRounds } from '../contracts'
 import { anthropicModel, PROVIDER_OPTIONS } from '../model'
 import { lensRounds, type CallLens } from './rounds'
 
-const callModel: CallLens = async (env, _lens, prompt) => {
+const callModel: CallLens = async (env, _lens, prompt, signal) => {
   const { output } = await generateText({
     model: anthropicModel(env),
     messages: [
@@ -19,6 +19,7 @@ const callModel: CallLens = async (env, _lens, prompt) => {
     ],
     output: Output.object({ schema: lensReportSchema, name: 'report' }),
     providerOptions: PROVIDER_OPTIONS,
+    abortSignal: signal,
   })
   return output
 }

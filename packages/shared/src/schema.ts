@@ -119,6 +119,8 @@ export const factSchema = z.object({
   statement: z.string(),
   /** `superseded` once a later fact replaces this one. */
   status: z.enum(FACT_STATUSES),
+  /** The status it was written with, which never changes. */
+  statedAs: z.enum(['proposed', 'confirmed']),
   authorKind: z.enum(['person', 'lens']),
   participantId: id.nullable(),
   lensRunId: id.nullable(),

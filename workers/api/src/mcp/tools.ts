@@ -44,7 +44,7 @@ export interface ToolResult {
 
 type Conflict = PersonaReport['conflicts'][number]
 
-const SAFE_ERRORS = new Set(['ModelUnavailableError', 'RoomError'])
+const SAFE_ERRORS = new Set(['CoachError', 'ModelUnavailableError', 'RoomError'])
 
 function failure(where: string, error: unknown): ToolResult {
   if (error instanceof Error && SAFE_ERRORS.has(error.name)) return { text: error.message, isError: true }

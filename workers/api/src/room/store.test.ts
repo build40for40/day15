@@ -1,8 +1,9 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
 
-import { fixtureRoom, memoryRoom } from '../testing'
+import { fixtureRoom, memoryRoom, memorySql } from '../testing'
 import { FIXTURE_PROJECT } from './fixture'
+import { RoomStore } from './store'
 
 describe('RoomStore', () => {
   it('hands out a secret once and knows the person by it afterwards', async () => {
@@ -18,11 +19,13 @@ describe('RoomStore', () => {
     expect(await room.identify(reset!.secret)).toEqual(participant)
   })
 
-  it('refuses people and items until the project exists, and knows nobody', async () => {
-    const room = memoryRoom()
+  it('refuses people and items until the project exists, knows nobody, and writes no tables meanwhile', async () => {
+    const sql = memorySql()
+    const room = new RoomStore(sql)
     await expect(room.addParticipant({ name: 'Alex Example', persona: 'cfo', side: 'agency' })).rejects.toThrow('no project')
     expect(await room.identify('anything')).toBeNull()
     expect(await room.read()).toBeNull()
+    expect(sql.exec('SELECT name FROM sqlite_master').toArray()).toEqual([])
   })
 
   it('keeps none of a batch of facts when one is bad', async () => {

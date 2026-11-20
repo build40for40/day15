@@ -69,6 +69,10 @@ const STATEMENTS = [
   )`,
 ]
 
+export function hasSchema(sql: Sql): boolean {
+  return sql.exec(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'project'`).toArray().length > 0
+}
+
 export function migrate(sql: Sql): void {
   for (const statement of STATEMENTS) sql.exec(statement)
 }

@@ -16,34 +16,44 @@ import type {
 } from '@day15/shared/schema'
 import { hashSecret, newSecret } from './keys'
 import * as room from './room'
-import { migrate } from './schema'
+import { hasSchema, migrate } from './schema'
 import type { Sql } from './sql'
 
-const LEASE_TTL_MS = 5 * 60 * 1000
+const LEASE_TTL_MS = 60 * 1000
 
 /**
  * Everything the ProjectRoom Durable Object does, over any SQLite. The Durable Object forwards each method here,
  * and tests use it with node:sqlite.
  */
 export class RoomStore {
+  private migrated: boolean
+
   constructor(
     private readonly sql: Sql,
     private readonly transaction: <T>(run: () => T) => T = (run) => run(),
     private readonly now: () => Date = () => new Date(),
   ) {
-    migrate(sql)
+    this.migrated = hasSchema(sql)
+    if (this.migrated) migrate(sql)
+  }
+
+  /** A room nobody created writes nothing, so guessing project ids leaves no storage behind. */
+  private readProject() {
+    return this.migrated ? room.readProject(this.sql) : null
   }
 
   private exists() {
-    if (!room.readProject(this.sql)) throw new room.RoomError('There is no project here.')
+    if (!this.readProject()) throw new room.RoomError('There is no project here.')
   }
 
   async create(input: { id: string; name: string; ownerId: string }): Promise<Project> {
+    if (!this.migrated) migrate(this.sql)
+    this.migrated = true
     return room.createProject(this.sql, input, this.now())
   }
 
   async project(): Promise<Project | null> {
-    return room.readProject(this.sql)
+    return this.readProject()
   }
 
   /** The secret comes back once and is never stored: only its hash is. */
@@ -62,7 +72,7 @@ export class RoomStore {
   }
 
   async identify(secret: string): Promise<Participant | null> {
-    if (!room.readProject(this.sql)) return null
+    if (!this.readProject()) return null
     return room.findParticipantByKeyHash(this.sql, await hashSecret(secret))
   }
 
@@ -82,7 +92,7 @@ export class RoomStore {
   }
 
   async read(): Promise<RoomSnapshot | null> {
-    return room.readRoom(this.sql)
+    return this.migrated ? room.readRoom(this.sql) : null
   }
 
   async saveLensRun(run: NewLensRun): Promise<LensRun> {

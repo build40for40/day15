@@ -32,5 +32,6 @@
   ],
   "workers_dev": true,
   "preview_urls": true,
-  "observability": { "enabled": true }
+  // Every MCP address holds a person's key, so request URLs stay out of the logs: only console output is kept.
+  "observability": { "enabled": true, "logs": { "invocation_logs": false }, "traces": { "enabled": false } }
 }

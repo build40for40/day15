@@ -13,7 +13,7 @@ How it fits together:
 3. **They talk to the coach.** It notes facts from what they say, closes what they've answered and asks one next thing.
 4. **The lenses read the whole room** after every turn and tell the coach what's missing or in conflict.
 
-Being built: the coach, the lenses, the MCP tools and the agency setup page.
+In place: the coach, the five lenses, the MCP tools (`open_room`, `tell_coach`, `read_room`) and the agency setup page. Parked: privacy tiers, OAuth for invited people, file upload, voice and output documents.
 
 ## Develop
 
