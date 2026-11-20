@@ -73,6 +73,7 @@ For every High or Medium, keep one line saying what the misalignment is, in plai
 
 Combine the ratings into one health reading for the project.
 
+- **No reading yet.** Until both sides have answered at least one question, there is no health reading at all. A project nobody has talked about is not healthy, it is unread.
 - Each area costs its weight multiplied by its rating: High 1, Medium 0.5, Low 0.2, Aligned 0.
 - Health is 100 minus the total cost as a share of the total weight (26), as a whole number.
 - **Green, 75 or more:** healthy. Keep going and write it down.
