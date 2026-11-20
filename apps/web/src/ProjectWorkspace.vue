@@ -11,6 +11,7 @@ import {
   type PersonDetails,
   type Project,
 } from './api'
+import AlignmentCircle from './AlignmentCircle.vue'
 import NameForm from './NameForm.vue'
 import PeopleSidebar from './PeopleSidebar.vue'
 import PersonForm from './PersonForm.vue'
@@ -157,7 +158,10 @@ const remove = () =>
         @remove="remove"
       />
 
-      <p v-else class="hint">Pick someone from the list to see their details, or add a person.</p>
+      <template v-else>
+        <AlignmentCircle />
+        <p class="hint">Pick someone from the list to see their details, or add a person.</p>
+      </template>
 
       <p v-if="error" class="error" role="alert">{{ error }}</p>
     </section>
