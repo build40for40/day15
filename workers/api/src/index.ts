@@ -1,10 +1,18 @@
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { generateText, Output } from 'ai'
 
-import { brainReplySchema, coachRequestSchema, partySchema, type CoachReply } from '@day15/shared/schema'
+import { LENS_IDS } from '@day15/shared/lenses'
+import {
+  brainReplySchema,
+  coachRequestSchema,
+  partySchema,
+  personaReportSchema,
+  type CoachReply,
+} from '@day15/shared/schema'
+import { harnessPrompt } from './harness'
 import type { ProjectRoom } from './project-room'
 import { instructions, messages } from './prompt'
-import { mySide } from './room'
+import { freshReports, mySide, version, type Reports, type Room } from './room'
 
 export { ProjectRoom } from './project-room'
 
@@ -36,7 +44,7 @@ export default {
     if (request.method === 'POST' && action === 'coach') return coach(request, env, room)
     if (request.method === 'GET' && action === 'brain') {
       const state = await room.read()
-      return state ? Response.json(state.sides) : noProject()
+      return state ? Response.json({ ...state.sides, reports: state.reports?.byLens }) : noProject()
     }
     if (request.method === 'GET') {
       const party = partySchema.safeParse(action)
@@ -66,13 +74,30 @@ async function coach(request: Request, env: Env, room: DurableObjectStub<Project
     headers: env.ANTHROPIC_WORKSPACE_ID ? { 'anthropic-workspace-id': env.ANTHROPIC_WORKSPACE_ID } : undefined,
   })
   try {
+    const model = anthropic(MODEL)
+    const providerOptions = { anthropic: { effort: 'low', fallbacks: 'default' } } as const
+
+    // The five persona harnesses each read both sides and report. A reload reuses the reports it already has.
+    let reports = freshReports(state)
+    if (!reports) {
+      reports = await runHarnesses(state, (prompt) =>
+        generateText({
+          model,
+          prompt,
+          output: Output.object({ schema: personaReportSchema, name: 'report' }),
+          providerOptions,
+        }).then((result) => result.output),
+      )
+      await room.saveReports(version(state), reports)
+    }
+
     // Not streamed: the brain's reasoning can mention the other side, so it never leaves the Worker.
     const { output } = await generateText({
-      model: anthropic(MODEL),
-      instructions: instructions(party, state),
+      model,
+      instructions: instructions(party, state, reports),
       messages: messages(side),
       output: Output.object({ schema: brainReplySchema, name: 'question' }),
-      providerOptions: { anthropic: { effort: 'low', fallbacks: 'default' } },
+      providerOptions,
     })
     const { lens, question, why, rationale } = output
     await room.pend(party, { lens, question, rationale })
@@ -82,4 +107,16 @@ async function coach(request: Request, env: Env, room: DurableObjectStub<Project
     console.error('Coach failed:', error instanceof Error ? error.name : 'Unknown error')
     return new Response('The coach lost its thread. Try that again.', { status: 502 })
   }
+}
+
+/** Runs all five harnesses at once. One failing is survivable; all five failing is not. */
+async function runHarnesses(state: Room, run: (prompt: string) => Promise<Reports[keyof Reports]>): Promise<Reports> {
+  const settled = await Promise.allSettled(LENS_IDS.map((lens) => run(harnessPrompt(lens, state))))
+  const reports: Reports = {}
+  settled.forEach((result, index) => {
+    if (result.status === 'fulfilled') reports[LENS_IDS[index]!] = result.value
+    else console.error('Harness failed:', LENS_IDS[index], result.reason instanceof Error ? result.reason.name : 'Unknown error')
+  })
+  if (!Object.keys(reports).length) throw new Error('Every persona harness failed')
+  return reports
 }

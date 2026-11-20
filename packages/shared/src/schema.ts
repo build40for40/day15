@@ -40,6 +40,26 @@ export const brainReplySchema = z.object({
   ...coachReplySchema.shape,
 })
 
+const coverageLevel = z.enum(['settled', 'thin', 'missing'])
+
+/** What one persona harness sends the brain. The field names match persona-harnesses/README.md. */
+export const personaReportSchema = z.object({
+  coverage: z.array(z.object({ topic: z.string(), agency: coverageLevel, client: coverageLevel })),
+  conflicts: z.array(
+    z.object({
+      topic: z.string(),
+      agency_said: z.string(),
+      client_said: z.string(),
+      severity: z.enum(['fundamental', 'workable', 'minor']),
+      note: z.string(),
+    }),
+  ),
+  questions: z.array(
+    z.object({ ask: partySchema, find_out: z.string(), because: z.string(), priority: z.number() }),
+  ),
+  done: z.boolean(),
+})
+
 /** The behind-the-scenes view: both sides, with the hat and the reasoning behind every question. */
 const brainSideSchema = z.object({
   project: z.string(),
@@ -49,6 +69,8 @@ const brainSideSchema = z.object({
 export const brainViewSchema = z.object({
   agency: brainSideSchema.optional(),
   client: brainSideSchema.optional(),
+  /** The latest report from each persona harness. */
+  reports: z.partialRecord(lens, personaReportSchema).optional(),
 })
 
 /** One side's half of a project. */
@@ -69,3 +91,4 @@ export type Side = z.infer<typeof sideSchema>
 export type MySide = z.infer<typeof mySideSchema>
 export type BrainReply = z.infer<typeof brainReplySchema>
 export type BrainView = z.infer<typeof brainViewSchema>
+export type PersonaReport = z.infer<typeof personaReportSchema>
