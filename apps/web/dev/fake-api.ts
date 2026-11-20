@@ -17,25 +17,18 @@ interface FakeSide {
 const rooms = new Map<string, { agency?: FakeSide; client?: FakeSide }>()
 
 const QUESTIONS: Record<string, string[]> = {
-  cfo: [
-    'If this ends up costing a fifth more than planned, who finds the money?',
-    'Which bit would you cut first if the budget would not stretch?',
-  ],
-  cto: [
-    'What does "done" look like on the day you stop working on this?',
-    'What is the one thing that depends on somebody outside the room?',
+  client: [
+    'What would make your boss say this was worth every penny?',
+    'What would make this feel like a failure even if it shipped on time?',
   ],
   agency: [
     'How many rounds of feedback feel fair before it counts as new work?',
     'Who gets the final say when two people disagree on the creative?',
   ],
-  client: [
-    'What would make your boss say this was worth every penny?',
-    'What would make this feel like a failure even if it shipped on time?',
-  ],
-  procurement: [
+  ops: [
+    'If this ends up costing a fifth more than planned, who finds the money?',
+    'What does "done" look like on the day you stop working on this?',
     'Who is allowed to change the scope, and how does that get written down?',
-    'If you two fall out over this, who do you ring first?',
   ],
 }
 

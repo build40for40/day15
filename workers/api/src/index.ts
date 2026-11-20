@@ -77,7 +77,7 @@ async function coach(request: Request, env: Env, room: DurableObjectStub<Project
     const model = anthropic(MODEL)
     const providerOptions = { anthropic: { effort: 'low', fallbacks: 'default' } } as const
 
-    // The five persona harnesses each read both sides and report. A reload reuses the reports it already has.
+    // The three persona harnesses each read both sides and report. A reload reuses the reports it already has.
     let reports = freshReports(state)
     if (!reports) {
       reports = await runHarnesses(state, (prompt) =>
@@ -109,7 +109,7 @@ async function coach(request: Request, env: Env, room: DurableObjectStub<Project
   }
 }
 
-/** Runs all five harnesses at once. One failing is survivable; all five failing is not. */
+/** Runs all three harnesses at once. One failing is survivable; all of them failing is not. */
 async function runHarnesses(state: Room, run: (prompt: string) => Promise<Reports[keyof Reports]>): Promise<Reports> {
   const settled = await Promise.allSettled(LENS_IDS.map((lens) => run(harnessPrompt(lens, state))))
   const reports: Reports = {}

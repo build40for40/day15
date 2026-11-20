@@ -10,7 +10,7 @@ What's here so far:
 
 1. **Start a project and pick your side.** Agency or client. You get a link to send to the other side.
 2. **Describe the project.** A few sentences in your own words.
-3. **Answer the coach.** It asks one question at a time. Behind the scenes it picks an angle (money, delivery, agency, client or procurement) from what both sides have said so far, and never tells you which.
+3. **Answer the coach.** It asks one question at a time. Behind the scenes it picks an angle (the client's, the agency's, or delivery, procurement and finance) from what both sides have said so far, and never tells you which.
 
 Not built yet: spotting where the two sides disagree, and the project truth document.
 

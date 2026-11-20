@@ -1,7 +1,7 @@
 import { DurableObject } from 'cloudflare:workers'
 
 import type { Party, Turn } from '@day15/shared/schema'
-import { emptyRoom, pend, record, withReports, type Pending, type Reports, type Room } from './room'
+import { emptyRoom, pend, record, upgrade, withReports, type Pending, type Reports, type Room } from './room'
 
 /** One per project. Holds what both sides have told the coach. */
 export class ProjectRoom extends DurableObject {
@@ -11,7 +11,8 @@ export class ProjectRoom extends DurableObject {
 
   /** The room, or null if nobody created this project. */
   async read(): Promise<Room | null> {
-    return (await this.ctx.storage.get<Room>('room')) ?? null
+    const room = await this.ctx.storage.get<Room>('room')
+    return room ? upgrade(room) : null
   }
 
   async record(party: Party, project: string, turn?: Turn): Promise<Room | null> {

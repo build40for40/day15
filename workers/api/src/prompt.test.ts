@@ -5,11 +5,12 @@ import { LENS_IDS } from '@day15/shared/lenses'
 import type { PersonaReport } from '@day15/shared/schema'
 import { harnessPrompt, PERSONAS } from './harness'
 import { instructions, messages } from './prompt'
-import { emptyRoom, freshReports, mySide, pend, record, version, withReports } from './room'
+import { emptyRoom, freshReports, mySide, pend, record, upgrade, version, withReports, type Room } from './room'
 
-const turn = { lens: 'cto' as const, question: 'What does done look like?', answer: 'It is live by March.' }
+const turn = { lens: 'ops' as const, question: 'What does done look like?', answer: 'It is live by March.' }
 
-const cfoReport: PersonaReport = {
+const opsReport: PersonaReport = {
+  requirements: [{ requirement: 'The fee is fixed at 60k.', from: 'both' }],
   coverage: [{ topic: 'What the price covers', agency: 'thin', client: 'missing' }],
   conflicts: [
     {
@@ -32,37 +33,43 @@ describe('persona harnesses', () => {
     for (const lens of LENS_IDS) {
       for (const part of ['## Actor', '## Instructions', '## Mission']) expect(PERSONAS[lens]).toContain(part)
     }
-    expect(PERSONAS.cto).toContain('# Delivery persona harness')
+    expect(LENS_IDS).toEqual(['client', 'agency', 'ops'])
+    expect(PERSONAS.ops).toContain('# Delivery, procurement and finance persona harness')
   })
 
   it('fills the wrapper with the persona and what both sides have said', () => {
     const room = record(emptyRoom(), 'agency', 'A fictional biscuit site.', turn)
-    const prompt = harnessPrompt('cfo', room)
+    const prompt = harnessPrompt('ops', room)
     expect(prompt).not.toContain('{{')
-    expect(prompt).toContain('# CFO persona harness')
+    expect(prompt).toContain('# Delivery, procurement and finance persona harness')
     expect(prompt).toContain('Their description of the project: A fictional biscuit site.')
     expect(prompt).toContain('Asked: What does done look like?\nAnswered: It is live by March.')
     expect(prompt).toContain('<client_side>\nThis side has not spoken to the coach yet.')
   })
 })
 
-describe('brain prompt', () => {
+describe('mother agent prompt', () => {
   const room = record(emptyRoom(), 'client', 'A fictional biscuit site.', turn)
+  const text = instructions('client', room, { ops: opsReport })
 
-  it("gives the brain each adviser's conflicts and only this side's questions", () => {
-    const text = instructions('client', room, { cfo: cfoReport })
+  it('starts from the mother agent file, Actor, Instructions and Mission', () => {
+    expect(text.startsWith('# Mother agent')).toBe(true)
+    for (const part of ['## Actor', '## Instructions', '## Mission']) expect(text).toContain(part)
+  })
+
+  it("adds each persona agent's requirements and conflicts, and only this side's questions", () => {
     expect(text).toContain('someone on the client side')
-    expect(text).toContain('### cfo (CFO)')
+    expect(text).toContain('### ops (Delivery, procurement and finance)')
+    expect(text).toContain('- (both) The fee is fixed at 60k.')
     expect(text).toContain('fundamental conflict on "What the price covers"')
     expect(text).toContain('find out what they believe the price includes.')
     expect(text).not.toContain('what would trigger extra cost')
     expect(text).toContain('Not yet settled on the client side: What the price covers (missing).')
-    expect(text).toContain('in order: cto.')
+    expect(text).toContain('in order: ops.')
   })
 
-  it('keeps the advisers and the other side secret', () => {
-    const text = instructions('client', room, { cfo: cfoReport })
-    expect(text).toContain('never name one')
+  it('keeps the persona agents and the other side secret', () => {
+    expect(text).toContain('Never name a persona agent')
     expect(text).toContain('Never quote it')
     expect(text).toContain('Reply with "rationale" first')
   })
@@ -90,7 +97,7 @@ describe('room', () => {
 
   it("files the brain's reasoning with the answer and keeps it away from both sides", () => {
     let room = record(emptyRoom(), 'agency', 'A fictional biscuit site.')
-    room = pend(room, 'agency', { lens: 'cto', question: turn.question, rationale: 'The client expects more.' })
+    room = pend(room, 'agency', { lens: 'ops', question: turn.question, rationale: 'The client expects more.' })
     expect(room.sides.agency!.pending!.rationale).toBe('The client expects more.')
 
     room = record(room, 'agency', 'A fictional biscuit site.', turn)
@@ -101,17 +108,37 @@ describe('room', () => {
 
   it('keeps the waiting question when a side only reloads', () => {
     let room = record(emptyRoom(), 'client', 'A fictional app.')
-    room = pend(room, 'client', { lens: 'cfo', question: 'Who pays?', rationale: 'Nobody said.' })
+    room = pend(room, 'client', { lens: 'ops', question: 'Who pays?', rationale: 'Nobody said.' })
     expect(record(room, 'client', 'A fictional app.').sides.client!.pending!.question).toBe('Who pays?')
   })
 
   it('reuses reports on a reload and drops them once either side says something new', () => {
     let room = record(emptyRoom(), 'client', 'A fictional app.')
-    room = withReports(room, { cfo: cfoReport })
-    expect(freshReports(record(room, 'client', 'A fictional app.'))).toEqual({ cfo: cfoReport })
+    room = withReports(room, { ops: opsReport })
+    expect(freshReports(record(room, 'client', 'A fictional app.'))).toEqual({ ops: opsReport })
     expect(freshReports(record(room, 'client', 'A fictional app.', turn))).toBeUndefined()
     expect(freshReports(record(room, 'agency', 'The other side arrives.'))).toBeUndefined()
     expect(version(room)).toBe('-:0')
     expect(JSON.stringify(mySide(room, 'client'))).not.toContain('Photos are extra')
+  })
+
+  it('brings a room from the five-persona days up to date', () => {
+    const old = {
+      sides: {
+        agency: {
+          project: 'A fictional app.',
+          turns: [
+            { lens: 'cfo', question: 'Who pays?', answer: 'We do.' },
+            { lens: 'agency', question: 'Who decides?', answer: 'Them.' },
+          ],
+          pending: { lens: 'procurement', question: 'What is written down?', rationale: 'Nothing is.' },
+        },
+      },
+      reports: { version: '2:-', byLens: { cto: opsReport } },
+    } as unknown as Room
+    const room = upgrade(old)
+    expect(room.sides.agency!.turns.map((entry) => entry.lens)).toEqual(['ops', 'agency'])
+    expect(room.sides.agency!.pending!.lens).toBe('ops')
+    expect(room.reports).toBeUndefined()
   })
 })

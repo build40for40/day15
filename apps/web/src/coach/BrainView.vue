@@ -7,11 +7,9 @@ import { brainViewSchema, PARTIES, type BrainView, type PersonaReport } from '@d
 const props = defineProps<{ projectId: string }>()
 
 const HATS: Record<LensId, string> = {
-  cfo: 'Money',
-  cto: 'Delivery',
+  ops: 'Delivery, procurement and finance',
   agency: 'Agency',
   client: 'Client',
-  procurement: 'Procurement',
 }
 
 /** How many of a harness's topics are thin or missing on either side. */
@@ -45,12 +43,15 @@ onUnmounted(() => clearInterval(timer))
   <p v-else-if="!view">Opening the brain…</p>
   <template v-else>
     <section v-if="view.reports" class="advisers">
-      <h2>What the five persona harnesses reported</h2>
+      <h2>What the three persona harnesses reported</h2>
       <ul>
         <li v-for="(found, lens) in view.reports" :key="lens">
           <p>
             <span class="hat">{{ HATS[lens] }}</span>
             {{ found!.done ? 'Done.' : `${unsettled(found!)} topics not settled.` }}
+          </p>
+          <p v-for="(item, index) in found!.requirements" :key="`r${index}`" class="said">
+            Requirement ({{ item.from }}): {{ item.requirement }}
           </p>
           <p v-for="(conflict, index) in found!.conflicts" :key="index" class="rationale">
             <strong>{{ conflict.severity }}:</strong> {{ conflict.topic }}. {{ conflict.note }}

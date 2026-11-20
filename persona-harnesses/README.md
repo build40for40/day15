@@ -1,6 +1,6 @@
 # Persona harnesses
 
-Five persona harnesses feed the main brain. Each one reads everything both sides have told the coach so far and reports back, through its own lens, what is settled, what is missing and where the two sides are heading for a row. The brain reads all five reports and decides what the coach asks next.
+Three persona harnesses feed the main brain. Each one reads everything both sides have told the coach so far and reports back, through its own lens, what is settled, what is missing and where the two sides are heading for a row. The brain reads all three reports and decides what the coach asks next.
 
 Neither the agency nor the client ever sees a persona, its name or its report. They only ever meet one warm coach.
 
@@ -8,13 +8,15 @@ Neither the agency nor the client ever sees a persona, its name or its report. T
 | --- | --- | --- |
 | `personas/client.md` | Client | The reason the project exists, and who it is for |
 | `personas/agency.md` | Agency | The team's ability to do good work |
-| `personas/cfo.md` | CFO | The money |
-| `personas/procurement.md` | Procurement | The agreement, and the bad day |
-| `personas/delivery.md` | Delivery | The promise being buildable |
+| `personas/delivery-procurement-finance.md` | Delivery, procurement and finance | That it can be built, is paid for and is written down |
+
+## The mother agent
+
+[`mother-agent.md`](mother-agent.md) is the coach itself, also written as AIM. It takes the reports from every persona agent and decides the one question to ask the person in front of it. The Worker loads the file as it is, then adds which side it is talking to, the reports, and the shape of its reply.
 
 ## Who owns what
 
-- **The five files in `personas/`** are Samira's. Each is one persona's Actor, Instructions and Mission, and nothing else. Changes to who a persona is, what it covers or what it asks go there.
+- **The three files in `personas/` and `mother-agent.md`** are Samira's. Each is one persona's Actor, Instructions and Mission, and nothing else. Changes to who a persona is, what it covers or what it asks go there.
 - **`wrapper.md` and everything in this README below the AIM section** are Ben's: the shared wrapper, the report format and how the brain uses the reports. It may change to fit the architecture without the persona files needing to.
 
 ## AIM: Actor, Instructions, Mission
@@ -38,6 +40,9 @@ The wrapper itself is [`wrapper.md`](wrapper.md), which the Worker loads as it i
 
 ```json
 {
+  "requirements": [
+    { "requirement": "what the project must do, have, cost or respect", "from": "agency | client | both" }
+  ],
   "coverage": [
     { "topic": "one of the persona's topics", "agency": "settled | thin | missing", "client": "settled | thin | missing" }
   ],
@@ -69,4 +74,4 @@ The wrapper itself is [`wrapper.md`](wrapper.md), which the Worker loads as it i
 3. Then whichever persona that side has heard least from.
 4. No more than two questions in a row from the same persona, unless its topic is still thin.
 
-The brain turns the chosen `find_out` into one question in the coach's voice. When all five personas say `done`, the coach stops asking and the project truth can be written.
+The brain turns the chosen `find_out` into one question in the coach's voice. When all three personas say `done`, the coach stops asking and the project truth can be written.

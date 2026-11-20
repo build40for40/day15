@@ -44,6 +44,8 @@ const coverageLevel = z.enum(['settled', 'thin', 'missing'])
 
 /** What one persona harness sends the brain. The field names match persona-harnesses/README.md. */
 export const personaReportSchema = z.object({
+  /** What the answers so far establish in this persona's lane, and who said it. */
+  requirements: z.array(z.object({ requirement: z.string(), from: z.enum(['agency', 'client', 'both']) })),
   coverage: z.array(z.object({ topic: z.string(), agency: coverageLevel, client: coverageLevel })),
   conflicts: z.array(
     z.object({

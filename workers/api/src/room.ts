@@ -43,6 +43,24 @@ export const freshReports = (room: Room): Reports | undefined =>
 
 export const emptyRoom = (): Room => ({ sides: {} })
 
+/** Rooms saved when there were five personas: money, delivery and procurement are now all `ops`. */
+const OLD_LENSES: Record<string, LensId> = { cfo: 'ops', cto: 'ops', procurement: 'ops' }
+const current = (lens: string) => OLD_LENSES[lens] ?? (lens as LensId)
+
+/** Brings a stored room up to date. Reports from the five-persona days are dropped and get written again. */
+export function upgrade(room: Room): Room {
+  const sides: Room['sides'] = {}
+  for (const [party, side] of Object.entries(room.sides) as [Party, RoomSide][]) {
+    sides[party] = {
+      ...side,
+      turns: side.turns.map((turn) => ({ ...turn, lens: current(turn.lens) })),
+      pending: side.pending && { ...side.pending, lens: current(side.pending.lens) },
+    }
+  }
+  const stale = room.reports && Object.keys(room.reports.byLens).some((lens) => lens in OLD_LENSES)
+  return { sides, reports: stale ? undefined : room.reports }
+}
+
 /** Adds what a side just said. Its first description sticks, and turns stop at the limit. */
 export function record(room: Room, party: Party, project: string, turn?: Turn): Room {
   const { pending, ...side } = room.sides[party] ?? { project, turns: [] }
