@@ -1,7 +1,7 @@
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { generateText, Output } from 'ai'
 
-import { brainReplySchema, coachRequestSchema, partySchema, type CoachReply } from '../src/coach/schema'
+import { brainReplySchema, coachRequestSchema, partySchema, type CoachReply } from '@day15/shared/schema'
 import type { ProjectRoom } from './project-room'
 import { instructions, messages } from './prompt'
 import { mySide } from './room'

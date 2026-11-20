@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 
 import CoachChat from './CoachChat.vue'
-import type { MySide } from './schema'
+import type { MySide } from '@day15/shared/schema'
 
 afterEach(() => vi.unstubAllGlobals())
 

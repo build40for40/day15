@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers'
 
-import type { Party, Turn } from '../src/coach/schema'
+import type { Party, Turn } from '@day15/shared/schema'
 import { emptyRoom, pend, record, type Pending, type Room } from './room'
 
 /** One per project. Holds what both sides have told the coach. */

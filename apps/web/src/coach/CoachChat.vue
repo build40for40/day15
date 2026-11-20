@@ -9,7 +9,7 @@ import {
   mySideSchema,
   type Party,
   type Turn,
-} from './schema'
+} from '@day15/shared/schema'
 
 const props = defineProps<{ party: Party; projectId: string }>()
 

@@ -1,5 +1,5 @@
-import { LENS_IDS } from '../src/coach/lenses'
-import { OTHER_SIDE, type Party } from '../src/coach/schema'
+import { LENS_IDS } from '@day15/shared/lenses'
+import { OTHER_SIDE, type Party } from '@day15/shared/schema'
 import { PERSONAS } from './personas'
 import type { Room, RoomSide } from './room'
 

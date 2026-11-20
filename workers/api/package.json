@@ -1,0 +1,24 @@
+{
+  "name": "api",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The day15 Worker: the API under /day15/api and the web app's static build.",
+  "type": "module",
+  "scripts": {
+    "dev": "mkdir -p ../../apps/web/dist && pnpm wrangler dev",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "wrangler": "env -u CLOUDFLARE_API_KEY -u CLOUDFLARE_EMAIL wrangler --profile 40for40"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.94",
+    "@day15/shared": "workspace:*",
+    "ai": "^7.0.159"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261102.1",
+    "typescript": "~6.0.0",
+    "vitest": "^4.1.11",
+    "wrangler": "^4.156.1"
+  }
+}

@@ -3,7 +3,7 @@
   "configurations": [
     {
       "name": "fake",
-      "runtimeExecutable": "npm",
+      "runtimeExecutable": "pnpm",
       "runtimeArgs": [
         "run",
         "fake"
@@ -12,7 +12,7 @@
     },
     {
       "name": "dev",
-      "runtimeExecutable": "npm",
+      "runtimeExecutable": "pnpm",
       "runtimeArgs": [
         "run",
         "dev"

@@ -7,40 +7,56 @@ Day 15 of 40 for 40, built live on Twitch on Friday 20 November 2026. It's the s
 
 Shared 40 for 40 context lives in `../AGENTS.md`.
 
+## Layout
+
+A pnpm workspace with three packages. `pnpm-workspace.yaml` lists them, the only lockfile is the root `pnpm-lock.yaml`, and the pnpm version is pinned in the root `package.json`.
+
+| Folder | Package | What it is |
+| --- | --- | --- |
+| `apps/web/` | `web` | The Vue app, with `dev/fake-api.ts` for running it without the Worker |
+| `workers/api/` | `api` | The Cloudflare Worker (`src/`), its `wrangler.jsonc` and `.dev.vars.example` |
+| `packages/shared/` | `@day15/shared` | The zod schemas and types both sides import, as `@day15/shared/schema` and `@day15/shared/lenses` |
+
+Run `pnpm install` from the root, and add a dependency with `pnpm --filter <package> add <dep>`. Never npm or yarn, and never a `package-lock.json`. A new dependency with an install script needs an entry under `allowBuilds` in `pnpm-workspace.yaml`. `@day15/shared` is consumed as TypeScript source through `workspace:*`, so it has no build step: a new file at `packages/shared/src/<name>.ts` is importable as `@day15/shared/<name>`.
+
 ## Stack
 
 - Vue 3 with `<script setup lang="ts">`, built with Vite.
 - Vitest with jsdom and `@vue/test-utils`. Unit tests sit next to their source as `*.test.ts`. Tests for Worker code start with `// @vitest-environment node`.
-- `@/` resolves to `src/`.
-- The Worker in `worker/` serves the API under `/day15/api/*`. Everything else under `/day15/` is a static file from `dist/day15/`.
-- Claude goes through the Vercel AI SDK (`ai` and `@ai-sdk/anthropic`, model `claude-sonnet-5-5`). `POST /day15/api/projects/<id>/coach` asks for the next question as structured output with `generateText` and `Output.object`, and answers with plain JSON that the page reads with `useObject` from `@ai-sdk/vue`. It is not streamed, on purpose: see the rationale below. The zod schemas both sides share live in `src/coach/schema.ts`. Without an `ANTHROPIC_API_KEY` the endpoint answers 503.
+- In `apps/web`, `@/` resolves to `apps/web/src/`.
+- The Worker in `workers/api/` serves the API under `/day15/api/*`. Everything else under `/day15/` is a static file from `apps/web/dist/day15/`.
+- Claude goes through the Vercel AI SDK (`ai` and `@ai-sdk/anthropic`, model `claude-sonnet-5-5`). `POST /day15/api/projects/<id>/coach` asks for the next question as structured output with `generateText` and `Output.object`, and answers with plain JSON that the page reads with `useObject` from `@ai-sdk/vue`. It is not streamed, on purpose: see the rationale below. The zod schemas both sides share live in `packages/shared/src/schema.ts`. Without an `ANTHROPIC_API_KEY` the endpoint answers 503.
 - **Projects:** `POST /day15/api/projects` makes one and returns its id. Each side opens its own link, `?p=<id>&as=agency` or `?p=<id>&as=client`. `GET /day15/api/projects/<id>/<party>` returns that side's own description and turns, and only whether the other side has started.
-- **Storage:** one `ProjectRoom` Durable Object per project (`worker/project-room.ts`, bound as `ROOMS`) holds what both sides have said. The logic is plain functions in `worker/room.ts` so tests run in Node. One side's words never go to the other side's browser.
-- **The brain:** `worker/prompt.ts` builds the instructions from the five personas in `worker/personas.ts`, everything captured from both sides, and which hats each side has had. The model picks the hat and returns it as `lens` with the question. The page keeps `lens` on the turn and never shows it.
+- **Storage:** one `ProjectRoom` Durable Object per project (`workers/api/src/project-room.ts`, bound as `ROOMS`) holds what both sides have said. The logic is plain functions in `workers/api/src/room.ts` so tests run in Node. One side's words never go to the other side's browser.
+- **The brain:** `workers/api/src/prompt.ts` builds the instructions from the five personas in `workers/api/src/personas.ts`, everything captured from both sides, and which hats each side has had. The model picks the hat and returns it as `lens` with the question. The page keeps `lens` on the turn and never shows it.
 - **The rationale:** with each question the brain writes a few sentences on what it noticed and why it chose that hat. It can mention the other side, so it stays in the Durable Object and is never sent to either side. `?p=<id>&as=brain` is the team's behind-the-scenes page showing both sides with the hat and rationale for every question (`GET /day15/api/projects/<id>/brain`). Nothing links to it, but anyone with a project link who knows to type `as=brain` can open it, so it needs locking down before real projects use this.
 - Log only the error name when a model call fails: the full error holds the request, which holds what people typed.
 - In the browser, build API URLs from `import.meta.env.BASE_URL` (`${import.meta.env.BASE_URL}api/...`), never a hard-coded `/api`.
 
 ## Commands
 
-- `npm run dev`: Vite on port 5173 plus `wrangler dev` on 8787, with Vite proxying `/day15/api` to the Worker. Open http://localhost:5173/day15/. Copy `.dev.vars.example` to `.dev.vars` and add an `ANTHROPIC_API_KEY` first.
-- `npm run fake`: Vite only, with `dev/fake-api.ts` standing in for the Worker, so the page clicks through with no key. Answers are canned, and production builds leave it out.
-- `npm test`: unit tests.
-- `npm run build`: type-check with `vue-tsc`, then build to `dist/day15/`.
-- `npm run deploy`: build, then deploy to production as the `40for40` wrangler profile. CI does this on every push to `main`, so it's only needed by hand before CI has its token.
-- Run wrangler as `npm run wrangler -- <args>`, never `npx wrangler`.
+All from the repo root.
+
+- `pnpm dev`: Vite on port 5173 plus `wrangler dev` on 8787, with Vite proxying `/day15/api` to the Worker. Open http://localhost:5173/day15/. Copy `workers/api/.dev.vars.example` to `workers/api/.dev.vars` and add an `ANTHROPIC_API_KEY` first.
+- `pnpm fake`: Vite only, with `apps/web/dev/fake-api.ts` standing in for the Worker, so the page clicks through with no key. Answers are canned, and production builds leave it out.
+- `pnpm test`: unit tests in every package.
+- `pnpm typecheck`: type-check every package (`vue-tsc` for the app, `tsc` for the Worker and the shared package).
+- `pnpm build`: type-check, then build the app to `apps/web/dist/day15/`.
+- `pnpm run deploy` (not `pnpm deploy`, which is a pnpm built-in): build, then deploy to production as the `40for40` wrangler profile. CI does this on every push to `main`, so it's only needed by hand before CI has its token.
+- Run wrangler as `pnpm wrangler <args>`, never `npx wrangler`. It runs in `workers/api/`, next to `wrangler.jsonc`.
+- One package's script: `pnpm --filter web <script>`, `pnpm --filter api <script>`.
 
 ## Hosting
 
-- A Cloudflare Worker named `day15` serves `dist/` as static assets on the `build40for40.com/day15` and `build40for40.com/day15/*` routes. Those routes run before the site's Worker, which owns the rest of the domain.
-- Vite builds with `base: '/day15/'` into `dist/day15/`, so the asset paths match the URL path. `run_worker_first` sends only `/day15/api/*` to the Worker code.
-- CI (`.github/workflows/ci.yml`) tests and builds every push and PR. Pushes to `main` deploy to production. PRs upload a preview version and comment its public `workers.dev` link, which is named after the branch.
+- A Cloudflare Worker named `day15` serves `apps/web/dist/` as static assets on the `build40for40.com/day15` and `build40for40.com/day15/*` routes. Those routes run before the site's Worker, which owns the rest of the domain.
+- Vite builds with `base: '/day15/'` into `apps/web/dist/day15/`, so the asset paths match the URL path. `run_worker_first` sends only `/day15/api/*` to the Worker code.
+- CI (`.github/workflows/ci.yml`) tests and builds every push and PR, through the shared `build40for40/actions` (`setup`, `deploy-worker`, `preview-worker`). Pushes to `main` deploy to production. PRs upload a preview version and comment its public `workers.dev` link, which is named after the branch.
 - Deploys need the `CLOUDFLARE_API_TOKEN` secret on the repo. Without it CI still tests and builds, and skips deploying.
-- The Worker needs the `ANTHROPIC_API_KEY` Cloudflare secret, set once with `npm run wrangler -- secret put ANTHROPIC_API_KEY`. Every Worker secret is listed, with an empty value, in `.dev.vars.example`. `ANTHROPIC_WORKSPACE_ID` is optional: set it only when the key isn't scoped to a workspace, and the Worker sends it as the `anthropic-workspace-id` header.
+- The Worker needs the `ANTHROPIC_API_KEY` Cloudflare secret, set once with `pnpm wrangler secret put ANTHROPIC_API_KEY`. Every Worker secret is listed, with an empty value, in `workers/api/.dev.vars.example`. `ANTHROPIC_WORKSPACE_ID` is optional: set it only when the key isn't scoped to a workspace, and the Worker sends it as the `anthropic-workspace-id` header.
 
 ## Persona harnesses
 
-`persona-harnesses/` holds the five persona harnesses (client, agency, CFO, procurement, delivery) as plain markdown, with the shared wrapper and report format in its `README.md`. Each is written as AIM: Actor, Instructions, Mission. Samira owns the five persona files. Ben owns the shared wrapper, the report format and how they are wired in, so don't change those when asked to edit a persona. Each one reads what both sides have said and reports to the main brain. They are drafts under review and are not wired into the Worker yet: the prototype still uses the shorter personas in `worker/personas.ts`.
+`persona-harnesses/` holds the five persona harnesses (client, agency, CFO, procurement, delivery) as plain markdown, with the shared wrapper and report format in its `README.md`. Each is written as AIM: Actor, Instructions, Mission. Samira owns the five persona files. Ben owns the shared wrapper, the report format and how they are wired in, so don't change those when asked to edit a persona. Each one reads what both sides have said and reports to the main brain. They are drafts under review and are not wired into the Worker yet: the prototype still uses the shorter personas in `workers/api/src/personas.ts`.
 
 ## The problem
 
