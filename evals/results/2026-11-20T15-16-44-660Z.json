@@ -1,0 +1,482 @@
+[
+  {
+    "story": {
+      "id": 7,
+      "title": "The client who couldn't take the argument upstairs",
+      "failure_type": "Unarmed sponsor",
+      "expect": "gap",
+      "context": "An agency is commissioned by a multinational beer brand to create viral content.",
+      "agreed": "Viral content to drive engagement and conversion across international sites.",
+      "client_private": "You are the head of digital marketing. You care more about conventional marketing than digital and want the content produced. You see the age gate on the sites as a separate, lower priority project. You would not know how to defend extra budget for it to your own business.",
+      "agency_private": "The real bottleneck is the age gate on the international sites: cumbersome, badly designed and costing conversions at the door whatever the content does. You think it has to be fixed for the content to succeed.",
+      "unknowns": "The age gate and the structure of the international sites are dependencies of the brief, with no owner in the project and no budget. The client lacks evidence, in a form he can reuse, to make the case internally.",
+      "intervention_question": "What would you need to know, and in what form, to defend this to your own budget holders?",
+      "signal": "A client who defers or reclassifies an issue as separate rather than engaging with it."
+    },
+    "projectId": "bccab23b-f0eb-4655-a28d-fc8a3aff1d90",
+    "room": {
+      "agency": {
+        "project": "We've been brought in by a big international beer brand to make content that really gets people talking and sharing, and ideally that pulls them through to the brand's sites in different markets. The aim is to drive engagement and turn some of that into conversions across those international sites.",
+        "turns": [
+          {
+            "lens": "agency",
+            "question": "Who at the brand do you understand has the final say on approving the work, and have they been named to you yet?",
+            "answer": "Our day-to-day contact is the person who commissioned us, and I've been treating him as the approver. But no one has formally told me he has the final say, and I haven't been given anyone else's name above him or in the markets. I should probably confirm that.",
+            "rationale": "Took the question from the agency persona agent. No conflicts exist, so rule 1 does not apply. Rule 2 applies: its priority 1 question on sign-off is a missing topic and cannot be left open. The ops agent also has a priority 1 question, but the agency persona agent's is the sharper gap, and no persona agent has been heard from yet, so this opens a sensible run. Nothing from the client side is used."
+          },
+          {
+            "lens": "client",
+            "question": "Who do you believe this content is really for, and what is that based on?",
+            "answer": "I believe it's for legal-age beer drinkers across the brand's markets, probably on the younger end, since that's who tends to share content. That's an inference from the brief and the category, not from audience data. I haven't seen research on who actually visits those sites or who the brand most wants to reach.",
+            "rationale": "Took the question from the client persona agent, which wants to know who the agency believes the content is for. No conflict is fundamental yet, and approval has now been covered by the agency's own answer. Audience is missing on both sides, the client persona has heard least from this side, and the agency persona has already had two turns, so I moved to the client persona's priority 3 question. Neither side has named an audience, and the several international markets could mean very different customers."
+          },
+          {
+            "lens": "client",
+            "question": "If this project went well, what would you point to six months after launch and say that proves it worked?",
+            "answer": "I'd want to point to strong engagement and sharing numbers, and a clear rise in people going through to the brand's sites and converting there. Honestly, we haven't agreed specific targets or baselines yet, so I couldn't tell you today what number counts as \"worked.\"",
+            "rationale": "Took the question from the client persona agent (priority 2): there is a workable conflict on the main outcome, since the agency frames it as engagement turned into conversions while the client has no conversion number and wants strong content shipped. Rule 1 applies (a workable conflict comes first), and success is missing for this side. The agency and client persona agents have each been asked once, so no repeat limit applies. I avoided mentioning the client's wording or the lack of a conversion number."
+          }
+        ],
+        "pending": {
+          "lens": "agency",
+          "question": "How many rounds of changes have you planned for, and what would you do if a request fell outside that plan?",
+          "rationale": "Taken from the agency persona agent (priority 2, rounds and change handling), since the client persona agent has nothing to ask this side. The conflict rule found no fresh unexplored conflict to put to the agency without revealing the client's words, and the agency has been asked client questions twice running, so I am switching to the agency persona agent. Feedback and change are wholly uncovered, and the client has little time for detail."
+        }
+      },
+      "client": {
+        "project": "We've hired you to make viral content for our beer brand, something people actually share, that gets them engaging with us and ends up driving conversion on our international sites. I'm after good content out the door, and I don't have a lot of time to spend on the details, so keep me posted on the big stuff.",
+        "turns": [
+          {
+            "lens": "client",
+            "question": "When this works, what would you want to see change in your business, and roughly by when?",
+            "answer": "Honestly, I'd like to see the content get picked up and shared widely, with a visible bump in traffic to our sites and some lift in brand awareness. I'd want that within the campaign window, so say six months from launch. I haven't set a hard conversion number yet, and the main thing for me is getting strong content out the door.",
+            "rationale": "Took the question from the client persona agent. No conflicts are flagged, so rule 2 applies: its priority 1 question on the business problem is missing for this side, and the goal is currently thin (viral is an activity, not a checkable outcome). I held back the educating note for now because we should first hear what the client says they need to see change. The agency side has not mentioned anything that I have used here."
+          },
+          {
+            "lens": "client",
+            "question": "Who do you answer to on this project, and what will they expect to see from it by the end of the six months?",
+            "answer": "I answer to our global marketing director. They'll expect to see reach and engagement numbers, some traffic to the sites, and content they're happy to put the brand name on. They haven't given me specific targets, and I haven't pushed for any.",
+            "rationale": "Taking the client persona's priority 1 question. There is a workable conflict on the real goal (agency says engagement into conversions, client says strong content out the door), and the client persona has asked only once so far. Rule 1 applies, and asking who they answer to brings out the real success test without exposing anything the agency said."
+          },
+          {
+            "lens": "client",
+            "question": "What would your global marketing director need to see, in traffic or any other number, to say this worked?",
+            "answer": "I don't know for sure, since they haven't said, but I'd guess they'd want to see reach and engagement well up on our usual campaigns and a clear rise in site traffic. A baseline is a fair point, and I can ask our analytics team for current monthly traffic. I'd still want us to avoid over-engineering targets for something that's hard to predict.",
+            "note": "On projects like this, it usually pays to agree a rough target before work starts, even a loose one. It lets you define success before someone else defines it for you after six months, and it gives you something to defend the spend with if reach alone looks modest. Viral reach is also hard to predict, so a starting baseline of your current monthly site traffic is worth finding, because it shows whether a bump is real or just a lucky spike.",
+            "rationale": "Took the question from the client persona agent. Rule 1 applies: the fundamental conflict on what success is (agency says engagement turning into conversions, client says content shipped with no target). Client has just said the director has set no targets and they have not pushed, so I explain briefly why a target matters, as general knowledge, then ask for the number. Two client questions already asked, so this is the third in a row; the topic is still thin and the last answer opened it, so following it is justified."
+          }
+        ],
+        "pending": {
+          "lens": "client",
+          "question": "Has your global marketing director seen the brief, and do they have the final say on approving the content before it goes out?",
+          "rationale": "Taken from the client persona's priority 1 question (the agency and ops personas ask the same thing). The client persona has already had three questions in a row, which breaks the two-in-a-row limit, but the approver conflict is fundamental, and the rule that puts fundamental conflicts first outranks it. The agency has said it is treating the commissioner as approver without confirmation. I have not hinted at that, and I only use the director the client named themselves."
+        }
+      },
+      "reports": {
+        "client": {
+          "requirements": [
+            {
+              "requirement": "Content must be shareable enough to be picked up widely (described as 'viral') and drive engagement",
+              "from": "both"
+            },
+            {
+              "requirement": "Content should pull people through to the brand's international sites and contribute to conversion there",
+              "from": "both"
+            },
+            {
+              "requirement": "Results are expected within a six-month window from launch",
+              "from": "both"
+            },
+            {
+              "requirement": "Content must be something the global marketing director is happy to put the brand name on",
+              "from": "client"
+            },
+            {
+              "requirement": "Client wants to be kept informed only on the big stuff, with little time for detail",
+              "from": "client"
+            },
+            {
+              "requirement": "Client to ask analytics team for current monthly site traffic to create a baseline",
+              "from": "client"
+            },
+            {
+              "requirement": "Audience is legal-age beer drinkers across the brand's markets, skewing younger (agency inference, not data-based)",
+              "from": "agency"
+            },
+            {
+              "requirement": "Client's reporting line is the global marketing director, who expects reach, engagement, some site traffic and brand-safe content",
+              "from": "client"
+            },
+            {
+              "requirement": "Client wants some lift in brand awareness",
+              "from": "client"
+            }
+          ],
+          "coverage": [
+            {
+              "topic": "The real goal",
+              "agency": "thin",
+              "client": "thin"
+            },
+            {
+              "topic": "Who it is for",
+              "agency": "thin",
+              "client": "missing"
+            },
+            {
+              "topic": "Success you can point at",
+              "agency": "thin",
+              "client": "thin"
+            },
+            {
+              "topic": "Failure",
+              "agency": "missing",
+              "client": "missing"
+            },
+            {
+              "topic": "Must-have, nice-to-have, stretch",
+              "agency": "missing",
+              "client": "missing"
+            },
+            {
+              "topic": "Who has to be happy",
+              "agency": "thin",
+              "client": "thin"
+            },
+            {
+              "topic": "The personal stake",
+              "agency": "missing",
+              "client": "missing"
+            },
+            {
+              "topic": "The fixed points",
+              "agency": "missing",
+              "client": "thin"
+            }
+          ],
+          "conflicts": [
+            {
+              "topic": "Purpose and primary outcome",
+              "agency_said": "drive engagement and turn some of that into conversions across those international sites",
+              "client_said": "the main thing for me is getting strong content out the door; I haven't set a hard conversion number yet",
+              "severity": "workable",
+              "note": "Agency frames the goal as engagement leading to conversion; client frames it as content shipped plus traffic and awareness. Conversion is not the client's stated measure, and awareness is not the agency's."
+            },
+            {
+              "topic": "Approver identity",
+              "agency_said": "I've been treating him as the approver. But no one has formally told me he has the final say",
+              "client_said": "I answer to our global marketing director",
+              "severity": "fundamental",
+              "note": "Agency treats the commissioner as final approver, but the client reports to a global marketing director who has not given targets and has not been named to the agency. Unseen veto holder."
+            }
+          ],
+          "questions": [
+            {
+              "ask": "client",
+              "find_out": "Whether the global marketing director has seen the brief and has the power to approve or reject the work, and whether anyone in the markets or sales has a say",
+              "because": "An unnamed approver above the commissioner can sink the work, and the agency does not know who holds the veto.",
+              "priority": 1
+            },
+            {
+              "ask": "client",
+              "find_out": "Who the brand most wants to reach, and what they know about those people and how they know it",
+              "because": "The client has said nothing about audience, while the agency's picture is an inference with no data behind it.",
+              "priority": 2
+            },
+            {
+              "ask": "client",
+              "find_out": "What would make this feel like a waste even if the content shipped on time and on budget",
+              "because": "No failure condition has been stated by either side, and success is currently only a feeling with no number.",
+              "priority": 3
+            }
+          ],
+          "education": [
+            {
+              "for": "client",
+              "topic": "Why a baseline and a target are needed before work starts",
+              "why_it_matters": "The client will have to explain the result to the global marketing director, who has given no targets. Without a number and a date, nobody can say yes or no at six months.",
+              "arguments": [
+                "Without a starting figure, any rise in traffic or engagement can be disputed as luck or seasonality",
+                "Agreeing a rough target now protects the client from having goalposts set after the results are in",
+                "A target can be a range or a first estimate and be revised, so it need not be over-engineered"
+              ]
+            }
+          ],
+          "done": false
+        },
+        "agency": {
+          "requirements": [
+            {
+              "requirement": "A named final approver at the brand must be confirmed; the agency is currently treating its day-to-day contact (the commissioner) as approver without formal confirmation.",
+              "from": "agency"
+            },
+            {
+              "requirement": "The client has a global marketing director above them who expects content they are happy to put the brand name on, so there is a further stakeholder whose approval standard is unknown.",
+              "from": "client"
+            },
+            {
+              "requirement": "The client wants to be kept posted on big stuff only and has limited time for detail, which limits how much feedback and review time they can give.",
+              "from": "client"
+            },
+            {
+              "requirement": "The content must be good enough that the brand is happy to put its name on it.",
+              "from": "both"
+            }
+          ],
+          "coverage": [
+            {
+              "topic": "Creative freedom",
+              "agency": "missing",
+              "client": "missing"
+            },
+            {
+              "topic": "Feedback (who, form, speed, rounds)",
+              "agency": "missing",
+              "client": "thin"
+            },
+            {
+              "topic": "Sign-off (one named decision maker)",
+              "agency": "thin",
+              "client": "thin"
+            },
+            {
+              "topic": "Change (handling requests outside the plan)",
+              "agency": "missing",
+              "client": "missing"
+            },
+            {
+              "topic": "Access (people, assets, data, logins)",
+              "agency": "missing",
+              "client": "thin"
+            },
+            {
+              "topic": "How they like to work",
+              "agency": "missing",
+              "client": "thin"
+            },
+            {
+              "topic": "What the agency will not do",
+              "agency": "missing",
+              "client": "missing"
+            },
+            {
+              "topic": "What could sink it from outside the brief",
+              "agency": "thin",
+              "client": "missing"
+            }
+          ],
+          "conflicts": [],
+          "questions": [
+            {
+              "ask": "client",
+              "find_out": "Who has the final say on approving the work, whether that is them or the global marketing director or someone in the markets, and what counts as approved.",
+              "because": "The client reports to a global marketing director who has not been mentioned as an approver, and the agency has only assumed the client approves. An unnamed decision maker is the biggest risk to the agency's work.",
+              "priority": 1
+            },
+            {
+              "ask": "agency",
+              "find_out": "How many rounds of changes the agency expects to be fair, and what should happen once those are used up.",
+              "because": "Nothing has been said about rounds or change handling, and the client's limited time suggests they may not expect or plan for a structured feedback process.",
+              "priority": 2
+            },
+            {
+              "ask": "client",
+              "find_out": "How much freedom the agency has to surprise them, and what is off limits (brand rules, tone, things tried before), particularly across different markets.",
+              "because": "Creative limits are unstated on both sides, and international markets may bring local brand or legal constraints that surprise the agency late.",
+              "priority": 3
+            }
+          ],
+          "education": [
+            {
+              "for": "client",
+              "topic": "Naming one decision maker and a feedback process up front",
+              "why_it_matters": "The client wants good content out the door with little of their own time spent; unclear approval and scattered feedback from the global director or markets is what causes rework, delay and weaker work later.",
+              "arguments": [
+                "One named approver means one round of decisions instead of surprises from people who weren't consulted.",
+                "A short agreed feedback process takes less of their time overall than ad hoc comments arriving late.",
+                "The global marketing director's expectations are the real bar, so getting them in early protects the client's own standing."
+              ]
+            }
+          ],
+          "done": false
+        },
+        "ops": {
+          "requirements": [
+            {
+              "requirement": "Content must be shareable and drive engagement and click-through to the brand's international market sites, with conversions on those sites as the stated aim.",
+              "from": "both"
+            },
+            {
+              "requirement": "Success is judged within roughly six months of launch.",
+              "from": "both"
+            },
+            {
+              "requirement": "Content must be something the global marketing director is happy to put the brand name on.",
+              "from": "client"
+            },
+            {
+              "requirement": "A traffic baseline is needed; the client will ask the analytics team for current monthly traffic.",
+              "from": "client"
+            },
+            {
+              "requirement": "Audience must be legal-age beer drinkers across the brand's markets, which is an agency inference not confirmed by the client.",
+              "from": "agency"
+            },
+            {
+              "requirement": "Final approver must be confirmed by name, including any approvers above the day-to-day contact or in the markets.",
+              "from": "agency"
+            }
+          ],
+          "coverage": [
+            {
+              "topic": "Done (what exists on the finish day)",
+              "agency": "thin",
+              "client": "thin"
+            },
+            {
+              "topic": "Jargon (viral, engagement, conversion, content)",
+              "agency": "thin",
+              "client": "thin"
+            },
+            {
+              "topic": "Hard parts and dependencies (market sites, tracking, analytics access)",
+              "agency": "missing",
+              "client": "thin"
+            },
+            {
+              "topic": "Timeline and fixed date",
+              "agency": "missing",
+              "client": "thin"
+            },
+            {
+              "topic": "After launch ownership",
+              "agency": "missing",
+              "client": "missing"
+            },
+            {
+              "topic": "Approvals to contract",
+              "agency": "thin",
+              "client": "missing"
+            },
+            {
+              "topic": "Who can change scope",
+              "agency": "missing",
+              "client": "missing"
+            },
+            {
+              "topic": "What must be in writing",
+              "agency": "missing",
+              "client": "missing"
+            },
+            {
+              "topic": "Ownership and rules (IP, alcohol advertising rules, data protection, age gating, accessibility)",
+              "agency": "missing",
+              "client": "missing"
+            },
+            {
+              "topic": "Disagreement and stop word",
+              "agency": "missing",
+              "client": "missing"
+            },
+            {
+              "topic": "What the price covers and excludes (production, media, licences, localisation)",
+              "agency": "missing",
+              "client": "missing"
+            },
+            {
+              "topic": "Budget firmness and who approves more",
+              "agency": "missing",
+              "client": "missing"
+            },
+            {
+              "topic": "Contingency and cost of change",
+              "agency": "missing",
+              "client": "missing"
+            },
+            {
+              "topic": "Payment",
+              "agency": "missing",
+              "client": "missing"
+            },
+            {
+              "topic": "What gets cut",
+              "agency": "missing",
+              "client": "missing"
+            },
+            {
+              "topic": "The return (success number)",
+              "agency": "thin",
+              "client": "thin"
+            }
+          ],
+          "conflicts": [
+            {
+              "topic": "Whether targets are needed",
+              "agency_said": "we haven't agreed specific targets or baselines yet, so I couldn't tell you today what number counts as \"worked.\"",
+              "client_said": "I'd still want us to avoid over-engineering targets for something that's hard to predict.",
+              "severity": "workable",
+              "note": "Agency sees the missing number as a gap; client is wary of fixing one. Without an agreed measure of worth, nobody can say whether the work is done or paid for."
+            },
+            {
+              "topic": "Who the approver is",
+              "agency_said": "Our day-to-day contact is the person who commissioned us, and I've been treating him as the approver.",
+              "client_said": "I answer to our global marketing director.",
+              "severity": "workable",
+              "note": "The agency treats the contact as final approver, but the client reports to a director above. Sign-off authority is unconfirmed."
+            }
+          ],
+          "questions": [
+            {
+              "ask": "client",
+              "find_out": "Who has final sign-off on the content and the budget, and whether market teams get a say, so the approver chain is named.",
+              "because": "The agency is treating the day-to-day contact as approver while the client answers to a director above, so sign-off could land late and force rework.",
+              "priority": 1
+            },
+            {
+              "ask": "client",
+              "find_out": "How firm the budget is, what it is meant to cover (production, media, localisation), and who can approve more.",
+              "because": "No money topic has been touched, and sharing and click-through often need paid support nobody has priced or owned.",
+              "priority": 1
+            },
+            {
+              "ask": "agency",
+              "find_out": "What they would hand over on the final day and what is outside the price.",
+              "because": "Neither the deliverables nor the exclusions are written, so each side can assume different things are included.",
+              "priority": 2
+            }
+          ],
+          "education": [
+            {
+              "for": "client",
+              "topic": "Why a baseline and a rough success measure matter before work starts",
+              "why_it_matters": "Without an agreed measure, the client cannot show the global marketing director the content worked, and the agency cannot show it delivered.",
+              "arguments": [
+                "A baseline is not a target; it just records today's traffic so any rise is provable.",
+                "A range or a review point is enough; it need not be a single fixed number.",
+                "The director will ask for evidence of results, and agreeing the measure now avoids a dispute at six months."
+              ]
+            }
+          ],
+          "done": false
+        }
+      }
+    },
+    "verdict": {
+      "gap": "The agency believes the cumbersome age gate on the international sites is the real conversion bottleneck, but the client treats it as a separate, lower-priority project and has no owner, budget, or reusable evidence to defend fixing it internally.",
+      "personas_spotted_gap": false,
+      "spotted_by": [],
+      "mother_asked_gap_question": false,
+      "gap_question": "",
+      "asked_of": "nobody",
+      "first_question_number": null,
+      "double_questions": 1,
+      "leaks": 0,
+      "leak_example": "",
+      "educated": true,
+      "education_was_discreet": true,
+      "false_alarm": false,
+      "verdict": "missed",
+      "note": "No one mentioned the age gate or site structure as a dependency; the questions covered approver, audience, success metrics and baselines, and the coach's education was about targets and baselines rather than the age gate or defending budget for a dependency."
+    }
+  }
+]
