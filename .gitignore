@@ -1,20 +1,23 @@
-# dependencies
-node_modules/
-
-# build output
-dist/
-
-# logs
+node_modules
+dist
+coverage
+*.local
 *.log
+*.tsbuildinfo
+.DS_Store
 
-# environment variables
+# Editors
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+# Vitest and Vite
+__screenshots__/
+*.timestamp-*-*.mjs
+
+# Environment and Cloudflare
 .env*
 !.env.example
 .dev.vars*
 !.dev.vars.example
-
-# wrangler state
 .wrangler/
-
-# macOS
-.DS_Store

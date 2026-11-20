@@ -2,10 +2,37 @@
 
 Day 15 of 40 for 40, built live on Twitch on Friday 20 November 2026. It's the special guest day, so the problem comes from the guest rather than the pool. The pick is "Expectation Manager". Work is tracked on the Superthread `day15` board and the "Day 15" page.
 
-- **Form factor:** TBC.
+- **Form factor:** a web app, started from the kit's `web-app` template. It's at `build40for40.com/day15/` until the app has a name.
 - **Name:** the app doesn't have one yet, so the repo is `day15` until it does. Once it's named, anything web-facing is served at `build40for40.com/<app>/`.
 
 Shared 40 for 40 context lives in `../AGENTS.md`.
+
+## Stack
+
+- Vue 3 with `<script setup lang="ts">`, built with Vite.
+- Vitest with jsdom and `@vue/test-utils`. Unit tests sit next to their source as `*.test.ts`. Tests for Worker code start with `// @vitest-environment node`.
+- `@/` resolves to `src/`.
+- The Worker in `worker/` serves the API under `/day15/api/*`. Everything else under `/day15/` is a static file from `dist/day15/`.
+- Claude goes through the Vercel AI SDK (`ai` and `@ai-sdk/anthropic`, model `claude-sonnet-5-5`). `POST /day15/api/ask` streams structured output with `streamText` and `Output.object`, and the page reads it with `useObject` from `@ai-sdk/vue`. The zod schemas both sides share live in `src/ask/schema.ts`. Without an `ANTHROPIC_API_KEY` the endpoint answers 503.
+- Pass `onError` to every `streamText` and log only the error name: the default handler logs the whole request, which holds what the user typed.
+- In the browser, build API URLs from `import.meta.env.BASE_URL` (`${import.meta.env.BASE_URL}api/...`), never a hard-coded `/api`.
+
+## Commands
+
+- `npm run dev`: Vite on port 5173 plus `wrangler dev` on 8787, with Vite proxying `/day15/api` to the Worker. Open http://localhost:5173/day15/. Copy `.dev.vars.example` to `.dev.vars` and add an `ANTHROPIC_API_KEY` first.
+- `npm run fake`: Vite only, with `dev/fake-api.ts` standing in for the Worker, so the page clicks through with no key. Answers are canned, and production builds leave it out.
+- `npm test`: unit tests.
+- `npm run build`: type-check with `vue-tsc`, then build to `dist/day15/`.
+- `npm run deploy`: build, then deploy to production as the `40for40` wrangler profile. CI does this on every push to `main`, so it's only needed by hand before CI has its token.
+- Run wrangler as `npm run wrangler -- <args>`, never `npx wrangler`.
+
+## Hosting
+
+- A Cloudflare Worker named `day15` serves `dist/` as static assets on the `build40for40.com/day15` and `build40for40.com/day15/*` routes. Those routes run before the site's Worker, which owns the rest of the domain.
+- Vite builds with `base: '/day15/'` into `dist/day15/`, so the asset paths match the URL path. `run_worker_first` sends only `/day15/api/*` to the Worker code.
+- CI (`.github/workflows/ci.yml`) tests and builds every push and PR. Pushes to `main` deploy to production. PRs upload a preview version and comment its public `workers.dev` link, which is named after the branch.
+- Deploys need the `CLOUDFLARE_API_TOKEN` secret on the repo. Without it CI still tests and builds, and skips deploying.
+- The Worker needs the `ANTHROPIC_API_KEY` Cloudflare secret, set once with `npm run wrangler -- secret put ANTHROPIC_API_KEY`. Every Worker secret is listed, with an empty value, in `.dev.vars.example`.
 
 ## The problem
 
