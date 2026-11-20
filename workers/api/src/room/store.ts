@@ -1,3 +1,4 @@
+import type { Assessment } from '@day15/shared/alignment'
 import type { LensId } from '@day15/shared/lenses'
 import type {
   Ask,
@@ -124,6 +125,16 @@ export class RoomStore {
 
   async read(): Promise<RoomSnapshot | null> {
     return this.migrated ? room.readRoom(this.sql) : null
+  }
+
+  /** The mother agent's internal view. Only the coach reads it: it is not part of `read()`. */
+  async assessment(): Promise<Assessment | null> {
+    return this.migrated ? room.readAssessment(this.sql) : null
+  }
+
+  async saveAssessment(assessment: Assessment): Promise<void> {
+    this.exists()
+    room.writeAssessment(this.sql, assessment)
   }
 
   async saveLensRun(run: NewLensRun): Promise<LensRun> {
