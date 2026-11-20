@@ -1,18 +1,25 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
+import { afterEach, describe, expect, it } from 'vitest'
+import { mount } from '@vue/test-utils'
 
 import App from './App.vue'
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => window.history.replaceState(null, '', '/'))
 
 describe('App', () => {
-  it('shows the greeting from the API with the London time', async () => {
-    const greeting = { message: 'The Worker says hi.', at: '2026-11-02T09:00:00Z' }
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json(greeting)))
-
+  it('asks which side you are on', () => {
     const wrapper = mount(App)
-    await flushPromises()
+    expect(wrapper.findAll('nav a').map((link) => link.attributes('href'))).toEqual(['?as=agency', '?as=client'])
+  })
 
-    expect(wrapper.text()).toContain("The Worker says hi. It's 09:00 in London")
+  it('opens the coach for the side in the link', () => {
+    window.history.replaceState(null, '', '/?as=client')
+    const wrapper = mount(App)
+    expect(wrapper.text()).toContain('client side')
+    expect(wrapper.find('#project').exists()).toBe(true)
+  })
+
+  it('ignores a side it does not know', () => {
+    window.history.replaceState(null, '', '/?as=landlord')
+    expect(mount(App).find('nav').exists()).toBe(true)
   })
 })

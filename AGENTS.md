@@ -13,7 +13,9 @@ Shared 40 for 40 context lives in `../AGENTS.md`.
 - Vitest with jsdom and `@vue/test-utils`. Unit tests sit next to their source as `*.test.ts`. Tests for Worker code start with `// @vitest-environment node`.
 - `@/` resolves to `src/`.
 - The Worker in `worker/` serves the API under `/day15/api/*`. Everything else under `/day15/` is a static file from `dist/day15/`.
-- Claude goes through the Vercel AI SDK (`ai` and `@ai-sdk/anthropic`, model `claude-sonnet-5-5`). `POST /day15/api/ask` streams structured output with `streamText` and `Output.object`, and the page reads it with `useObject` from `@ai-sdk/vue`. The zod schemas both sides share live in `src/ask/schema.ts`. Without an `ANTHROPIC_API_KEY` the endpoint answers 503.
+- Claude goes through the Vercel AI SDK (`ai` and `@ai-sdk/anthropic`, model `claude-sonnet-5-5`). `POST /day15/api/coach` streams the coach's next question as structured output with `streamText` and `Output.object`, and the page reads it with `useObject` from `@ai-sdk/vue`. The zod schemas both sides share live in `src/coach/schema.ts`. Without an `ANTHROPIC_API_KEY` the endpoint answers 503.
+- The lenses are data in `src/coach/lenses.ts`: the label and blurb the page shows, and the `focus` the coach is told to dig into. `worker/prompt.ts` turns a party, a lens and the conversation so far into the instructions and messages.
+- Each side opens its own link, `?as=agency` or `?as=client`. Nothing is stored yet: a conversation lives in the page and is gone on refresh, and the two sides are not compared.
 - Pass `onError` to every `streamText` and log only the error name: the default handler logs the whole request, which holds what the user typed.
 - In the browser, build API URLs from `import.meta.env.BASE_URL` (`${import.meta.env.BASE_URL}api/...`), never a hard-coded `/api`.
 

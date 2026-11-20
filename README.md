@@ -6,7 +6,13 @@ A 40 for 40 app: Expectation Manager, which helps an agency and a client find th
 
 Special guest day. Agency plans are full of holes at the start, and the blind spots turn up once the money has gone. This talks to each side on its own, finds where they disagree, and helps them sort it out early.
 
-What we're building today is still being decided. So far this is the starter template, with a page that asks Claude a question.
+What's here so far:
+
+1. **Pick your side.** Agency or client, each with its own link.
+2. **Describe the project.** A few sentences in your own words.
+3. **Answer the coach.** It asks one question at a time through a lens you choose (money, delivery, agency, client or procurement).
+
+Not built yet: saving anything, comparing the two sides, and the project truth document.
 
 ## Develop
 

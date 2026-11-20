@@ -1,45 +1,34 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import CoachChat from './coach/CoachChat.vue'
+import { PARTIES, type Party } from './coach/schema'
 
-import AskForm from './ask/AskForm.vue'
-
-interface Greeting {
-  message: string
-  at: string
-}
-
-const greeting = ref<Greeting | null>(null)
-const failed = ref(false)
-
-const timeIn = (iso: string, timeZone?: string) =>
-  new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', minute: '2-digit' }).format(new Date(iso))
-
-const viewerInLondon = Intl.DateTimeFormat().resolvedOptions().timeZone === 'Europe/London'
-
-const when = computed(() => {
-  if (!greeting.value) return ''
-  const london = `${timeIn(greeting.value.at, 'Europe/London')} in London`
-  return viewerInLondon ? london : `${london} (${timeIn(greeting.value.at)} your time)`
-})
-
-onMounted(async () => {
-  try {
-    const response = await fetch(`${import.meta.env.BASE_URL}api/greeting`)
-    if (!response.ok) throw new Error(`The API answered ${response.status}`)
-    greeting.value = await response.json()
-  } catch {
-    failed.value = true
-  }
-})
+const asked = new URLSearchParams(window.location.search).get('as')
+const party = PARTIES.find((option) => option === asked) as Party | undefined
 </script>
 
 <template>
   <main>
-    <h1>Day 15</h1>
-    <p v-if="greeting">{{ greeting.message }} It's {{ when }}.</p>
-    <p v-else-if="failed">The Worker isn't answering. Is <code>npm run dev</code> running?</p>
-    <p v-else>Waking the Worker up…</p>
-    <AskForm />
+    <h1>Expectation Manager</h1>
+
+    <template v-if="party">
+      <p class="lede">
+        You're here for the <strong>{{ party }}</strong> side. The coach will ask you things the other lot would
+        want to know, before anyone spends the budget finding out the hard way.
+      </p>
+      <CoachChat :party="party" />
+    </template>
+
+    <template v-else>
+      <p class="lede">
+        A coach has a quiet word with each side of a project, one at a time, and finds the holes while they're
+        still cheap to fill.
+      </p>
+      <p>Which side are you on?</p>
+      <nav>
+        <a href="?as=agency">I'm the agency</a>
+        <a href="?as=client">I'm the client</a>
+      </nav>
+    </template>
   </main>
 </template>
 
@@ -47,6 +36,35 @@ onMounted(async () => {
 main {
   max-width: 40rem;
   margin: 0 auto;
-  padding: 1rem;
+  padding: 1.5rem 1rem 3rem;
+}
+
+h1 {
+  margin: 0 0 0.5rem;
+  font-size: 1.75rem;
+  line-height: 1.2;
+}
+
+.lede {
+  margin: 0 0 1.5rem;
+  color: var(--muted);
+}
+
+nav {
+  display: grid;
+  gap: 0.75rem;
+}
+
+a {
+  display: flex;
+  align-items: center;
+  min-height: 56px;
+  padding: 0 1.25rem;
+  border: 1px solid var(--ink);
+  border-radius: 0.75rem;
+  background: var(--card);
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
 }
 </style>
