@@ -10,6 +10,8 @@ export { ProjectRoom } from './project-room'
 
 interface Env {
   ANTHROPIC_API_KEY?: string
+  /** Only for keys that aren't scoped to a workspace. */
+  ANTHROPIC_WORKSPACE_ID?: string
   ROOMS: DurableObjectNamespace<ProjectRoom>
 }
 
@@ -55,7 +57,10 @@ async function coach(request: Request, env: Env, room: DurableObjectStub<Project
   const side = state?.sides[party]
   if (!state || !side) return noProject()
 
-  const anthropic = createAnthropic({ apiKey: env.ANTHROPIC_API_KEY })
+  const anthropic = createAnthropic({
+    apiKey: env.ANTHROPIC_API_KEY,
+    headers: env.ANTHROPIC_WORKSPACE_ID ? { 'anthropic-workspace-id': env.ANTHROPIC_WORKSPACE_ID } : undefined,
+  })
   const result = streamText({
     model: anthropic(MODEL),
     instructions: instructions(party, state),
