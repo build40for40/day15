@@ -11,11 +11,11 @@ import { OPEN_ROOM_TOOL, READ_ROOM_TOOL, SERVER_INSTRUCTIONS, TELL_COACH_TOOL } 
 
 async function setup() {
   const fixture = await fixtureRoom()
-  const env = { ROOMS: { getByName: () => fixture.stub } } as unknown as Env
+  const scheduleLensRounds = vi.fn(async () => true)
+  const env = { ROOMS: { getByName: () => Object.assign(fixture.stub, { scheduleLensRounds }) } } as unknown as Env
   const deps = {
     coachTurn: vi.fn(async () => ({ reply: 'Noted. What does done look like?', itemId: 1, noted: [], people: [], closed: [], ask: null })),
     openingBrief: vi.fn(async () => ({ reply: 'Hello Casey.', ask: null })),
-    runLensRounds: vi.fn(async () => {}),
   }
   const ctx = { waitUntil: vi.fn(), passThroughOnException: vi.fn(), props: {} } as unknown as ExecutionContext
   const url = `https://a-line.build40for40.com/mcp/${formatKey(FIXTURE_PROJECT.id, fixture.people.casey.secret)}`
@@ -39,7 +39,7 @@ async function setup() {
     const data = body.split('\n').find((line) => line.startsWith('data: '))
     return { status: response.status, message: JSON.parse(data ? data.slice(6) : body) }
   }
-  return { ...fixture, env, deps, ctx, url, handleMcp, rpc }
+  return { ...fixture, env, deps, ctx, scheduleLensRounds, url, handleMcp, rpc }
 }
 
 describe('handleMcp', () => {
@@ -79,10 +79,10 @@ describe('handleMcp', () => {
   })
 
   it('relays tell_coach for the caller the key names', async () => {
-    const { rpc, deps, people, ctx } = await setup()
+    const { rpc, deps, people, scheduleLensRounds } = await setup()
     const { message } = await rpc('tools/call', { name: TELL_COACH_TOOL.name, arguments: { message: 'Launch is July.' } })
     expect(message.result.content).toEqual([{ type: 'text', text: 'Noted. What does done look like?' }])
     expect(deps.coachTurn).toHaveBeenCalledWith(expect.anything(), expect.anything(), people.casey.participant, 'Launch is July.')
-    expect(ctx.waitUntil).toHaveBeenCalledOnce()
+    expect(scheduleLensRounds).toHaveBeenCalledOnce()
   })
 })

@@ -1,6 +1,9 @@
 import { DurableObject } from 'cloudflare:workers'
 
 import type { Env } from '../contracts'
+import { runLensRounds } from '../lenses'
+import { LensAlarm } from '../lenses/alarm'
+import { recordFailedRound } from '../lenses/rounds'
 import { RoomStore } from './store'
 
 type Args<K extends keyof RoomStore> = RoomStore[K] extends (...args: infer A) => unknown ? A : never
@@ -8,10 +11,27 @@ type Args<K extends keyof RoomStore> = RoomStore[K] extends (...args: infer A) =
 /** One per project, named by the project id: the data room both sides and the five lenses share. */
 export class ProjectRoom extends DurableObject<Env> {
   private readonly store: RoomStore
+  private readonly lenses: LensAlarm
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env)
     this.store = new RoomStore(ctx.storage.sql, (run) => ctx.storage.transactionSync(run))
+    this.lenses = new LensAlarm({
+      run: () => runLensRounds(env, this.store),
+      setAlarm: () => ctx.storage.setAlarm(Date.now()),
+      giveUp: () => recordFailedRound(this.store),
+    })
+  }
+
+  /** Has the alarm run the lenses soon, and returns at once. False when there is no project here. */
+  async scheduleLensRounds(): Promise<boolean> {
+    if (!(await this.store.project())) return false
+    await this.lenses.request()
+    return true
+  }
+
+  async alarm(info?: AlarmInvocationInfo) {
+    await this.lenses.alarm(info)
   }
 
   create(...args: Args<'create'>) {
@@ -65,10 +85,13 @@ export class ProjectRoom extends DurableObject<Env> {
   closeAsk(...args: Args<'closeAsk'>) {
     return this.store.closeAsk(...args)
   }
-  claimLensRounds() {
-    return this.store.claimLensRounds()
+  openQuestions() {
+    return this.store.openQuestions()
   }
-  releaseLensRounds(...args: Args<'releaseLensRounds'>) {
-    return this.store.releaseLensRounds(...args)
+  setQuestionPriorities(...args: Args<'setQuestionPriorities'>) {
+    return this.store.setQuestionPriorities(...args)
+  }
+  resolveQuestions(...args: Args<'resolveQuestions'>) {
+    return this.store.resolveQuestions(...args)
   }
 }

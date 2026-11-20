@@ -1,11 +1,24 @@
 import { LENS_IDS, type LensId } from '@day15/shared/lenses'
-import { OTHER_SIDE, SIDES, TOPICS, type LensReport, type Participant, type RoomSnapshot, type Side, type Topic } from '@day15/shared/schema'
+import {
+  OTHER_SIDE,
+  SIDES,
+  TOPICS,
+  type OpenQuestion,
+  type Participant,
+  type RoomSnapshot,
+  type Side,
+  type Topic,
+} from '@day15/shared/schema'
 
-export type CandidateKind = 'fundamental_conflict' | 'workable_conflict' | 'priority_gap' | 'least_heard' | 'missing_topic'
+export type CandidateKind = 'conflict' | 'gap' | 'missing_topic'
 
 /** Something the coach could ask this person next, in the order it should be considered. */
 export interface AskCandidate {
   kind: CandidateKind
+  /** The open question it comes from, or null for a brief topic nobody has covered. */
+  questionId: number | null
+  priority: number | null
+  severity: OpenQuestion['severity']
   lens: LensId | null
   topic: string
   /** What the coach needs to learn, for the model to phrase. */
@@ -82,55 +95,6 @@ function lensOrder(participant: Participant): LensId[] {
   return [...participant.lenses, ...LENS_IDS.filter((lens) => !participant.lenses.includes(lens))]
 }
 
-function reportsInOrder(room: RoomSnapshot, participant: Participant): [LensId, LensReport][] {
-  return lensOrder(participant).flatMap((lens) => {
-    const report = room.latestRuns[lens]?.report
-    return report && routedTo(room, participant, lens) ? [[lens, report] as [LensId, LensReport]] : []
-  })
-}
-
-function conflicts(reports: [LensId, LensReport][], severity: 'fundamental' | 'workable'): Found[] {
-  const seen = new Set<string>()
-  const found: Found[] = []
-  for (const [lens, report] of reports) {
-    for (const conflict of report.conflicts) {
-      const key = conflict.topic.trim().toLowerCase()
-      if (conflict.severity !== severity || seen.has(key)) continue
-      seen.add(key)
-      found.push({
-        kind: severity === 'fundamental' ? 'fundamental_conflict' : 'workable_conflict',
-        lens,
-        topic: conflict.topic,
-        findOut: `where they land on "${conflict.topic}": the agency said "${conflict.agency_said}" and the client said "${conflict.client_said}"`,
-        because: conflict.note,
-        question:
-          `The two sides seem to see "${sentence(conflict.topic)}" differently: the agency said "${conflict.agency_said}" ` +
-          `and the client said "${conflict.client_said}". Where do you land on it?`,
-      })
-    }
-  }
-  return found
-}
-
-function questionsFor(report: LensReport, participant: Participant) {
-  return report.questions.filter((question) => question.ask === participant.side).sort((a, b) => a.priority - b.priority)
-}
-
-function priorityGaps(reports: [LensId, LensReport][], participant: Participant): Found[] {
-  return reports.flatMap(([lens, report]) =>
-    questionsFor(report, participant)
-      .filter((question) => question.priority === 1)
-      .map((question) => ({
-        kind: 'priority_gap' as const,
-        lens,
-        topic: question.find_out,
-        findOut: question.find_out,
-        because: question.because,
-        question: askAbout(question.find_out),
-      })),
-  )
-}
-
 /** How many asks this person has had from each lens. */
 export function heardFrom(room: RoomSnapshot, participant: Participant): Record<LensId, number> {
   const counts = Object.fromEntries(LENS_IDS.map((lens) => [lens, 0])) as Record<LensId, number>
@@ -138,25 +102,32 @@ export function heardFrom(room: RoomSnapshot, participant: Participant): Record<
   return counts
 }
 
-function leastHeard(room: RoomSnapshot, reports: [LensId, LensReport][], participant: Participant): Found[] {
-  const counts = heardFrom(room, participant)
-  const order = lensOrder(participant)
-  return [...reports]
-    .sort(([a], [b]) => counts[a] - counts[b] || order.indexOf(a) - order.indexOf(b))
-    .flatMap(([lens, report]) => {
-      const best = questionsFor(report, participant)[0]
-      if (!best) return []
-      return [
-        {
-          kind: 'least_heard' as const,
-          lens,
-          topic: best.find_out,
-          findOut: best.find_out,
-          because: best.because,
-          question: askAbout(best.find_out),
-        },
-      ]
-    })
+function fromQuestion(question: OpenQuestion): Found {
+  const base = { questionId: question.id, priority: question.priority, severity: question.severity, lens: question.lens, topic: question.topic }
+  if (question.kind === 'gap') {
+    return { ...base, kind: 'gap', findOut: question.statement, because: question.because, question: askAbout(question.statement) }
+  }
+  const topic = question.topic || 'this'
+  return {
+    ...base,
+    kind: 'conflict',
+    findOut: `where they land on "${topic}": the agency said "${question.agencySaid}" and the client said "${question.clientSaid}"`,
+    because: question.statement,
+    question:
+      `The two sides seem to see "${sentence(topic)}" differently: the agency said "${question.agencySaid}" ` +
+      `and the client said "${question.clientSaid}". Where do you land on it?`,
+  }
+}
+
+/** Open questions for this person's side from lenses routed to them, in the room's most urgent first order. */
+function openQuestionsFor(room: RoomSnapshot, participant: Participant): Found[] {
+  return room.openQuestions
+    .filter(
+      (question) =>
+        (question.askSide === 'both' || question.askSide === participant.side) &&
+        routedTo(room, participant, question.lens),
+    )
+    .map(fromQuestion)
 }
 
 /** Brief topics nobody on this person's side has a standing fact on, their own lens's topics first. */
@@ -171,6 +142,9 @@ function missingTopics(room: RoomSnapshot, participant: Participant): Found[] {
     .sort((a, b) => order.indexOf(TOPIC_LENS[a]) - order.indexOf(TOPIC_LENS[b]))
     .map((topic) => ({
       kind: 'missing_topic' as const,
+      questionId: null,
+      priority: null,
+      severity: null,
       lens: TOPIC_LENS[topic],
       topic,
       findOut: `their side's view on ${topic.replace('_', ' ')}`,
@@ -180,21 +154,14 @@ function missingTopics(room: RoomSnapshot, participant: Participant): Found[] {
 }
 
 /**
- * What the coach could ask this person next, best first: fundamental conflicts, workable conflicts, priority 1
- * gaps for their side (their own lenses first), then the lens they have heard least from. Brief topics their side
- * has said nothing about come last, so a room with no lens reports yet still has something to ask. Only lenses
- * routed to this person count: ones they speak for, and ones nobody on their side speaks for.
+ * What the coach could ask this person next, best first: the open questions for their side, most urgent first
+ * (by priority, conflicts before gaps, then oldest), then brief topics their side has said nothing about, so a room
+ * with no lens reports yet still has something to ask. Only lenses routed to this person count: ones they speak
+ * for, and ones nobody on their side speaks for.
  */
 export function askCandidates(room: RoomSnapshot, participant: Participant): AskCandidate[] {
   if (LENS_IDS.every((lens) => room.latestRuns[lens]?.report?.done)) return []
-  const reports = reportsInOrder(room, participant)
-  const found: Found[] = [
-    ...conflicts(reports, 'fundamental'),
-    ...conflicts(reports, 'workable'),
-    ...priorityGaps(reports, participant),
-    ...leastHeard(room, reports, participant),
-    ...missingTopics(room, participant),
-  ]
+  const found: Found[] = [...openQuestionsFor(room, participant), ...missingTopics(room, participant)]
   return found.map((candidate) => ({
     ...candidate,
     unowned: !!candidate.lens && !participant.lenses.includes(candidate.lens),

@@ -8,7 +8,9 @@ Run it from `workers/api`:
 pnpm evals
 ```
 
-It needs `ANTHROPIC_API_KEY`, read from the environment or from `workers/api/.dev.vars` (never printed). Without one it stops straight away with a clear message and exit code 2, and no scores exist. It makes real model calls (two per case), so it is not part of `pnpm test`. It prints a pass and fail table and exits non-zero when any case fails.
+It needs `ANTHROPIC_API_KEY`, read from the environment or from `workers/api/.dev.vars` (never printed). Without one it stops straight away with a clear message and exit code 2, and no scores exist. It makes real model calls (two per case), so it is not part of `pnpm test`. It prints a pass and fail table and exits non-zero when any case fails. A model call that fails is reported by its error name only.
+
+In CI, run the "Evals" workflow by hand (`gh workflow run evals.yml -R build40for40/day15`). It runs only on demand, takes the organisation's `ANTHROPIC_API_KEY` secret as an environment variable, and writes the same table to the job summary.
 
 The judge is the same model as the coach, so treat scores as a regression signal, not proof.
 
@@ -18,9 +20,9 @@ Every case is scored on:
 
 - **faithful:** facts match what was said, with a real quote, corrections replace the old fact, hedges stay hedges.
 - **one_ask:** exactly one open ask is left for the speaker, about one thing.
-- **right_person:** the ask suits their persona and side.
+- **right_person:** the ask suits their side and the advisers they speak for, or one nobody on their side speaks for.
 - **no_repeat:** nothing already answered is asked again.
-- **urgent_first:** the most severe conflict the person can speak to comes first.
+- **urgent_first:** the most urgent open conflict the person can speak to comes first.
 - **no_invention:** nothing is made up.
 
 `-` in the table means the criterion did not apply.
@@ -33,7 +35,7 @@ Cases live in `cases.ts`.
 - **corrects-own-fact:** Robin changes his budget figure. The new fact replaces the old one.
 - **hedged-answer:** Pat hedges about IP. Facts stay tentative and nothing firm is added.
 - **no-facts-to-take:** Casey says thanks and asks what is next. No facts, one ask.
-- **urgent-conflict-first:** two fundamental conflicts and a minor one bait. Alex, an agency lead, is asked about a fundamental one.
-- **right-person-for-persona:** Dana, a delivery lead, answers about hosting. Her ask must be a delivery question, not a client one.
+- **urgent-conflict-first:** two fundamental conflicts and a minor delivery one bait. Alex, an agency lead who also speaks for the money, is asked about a fundamental one. Delivery is Dana's.
+- **right-person-for-persona:** Dana, a delivery lead, answers about hosting. Her ask must be a delivery question, not the money conflict (Alex's) or a client one.
 - **no-repeat-of-answered-ask:** Robin was already asked about hosting. The coach must not ask it again.
 - **confirms-lens-proposal:** Robin agrees with a lens proposed fact. The confirmation is recorded and the next ask moves on.

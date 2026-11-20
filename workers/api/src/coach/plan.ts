@@ -1,3 +1,4 @@
+import { toPriority } from '@day15/shared/priorities'
 import { parseRef } from '@day15/shared/refs'
 import {
   MAX_JOB_TITLE_LENGTH,
@@ -33,6 +34,10 @@ export interface NextAskPlan {
 export interface TurnPlan extends NextAskPlan {
   facts: NewPersonFact[]
   answered: number[]
+  /** Open questions this message settles. */
+  resolvedQuestions: number[]
+  /** Open questions the coach moved to a new priority. */
+  priorities: { id: number; priority: number }[]
   /** People named in the message, to add with no link. The room skips anyone already listed. */
   people: NewParticipant[]
   noted: string
@@ -141,12 +146,34 @@ export function planAnswered(output: CoachTurnOutput, room: RoomSnapshot): numbe
   return [...new Set(answered as number[])]
 }
 
+const openQuestionIds = (room: RoomSnapshot) => new Set(room.openQuestions.map((question) => question.id))
+
+/** Open questions the model says this message settles. */
+export function planResolvedQuestions(output: CoachTurnOutput, room: RoomSnapshot): number[] {
+  const open = openQuestionIds(room)
+  const ids = (output.resolved_questions ?? []).map((value) => parseRef('question', value))
+  return [...new Set(ids)].filter((id): id is number => id !== null && open.has(id))
+}
+
+/** New priorities for open questions, one per question, the last one winning. */
+export function planPriorities(output: CoachTurnOutput, room: RoomSnapshot, resolved: number[]): { id: number; priority: number }[] {
+  const open = openQuestionIds(room)
+  const changes = new Map<number, number>()
+  for (const change of output.reprioritise ?? []) {
+    const id = parseRef('question', change.question)
+    if (id !== null && open.has(id) && !resolved.includes(id)) changes.set(id, toPriority(change.priority))
+  }
+  return [...changes].map(([id, priority]) => ({ id, priority }))
+}
+
 /**
  * Leaves this person exactly one open ask: the one the model chose, or one of theirs it asked again. When the model
  * asks nothing, their oldest open ask stays, and failing that the best candidate becomes the ask.
  */
 export function planNextAsk(next: NextAskOutput | null, context: PlanContext & { answered: number[] }): NextAskPlan {
   const { room, participant, candidates, answered } = context
+  const chasing = next?.question ? parseRef('question', next.question) : null
+  const questionId = chasing !== null && openQuestionIds(room).has(chasing) ? chasing : null
   const open: Ask[] = room.asks.filter(
     (ask) => ask.addressedTo === participant.id && ask.status === 'open' && !answered.includes(ask.id),
   )
@@ -159,7 +186,13 @@ export function planNextAsk(next: NextAskOutput | null, context: PlanContext & {
     if (same) return { keep: same.id, ask: null, dropped: others(same.id), text }
     return {
       keep: null,
-      ask: { addressedTo: participant.id, ask: text, because: clip(next.because, MAX_STATEMENT_LENGTH), lens: next.lens },
+      ask: {
+        addressedTo: participant.id,
+        ask: text,
+        because: clip(next.because, MAX_STATEMENT_LENGTH),
+        lens: next.lens,
+        questionId,
+      },
       dropped: others(null),
       text,
     }
@@ -177,6 +210,7 @@ export function planNextAsk(next: NextAskOutput | null, context: PlanContext & {
       ask: clip(best.question, MAX_STATEMENT_LENGTH),
       because: clip(best.because, MAX_STATEMENT_LENGTH),
       lens: best.lens,
+      questionId: best.questionId,
     },
     dropped: [],
     text: best.question,
@@ -186,9 +220,12 @@ export function planNextAsk(next: NextAskOutput | null, context: PlanContext & {
 /** Everything one coach turn writes, worked out before anything is written. */
 export function planTurn(output: CoachTurnOutput, context: PlanContext & { item: Item }): TurnPlan {
   const answered = planAnswered(output, context.room)
+  const resolvedQuestions = planResolvedQuestions(output, context.room)
   return {
     facts: planFacts(output, context),
     answered,
+    resolvedQuestions,
+    priorities: planPriorities(output, context.room, resolvedQuestions),
     people: planPeople(output, context.participant),
     noted: output.noted.trim(),
     ...planNextAsk(output.next_ask, { ...context, answered }),

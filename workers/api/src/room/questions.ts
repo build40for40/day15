@@ -1,0 +1,215 @@
+import type { LensId } from '@day15/shared/lenses'
+import { toPriority } from '@day15/shared/priorities'
+import { parseRef } from '@day15/shared/refs'
+import {
+  type LensReport,
+  type LensRun,
+  type OpenQuestion,
+  type Severity,
+} from '@day15/shared/schema'
+import { all, first, type Sql } from './sql'
+
+type QuestionRow = {
+  id: number
+  kind: string
+  lens: string
+  topic: string
+  statement: string
+  because: string
+  agency_said: string | null
+  client_said: string | null
+  severity: string | null
+  ask_side: string
+  priority: number
+  based_on: string
+  status: string
+  raised_by_run: number
+  resolved_by_run: number | null
+  resolved_by_item: number | null
+  created_at: string
+  updated_at: string
+  closed_at: string | null
+}
+
+const toQuestion = (row: QuestionRow): OpenQuestion => ({
+  id: row.id,
+  kind: row.kind as OpenQuestion['kind'],
+  lens: row.lens as LensId,
+  topic: row.topic,
+  statement: row.statement,
+  because: row.because,
+  agencySaid: row.agency_said,
+  clientSaid: row.client_said,
+  severity: row.severity as Severity | null,
+  askSide: row.ask_side as OpenQuestion['askSide'],
+  priority: row.priority,
+  basedOn: JSON.parse(row.based_on) as number[],
+  status: row.status as OpenQuestion['status'],
+  raisedByRun: row.raised_by_run,
+  resolvedByRun: row.resolved_by_run,
+  resolvedByItem: row.resolved_by_item,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+  closedAt: row.closed_at,
+})
+
+const MOST_URGENT_FIRST = `ORDER BY priority, CASE kind WHEN 'conflict' THEN 0 ELSE 1 END, id`
+
+export function listOpenQuestions(sql: Sql): OpenQuestion[] {
+  return all<QuestionRow>(sql, `SELECT * FROM open_questions WHERE status = 'open' ${MOST_URGENT_FIRST}`).map(toQuestion)
+}
+
+export function getQuestion(sql: Sql, id: number): OpenQuestion | null {
+  const row = first<QuestionRow>(sql, 'SELECT * FROM open_questions WHERE id = ?', id)
+  return row ? toQuestion(row) : null
+}
+
+const SEVERITY_PRIORITY: Record<Severity, number> = { fundamental: 1, workable: 2, minor: 3 }
+
+const normalise = (text: string) => text.replace(/\s+/g, ' ').trim().toLowerCase()
+
+type Raised = Omit<OpenQuestion, 'id' | 'lens' | 'status' | 'raisedByRun' | 'resolvedByRun' | 'resolvedByItem' | 'createdAt' | 'updatedAt' | 'closedAt'> & {
+  sameAs: number | null
+}
+
+/** The same thing twice: a conflict on the same topic in the same words, or a gap asking the same side the same thing. */
+const sameThing = (a: Pick<OpenQuestion, 'kind' | 'topic' | 'statement' | 'agencySaid' | 'clientSaid' | 'askSide'>) =>
+  a.kind === 'conflict'
+    ? ['conflict', a.topic, a.agencySaid ?? '', a.clientSaid ?? ''].map(normalise).join('|')
+    : ['gap', a.askSide, a.statement].map(normalise).join('|')
+
+function citedFacts(texts: string[], facts: Set<number>): number[] {
+  const ids = texts.flatMap((text) => text.match(/\bf\d+\b/gi) ?? []).map((value) => parseRef('fact', value))
+  return [...new Set(ids)].filter((id): id is number => id !== null && facts.has(id))
+}
+
+function raisedBy(report: LensReport, facts: Set<number>): Raised[] {
+  const sameAs = (value: string | null | undefined) => (value ? parseRef('question', value) : null)
+  return [
+    ...report.conflicts.map((conflict) => ({
+      kind: 'conflict' as const,
+      topic: conflict.topic.trim(),
+      statement: conflict.note.trim(),
+      because: '',
+      agencySaid: conflict.agency_said.trim(),
+      clientSaid: conflict.client_said.trim(),
+      severity: conflict.severity,
+      askSide: 'both' as const,
+      priority: SEVERITY_PRIORITY[conflict.severity],
+      basedOn: citedFacts([conflict.agency_said, conflict.client_said, conflict.note], facts),
+      sameAs: sameAs(conflict.same_as),
+    })),
+    ...report.questions.map((question) => ({
+      kind: 'gap' as const,
+      topic: (question.topic ?? '').trim(),
+      statement: question.find_out.trim(),
+      because: question.because.trim(),
+      agencySaid: null,
+      clientSaid: null,
+      severity: null,
+      askSide: question.ask,
+      priority: toPriority(question.priority),
+      basedOn: citedFacts([question.find_out, question.because], facts),
+      sameAs: sameAs(question.same_as),
+    })),
+  ]
+}
+
+/**
+ * Turns one saved lens report into open questions. Each conflict and question updates the lens's own open row it
+ * names with `same_as`, or one it already has for the same thing, and is added as a new row otherwise. An update
+ * can make a row more urgent, never less, since the coach may have ranked it. The report then resolves the rows it
+ * lists in `resolved`, and all its other rows when it says it is done. Only a lens's own rows are touched.
+ */
+export function recordLensReport(sql: Sql, run: LensRun, now: Date): void {
+  const report = run.report
+  if (run.status !== 'done' || !report) return
+  const at = now.toISOString()
+  const facts = new Set(all<{ id: number }>(sql, 'SELECT id FROM facts').map((row) => row.id))
+  const open = all<QuestionRow>(sql, `SELECT * FROM open_questions WHERE status = 'open' AND lens = ?`, run.lens).map(toQuestion)
+  const touched = new Set<number>()
+
+  for (const raised of raisedBy(report, facts)) {
+    const key = sameThing(raised)
+    const existing = open.find(
+      (row) => !touched.has(row.id) && row.kind === raised.kind && (row.id === raised.sameAs || sameThing(row) === key),
+    )
+    const values = [
+      raised.topic,
+      raised.statement,
+      raised.because,
+      raised.agencySaid,
+      raised.clientSaid,
+      raised.severity,
+      raised.askSide,
+      raised.priority,
+      JSON.stringify(raised.basedOn),
+    ]
+    if (existing) {
+      sql.exec(
+        `UPDATE open_questions SET topic = ?, statement = ?, because = ?, agency_said = ?, client_said = ?, severity = ?,
+           ask_side = ?, priority = MIN(priority, ?), based_on = ?, updated_at = ? WHERE id = ?`,
+        ...values,
+        at,
+        existing.id,
+      )
+      touched.add(existing.id)
+    } else {
+      sql.exec(
+        `INSERT INTO open_questions (topic, statement, because, agency_said, client_said, severity, ask_side, priority,
+           based_on, kind, lens, raised_by_run, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ...values,
+        raised.kind,
+        run.lens,
+        run.id,
+        at,
+        at,
+      )
+    }
+  }
+
+  const resolved = new Set((report.resolved ?? []).map((value) => parseRef('question', value)))
+  for (const row of open) {
+    if (!resolved.has(row.id) && !(report.done && !touched.has(row.id))) continue
+    sql.exec(
+      `UPDATE open_questions SET status = 'resolved', resolved_by_run = ?, updated_at = ?, closed_at = ? WHERE id = ?`,
+      run.id,
+      at,
+      at,
+      row.id,
+    )
+  }
+}
+
+/** Moves open questions to a new priority. Closed ones and unknown ids are skipped. */
+export function setQuestionPriorities(sql: Sql, changes: { id: number; priority: number }[], now: Date): OpenQuestion[] {
+  const at = now.toISOString()
+  return changes.flatMap(({ id, priority }) => {
+    sql.exec(
+      `UPDATE open_questions SET priority = ?, updated_at = ? WHERE id = ? AND status = 'open'`,
+      toPriority(priority),
+      at,
+      id,
+    )
+    const row = getQuestion(sql, id)
+    return row?.status === 'open' ? [row] : []
+  })
+}
+
+/** Resolves open questions that a person's answer settles. Returns the ones it closed. */
+export function resolveQuestions(sql: Sql, ids: number[], itemId: number, now: Date): OpenQuestion[] {
+  const at = now.toISOString()
+  return ids.flatMap((id) => {
+    const row = getQuestion(sql, id)
+    if (row?.status !== 'open') return []
+    sql.exec(
+      `UPDATE open_questions SET status = 'resolved', resolved_by_item = ?, updated_at = ?, closed_at = ? WHERE id = ?`,
+      itemId,
+      at,
+      at,
+      id,
+    )
+    return [getQuestion(sql, id)!]
+  })
+}

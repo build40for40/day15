@@ -29,6 +29,16 @@ describe('lensPrompt', () => {
     const since = [facts.ownAll!, facts.fortnightlyBoard!, facts.budgetGap!].map((fact) => `f${fact.id}`).join(', ')
     expect(instructions).toContain(`when the newest fact was f${facts.wholeBudget!.id}.`)
     expect(instructions).toContain(`Facts that arrived since: ${since}.`)
-    expect(instructions).toContain('They are pricing two different projects.')
+  })
+
+  it('lists this lens its own open questions by id, and leaves them out of its last report', async () => {
+    const { room } = await fixtureRoom()
+    const snapshot = (await room.read())!
+    const cfo = lensPrompt('cfo', snapshot).instructions
+    const own = cfo.slice(cfo.indexOf('<open_questions>'), cfo.indexOf('</open_questions>'))
+    expect(own).toContain('q1 [high (1) priority] fundamental conflict on "What the price covers"')
+    expect(own).toContain('q2 [high (1) priority] gap, for the client side')
+    expect(cfo.match(/They are pricing two different projects\./g)).toHaveLength(1)
+    expect(lensPrompt('procurement', snapshot).instructions).toMatch(/<open_questions>\nNone\.\n<\/open_questions>/)
   })
 })

@@ -3,6 +3,7 @@ import type {
   Ask,
   AskStatus,
   CloseAsk,
+  OpenQuestion,
   Fact,
   Item,
   LensRun,
@@ -16,11 +17,10 @@ import type {
   RoomSnapshot,
 } from '@day15/shared/schema'
 import { hashSecret, newSecret } from './keys'
+import * as questions from './questions'
 import * as room from './room'
 import { hasSchema, migrate } from './schema'
 import type { Sql } from './sql'
-
-const LEASE_TTL_MS = 60 * 1000
 
 /**
  * Everything the ProjectRoom Durable Object does, over any SQLite. The Durable Object forwards each method here,
@@ -128,7 +128,7 @@ export class RoomStore {
 
   async saveLensRun(run: NewLensRun): Promise<LensRun> {
     this.exists()
-    return room.saveLensRun(this.sql, run, this.now())
+    return this.transaction(() => room.saveLensRun(this.sql, run, this.now()))
   }
 
   async latestRuns(): Promise<Partial<Record<LensId, LensRun>>> {
@@ -148,13 +148,17 @@ export class RoomStore {
     return room.closeAsk(this.sql, askId, close, this.now())
   }
 
-  /** A lease token when no lens rounds are running, or null (and the running set is told to go again). */
-  async claimLensRounds(): Promise<string | null> {
-    return room.claimLensRounds(this.sql, crypto.randomUUID(), this.now(), LEASE_TTL_MS)
+  async openQuestions(): Promise<OpenQuestion[]> {
+    return this.migrated ? questions.listOpenQuestions(this.sql) : []
   }
 
-  /** True when the caller should keep its lease and run another set of rounds. */
-  async releaseLensRounds(lease: string): Promise<boolean> {
-    return room.releaseLensRounds(this.sql, lease, this.now(), LEASE_TTL_MS)
+  async setQuestionPriorities(changes: { id: number; priority: number }[]): Promise<OpenQuestion[]> {
+    this.exists()
+    return this.transaction(() => questions.setQuestionPriorities(this.sql, changes, this.now()))
+  }
+
+  async resolveQuestions(ids: number[], itemId: number): Promise<OpenQuestion[]> {
+    this.exists()
+    return this.transaction(() => questions.resolveQuestions(this.sql, ids, itemId, this.now()))
   }
 }

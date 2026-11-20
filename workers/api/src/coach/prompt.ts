@@ -1,6 +1,7 @@
 import type { SystemModelMessage } from 'ai'
 
 import { LENS_IDS, LENS_NAMES, type LensId } from '@day15/shared/lenses'
+import { PRIORITY_MEANINGS, priorityLabel } from '@day15/shared/priorities'
 import { ref } from '@day15/shared/refs'
 import {
   PERSONA_NAMES,
@@ -23,23 +24,11 @@ const CACHED = { anthropic: { cacheControl: { type: 'ephemeral' } } } as const
 
 const oneLine = (text: string) => text.replace(/\s+/g, ' ').trim()
 
-function renderRun(run: LensRun, watermark: number): string {
+function renderRun(run: LensRun, room: RoomSnapshot): string {
   const report = run.report!
   const name = LENS_NAMES[run.lens]
-  const read = run.watermark < watermark ? `read up to ${ref('fact', run.watermark)}, newer facts not seen yet` : 'up to date'
+  const read = run.watermark < room.watermark ? `read up to ${ref('fact', run.watermark)}, newer facts not seen yet` : 'up to date'
   const lines = [`### ${name} adviser (${ref('lensRun', run.id)}, ${read})${report.done ? ': says it is done' : ''}`]
-
-  lines.push(
-    report.conflicts.length
-      ? report.conflicts
-          .map(
-            (conflict) =>
-              `- ${conflict.severity} conflict on "${oneLine(conflict.topic)}": the agency said "${oneLine(conflict.agency_said)}", ` +
-              `the client said "${oneLine(conflict.client_said)}". ${oneLine(conflict.note)}`,
-          )
-          .join('\n')
-      : '- No conflicts.',
-  )
 
   const thin = report.coverage.filter((topic) => topic.agency !== 'settled' || topic.client !== 'settled')
   lines.push(
@@ -48,29 +37,20 @@ function renderRun(run: LensRun, watermark: number): string {
       : 'Everything it covers is settled on both sides.',
   )
 
-  if (report.questions.length) {
-    lines.push(
-      'Wants to find out:\n' +
-        [...report.questions]
-          .sort((a, b) => a.priority - b.priority)
-          .map(
-            (question) =>
-              `- from the ${question.ask} side, priority ${question.priority}: ${oneLine(question.find_out)}. Because: ${oneLine(question.because)}`,
-          )
-          .join('\n'),
-    )
-  }
+  const open = room.openQuestions.filter((question) => question.lens === run.lens).map((question) => ref('question', question.id))
+  lines.push(open.length ? `Its open questions: ${open.join(', ')}.` : 'It has no open questions.')
   return lines.join('\n')
 }
 
-/** The newest report from each lens, for the coach to choose from. People never see these. */
+/** Where each lens stands, for the coach. Their open questions are in the room. People never see these. */
 export function renderReports(room: RoomSnapshot): string {
   return [
-    '# What the five advisers reported',
-    'Their newest reports. Facts they proposed are already in the room above as proposed facts.',
+    '# Where the five advisers stand',
+    'From their newest reports. What they found unresolved is in the open questions in the room above, and facts ' +
+      'they proposed are there as proposed facts.',
     ...LENS_IDS.map((lens) => {
       const run = room.latestRuns[lens]
-      return run?.report ? renderRun(run, room.watermark) : `### ${LENS_NAMES[lens]} adviser\nNo report yet.`
+      return run?.report ? renderRun(run, room) : `### ${LENS_NAMES[lens]} adviser\nNo report yet.`
     }),
   ].join('\n\n')
 }
@@ -133,12 +113,18 @@ function renderAsk(ask: Ask): string {
   return `- ${ref('ask', ask.id)}${lens}, ${status}: ${oneLine(ask.ask)}`
 }
 
-const KIND_LABELS: Record<AskCandidate['kind'], string> = {
-  fundamental_conflict: 'fundamental conflict',
-  workable_conflict: 'workable conflict',
-  priority_gap: 'priority 1 gap',
-  least_heard: 'least heard adviser',
-  missing_topic: 'nothing said yet',
+function candidateLabel(candidate: AskCandidate): string {
+  const kind =
+    candidate.kind === 'conflict' ? `${candidate.severity} conflict` : candidate.kind === 'gap' ? 'gap' : 'nothing said yet'
+  return [
+    candidate.questionId ? ref('question', candidate.questionId) : null,
+    candidate.priority ? `${priorityLabel(candidate.priority)} priority` : null,
+    kind,
+    candidate.lens,
+    candidate.unowned ? 'nobody on their side speaks for this' : null,
+  ]
+    .filter(Boolean)
+    .join(', ')
 }
 
 function renderPerson(room: RoomSnapshot, participant: Participant, candidates: AskCandidate[]): string {
@@ -156,14 +142,13 @@ function renderPerson(room: RoomSnapshot, participant: Participant, candidates: 
     `## Their open asks\n${open.length ? open.map(renderAsk).join('\n') : 'None.'}`,
     `## What they were asked before\n${past.length ? past.map(renderAsk).join('\n') : 'Nothing yet.'}`,
     `## Asks they have had from each adviser\n${LENS_IDS.map((lens) => `${LENS_NAMES[lens]} ${counts[lens]}`).join(', ')}.`,
-    `## Candidates for the next ask, best first\n` +
+    `## Candidates for the next ask, best first\n${PRIORITY_MEANINGS}\n` +
       (candidates.length
         ? candidates
             .slice(0, MAX_CANDIDATES)
             .map(
               (candidate, index) =>
-                `${index + 1}. [${KIND_LABELS[candidate.kind]}${candidate.lens ? `, ${candidate.lens}` : ''}` +
-                `${candidate.unowned ? ', nobody on their side speaks for this' : ''}] ` +
+                `${index + 1}. [${candidateLabel(candidate)}] ` +
                 `Find out ${oneLine(candidate.findOut)}. Because: ${oneLine(candidate.because)}`,
             )
             .join('\n')
@@ -178,9 +163,10 @@ export function turnPrompt(room: RoomSnapshot, participant: Participant, item: I
     renderPerson(room, participant, candidates),
     `## What they just said (${ref('item', item.id)})\n<message>\n${item.text}\n</message>`,
     'Take facts only from this message, quoting its exact words. Use ids exactly as they appear in the room ' +
-      '(f12, a4). If it names someone involved in the project who is not in the people list, add them to ' +
-      'people_mentioned. Then say what you noted and ask the one next thing, following your harness: take the ' +
-      'first candidate that still fits after this message, and skip any it has just answered.',
+      '(f12, a4, q7). If it names someone involved in the project who is not in the people list, add them to ' +
+      'people_mentioned. If it settles an open question, list it in resolved_questions. Then say what you noted ' +
+      'and ask the one next thing, following your harness: take the first candidate that still fits after this ' +
+      'message, skip any it has just answered, and give the open question it chases as question.',
   ].join('\n\n')
 }
 

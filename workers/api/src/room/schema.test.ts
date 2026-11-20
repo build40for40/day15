@@ -21,6 +21,11 @@ async function oldRoom() {
     created_at TEXT NOT NULL
   )`)
   sql.exec(OLD_PARTICIPANTS)
+  sql.exec(`CREATE TABLE asks (
+    id INTEGER PRIMARY KEY, addressed_to INTEGER NOT NULL, ask TEXT NOT NULL, because TEXT NOT NULL, lens TEXT,
+    status TEXT NOT NULL DEFAULT 'open', answered_by INTEGER, created_at TEXT NOT NULL, closed_at TEXT
+  )`)
+  sql.exec(`INSERT INTO asks (addressed_to, ask, because, created_at) VALUES (1, 'Is that with VAT?', '', '2026-11-19T09:00:00Z')`)
   sql.exec(`INSERT INTO project VALUES (1, 'project-1', 'A fake biscuit site', 'user_fake', '2026-11-19T09:00:00Z')`)
   sql.exec(
     `INSERT INTO participants (side, persona, name, key_hash, created_at) VALUES ('client', 'cfo', 'Robin Fakeworth', ?, ?)`,
@@ -59,6 +64,13 @@ describe('migrate', () => {
     )
     expect(secret).toBeNull()
     expect(participant).toMatchObject({ hasLink: false, lenses: ['procurement'] })
+  })
+
+  it('adds the open questions table, and a question link to the asks a room made before them already has', async () => {
+    const sql = await oldRoom()
+    const room = new RoomStore(sql, (run) => sql.transaction(run))
+    expect(await room.asks()).toMatchObject([{ ask: 'Is that with VAT?', questionId: null }])
+    expect(await room.openQuestions()).toEqual([])
   })
 
   it('leaves a migrated room alone the next time it starts', async () => {

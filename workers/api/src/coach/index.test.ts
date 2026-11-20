@@ -28,7 +28,7 @@ describe('runCoachTurn', () => {
       answered_asks: ['a1'],
       confirmed: [{ fact: ref('fact', facts.budgetGap!.id), quote: 'we read the budget differently' }],
       noted: 'Got it: voice means tone.',
-      next_ask: { ask: 'What does the £60k need to cover?', because: 'Budget gap.', lens: 'cfo', same_as: null },
+      next_ask: { ask: 'What does the £60k need to cover?', because: 'Budget gap.', lens: 'cfo', same_as: null, question: null },
     })
 
     const reply = await runCoachTurn(generate, stub, casey, 'We mean the tone. Fair, we read the budget differently.')
@@ -42,7 +42,7 @@ describe('runCoachTurn', () => {
 
     const [roomText, reports, harness] = calls[0]!.instructions.map((part) => part.content)
     expect(roomText).toMatch(/^# The data room for "/)
-    expect(reports).toMatch(/^# What the five advisers reported/)
+    expect(reports).toMatch(/^# Where the five advisers stand/)
     expect(harness).toMatch(/^# Coach harness/)
     expect(calls[0]!.prompt).toContain('We mean the tone.')
   })
@@ -80,6 +80,28 @@ describe('runCoachTurn', () => {
     expect(await room.participants()).toHaveLength(before + 1)
   })
 
+  it('re-ranks open questions, resolves the ones the answer settles, and links the next ask to its question', async () => {
+    const { room, stub, people } = await fixtureRoom()
+    const { generate } = fake({
+      facts: [],
+      answered_asks: [],
+      confirmed: [],
+      resolved_questions: ['q2'],
+      reprioritise: [
+        { question: 'q1', priority: 3 },
+        { question: 'q2', priority: 1 },
+      ],
+      noted: 'Noted: the board decides.',
+      next_ask: { ask: 'Which of the two readings of the £60k is yours?', because: 'b', lens: 'cfo', same_as: null, question: 'q1' },
+    })
+
+    const reply = await runCoachTurn(generate, stub, people.robin.participant, 'If hosting pushes us over, the board decides.')
+
+    expect((await room.openQuestions()).map((question) => [question.id, question.priority])).toEqual([[1, 3]])
+    expect((await room.read())!.openQuestions).toHaveLength(1)
+    expect(reply.ask).toMatchObject({ questionId: 1 })
+  })
+
   it('keeps what the person said even when the model is not set up', async () => {
     const { room, stub, people } = await fixtureRoom()
     const { generate } = fake(new ModelUnavailableError())
@@ -104,7 +126,7 @@ describe('runOpeningBrief', () => {
     const casey = people.casey.participant
     const { generate, calls } = fake({
       reply: 'Hi Casey! You are the client marketing lead on Orchard Dash.',
-      next_ask: { ask: 'Quick one: tone of voice, or a character that talks?', because: 'b', lens: 'client', same_as: 'a1' },
+      next_ask: { ask: 'Quick one: tone of voice, or a character that talks?', because: 'b', lens: 'client', same_as: 'a1', question: null },
     })
 
     const brief = await runOpeningBrief(generate, stub, casey)

@@ -21,13 +21,13 @@ describe('coachInstructions', () => {
 })
 
 describe('renderReports', () => {
-  it('shows each lens report, flags one that has not seen the newest facts, and notes lenses with none', async () => {
+  it('shows where each lens stands and its open questions, flags one that has not seen the newest facts, and notes lenses with none', async () => {
     const { room } = await fixtureRoom()
     const text = renderReports((await room.read())!)
     expect(text).toContain('### CFO adviser (r1, read up to f11, newer facts not seen yet)')
-    expect(text).toContain('- fundamental conflict on "What the price covers"')
     expect(text).toContain('Contingency (agency missing, client missing)')
-    expect(text).toContain('- from the client side, priority 1: what happens if hosting pushes the total past £60k.')
+    expect(text).toContain('Its open questions: q1, q2.')
+    expect(text).not.toContain('What the price covers')
     expect(text).toContain('### Procurement adviser\nNo report yet.')
   })
 })

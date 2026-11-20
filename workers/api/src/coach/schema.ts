@@ -29,6 +29,17 @@ export const nextAskSchema = z.object({
     .string()
     .nullable()
     .describe("The id (like a4) of this person's open ask when you are asking it again, otherwise null."),
+  question: z
+    .string()
+    .nullable()
+    .describe('The id (like q7) of the open question this ask chases, or null when it chases none.'),
+})
+
+const reprioritySchema = z.object({
+  question: z.string().describe('The id (like q7) of an open question.'),
+  priority: z
+    .number()
+    .describe('Its new priority as a number: 1 high ("ask this next"), 2 medium ("soon"), 3 low ("when there is a gap").'),
 })
 
 const mentionedPersonSchema = z.object({
@@ -51,6 +62,14 @@ export const coachTurnOutputSchema = z.object({
     .array(mentionedPersonSchema)
     .optional()
     .describe('People named in this message who are involved in the project and not in the people list yet.'),
+  resolved_questions: z
+    .array(z.string())
+    .optional()
+    .describe('Ids (like q7) of open questions this message settles. Only ones it really settles.'),
+  reprioritise: z
+    .array(reprioritySchema)
+    .optional()
+    .describe('Open questions whose priority should change after this message. Empty when none should.'),
   noted: z.string().describe('One or two warm sentences playing back what you noted. No question here.'),
   next_ask: nextAskSchema.nullable().describe('The one next thing you need from this person, or null if nothing.'),
 })

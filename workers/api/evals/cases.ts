@@ -55,7 +55,7 @@ export const CASES: EvalCase[] = [
     speaker: 'alex',
     message: 'Quick note from our side: the soft launch build is due to the client in week eight, and we can show them a prototype in week three.',
     expect:
-      'The cfo report has a fundamental conflict on what the price covers, and the procurement report has a fundamental conflict on who owns the IP. The cto report has only a minor conflict about demo dates, but its question has priority 1 to bait. The ask to Alex, an agency lead, should go to a fundamental conflict an agency lead can speak to (hosting and fees, or the engine and IP), not the minor demo dates.',
+      'The open questions hold two fundamental conflicts at priority 1: what the price covers (CFO adviser, which Alex speaks for) and who owns the IP (procurement adviser, which nobody on the agency side speaks for, so it may come to Alex marked as nobody\'s). A minor conflict about demo dates and a priority 1 delivery question bait, but delivery belongs to Dana, who speaks for it on the agency side. The ask to Alex should go to one of the two fundamental conflicts (hosting and fees, or the engine and IP), not the demo dates.',
     setup: async ({ room, facts }) => {
       await room.saveLensRun({
         lens: 'procurement',
@@ -100,13 +100,23 @@ export const CASES: EvalCase[] = [
     speaker: 'dana',
     message: "For hosting we'd use our usual cloud setup, around four hundred pounds a month, and we'd keep the app store accounts in our name.",
     expect:
-      "Dana is a delivery lead on the agency side. The coach should record the hosting cost and the store account facts faithfully. Its ask must suit a delivery lead (delivery, hosting, timeline, technical dependencies) and must not ask her something only the client can answer, like the client's brand board or budget limits.",
-    setup: async ({ room, people }) => {
+      "Dana is a delivery lead on the agency side and speaks for the delivery adviser, which has an open priority 1 question for the agency side about who runs the app after launch. The coach should record the hosting cost and the store account facts faithfully. Its ask must suit a delivery lead (delivery, hosting, timeline, technical dependencies). It must not ask her about the money conflict, which goes to Alex, who speaks for the CFO adviser on the agency side, nor anything only the client can answer, like the client's brand board or budget limits.",
+    setup: async ({ room, people, facts }) => {
       await room.addAsk({
         addressedTo: people.casey.participant.id,
         ask: 'How often does the brand board meet?',
         because: 'Sign off cadence drives the timeline.',
         lens: 'client',
+      })
+      await room.saveLensRun({
+        lens: 'cto',
+        round: 1,
+        watermark: facts.wholeBudget!.id,
+        status: 'done',
+        report: report(
+          [],
+          [{ ask: 'agency', find_out: 'who runs and patches the app once it is live', because: 'Nobody owns it after launch.', priority: 1 }],
+        ),
       })
     },
   },

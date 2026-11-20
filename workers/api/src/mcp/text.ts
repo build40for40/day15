@@ -46,8 +46,9 @@ export const READ_ROOM_TOOL = {
   name: 'read_room',
   title: 'Read the project room',
   description:
-    "Read what the project room holds: what each side has said, topic by topic, with anything not yet confirmed marked as proposed, and where the agency and the client don't line up yet. Call it when the person asks what has been said or agreed, what's still open, or where the sides disagree. Show it to them plainly. It never replaces telling the coach something.",
+    "Read what the project room holds: what each side has said, topic by topic, with anything not yet confirmed marked as proposed, then the open questions, most urgent first, including where the agency and the client don't line up yet. Call it when the person asks what has been said or agreed, what's still open, or where the sides disagree. Show it to them plainly. It never replaces telling the coach something.",
   topic: 'Only this topic. Leave it out for the whole room.',
+  onlyOpenQuestions: 'True for just the open questions, without the facts.',
   annotations: readOnly,
 }
 
@@ -68,8 +69,8 @@ export const TOPIC_LABELS: Record<Topic, string> = {
 export const COACH_FAILED = "The coach couldn't get to that just now. Try again in a minute."
 export const NO_PROJECT = 'This project room is empty: the project may have been removed.'
 export const NO_FACTS = 'Nothing has been said about this yet.'
-export const NO_CONFLICTS = 'Nothing spotted so far.'
-export const CONFLICTS_HEADING = "Where the sides don't line up yet"
+export const NO_OPEN_QUESTIONS = 'Nothing open right now.'
+export const OPEN_QUESTIONS_HEADING = 'Still open, most urgent first'
 export const PROPOSED = 'Proposed, not confirmed yet:'
 export const NOT_CHECKED = "The coach hasn't checked these against each other yet."
 export const CHECKED_UP_TO = (factRef: string) => `Checked up to ${factRef}. Anything newer is still being checked.`

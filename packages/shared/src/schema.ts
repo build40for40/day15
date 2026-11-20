@@ -176,6 +176,12 @@ export const factSchema = z.object({
 
 const coverageLevel = z.enum(['settled', 'thin', 'missing'])
 
+export const SEVERITIES = ['fundamental', 'workable', 'minor'] as const
+export type Severity = (typeof SEVERITIES)[number]
+
+/** The id (like q7) of one of this lens's own open questions that this item is, when it is not new. */
+const sameAs = z.string().nullable().optional()
+
 /** What one lens reports. The field names match persona-harnesses/README.md. */
 export const personaReportSchema = z.object({
   coverage: z.array(z.object({ topic: z.string(), agency: coverageLevel, client: coverageLevel })),
@@ -184,11 +190,23 @@ export const personaReportSchema = z.object({
       topic: z.string(),
       agency_said: z.string(),
       client_said: z.string(),
-      severity: z.enum(['fundamental', 'workable', 'minor']),
+      severity: z.enum(SEVERITIES),
       note: z.string(),
+      same_as: sameAs,
     }),
   ),
-  questions: z.array(z.object({ ask: sideSchema, find_out: z.string(), because: z.string(), priority: z.number() })),
+  questions: z.array(
+    z.object({
+      ask: sideSchema,
+      find_out: z.string(),
+      because: z.string(),
+      priority: z.number(),
+      topic: z.string().optional(),
+      same_as: sameAs,
+    }),
+  ),
+  /** Ids (like q7) of this lens's own open questions that the room now settles. */
+  resolved: z.array(z.string()).optional(),
   done: z.boolean(),
 })
 
@@ -217,6 +235,38 @@ export const newLensRunSchema = z.object({
 
 export const lensRunSchema = newLensRunSchema.extend({ id, createdAt: timestamp })
 
+export const QUESTION_KINDS = ['conflict', 'gap'] as const
+export const QUESTION_STATUSES = ['open', 'resolved', 'dropped'] as const
+export const ASK_SIDES = ['agency', 'client', 'both'] as const
+
+/** One unresolved thing a lens raised: a conflict between the sides, or a gap one side needs to fill. */
+export const openQuestionSchema = z.object({
+  id,
+  kind: z.enum(QUESTION_KINDS),
+  lens: lensSchema,
+  topic: z.string(),
+  /** What is unresolved: a conflict's note, or what a gap needs to find out. */
+  statement: z.string(),
+  /** Why a gap matters. Empty for a conflict, whose statement says it. */
+  because: z.string(),
+  agencySaid: z.string().nullable(),
+  clientSaid: z.string().nullable(),
+  severity: z.enum(SEVERITIES).nullable(),
+  /** Which side needs to answer. A conflict needs both. */
+  askSide: z.enum(ASK_SIDES),
+  /** 1 high, 2 medium, 3 low: see `priorities`. */
+  priority: z.number().int().min(1).max(3),
+  basedOn: z.array(id),
+  status: z.enum(QUESTION_STATUSES),
+  raisedByRun: id,
+  resolvedByRun: id.nullable(),
+  /** The item whose answer the coach judged settles it. */
+  resolvedByItem: id.nullable(),
+  createdAt: timestamp,
+  updatedAt: timestamp,
+  closedAt: timestamp.nullable(),
+})
+
 export const ASK_STATUSES = ['open', 'answered', 'dropped'] as const
 export type AskStatus = (typeof ASK_STATUSES)[number]
 
@@ -226,10 +276,13 @@ export const newAskSchema = z.object({
   ask: z.string().trim().min(1).max(MAX_STATEMENT_LENGTH),
   because: z.string().trim().max(MAX_STATEMENT_LENGTH),
   lens: lensSchema.nullable(),
+  /** The open question this ask is chasing. */
+  questionId: id.nullable().optional(),
 })
 
 export const askSchema = newAskSchema.extend({
   id,
+  questionId: id.nullable(),
   status: z.enum(ASK_STATUSES),
   /** The item that answered it. */
   answeredBy: id.nullable(),
@@ -251,6 +304,8 @@ export const roomSnapshotSchema = z.object({
   asks: z.array(askSchema),
   /** The newest finished run of each lens. */
   latestRuns: z.partialRecord(lensSchema, lensRunSchema),
+  /** Every open question, most urgent first: by priority, conflicts before gaps, then oldest. */
+  openQuestions: z.array(openQuestionSchema),
   /** The highest fact id in the room. */
   watermark: z.number().int().min(0),
 })
@@ -269,6 +324,7 @@ export type ProposedFact = z.infer<typeof proposedFactSchema>
 export type LensReport = z.infer<typeof lensReportSchema>
 export type NewLensRun = z.infer<typeof newLensRunSchema>
 export type LensRun = z.infer<typeof lensRunSchema>
+export type OpenQuestion = z.infer<typeof openQuestionSchema>
 export type NewAsk = z.infer<typeof newAskSchema>
 export type Ask = z.infer<typeof askSchema>
 export type CloseAsk = z.infer<typeof closeAskSchema>

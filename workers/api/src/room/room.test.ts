@@ -7,13 +7,11 @@ import {
   addFacts,
   addItem,
   addParticipant,
-  claimLensRounds,
   closeAsk,
   createProject,
   latestRuns,
   listAsks,
   readRoom,
-  releaseLensRounds,
   RoomError,
   saveLensRun,
 } from './room'
@@ -110,16 +108,5 @@ describe('the room', () => {
     expect(closed).toMatchObject({ status: 'answered', answeredBy: item.id, closedAt: now.toISOString() })
     expect(closeAsk(sql, ask.id, { status: 'dropped' }, now)!.status).toBe('answered')
     expect(listAsks(sql, { status: 'open' }).map((open) => open.addressedTo)).toEqual([agency.id])
-  })
-
-  it('runs one set of lens rounds at a time, and has the running set go again when asked meanwhile', () => {
-    const { sql } = room()
-    const ttl = 60_000
-    expect(claimLensRounds(sql, 'first', now, ttl)).toBe('first')
-    expect(claimLensRounds(sql, 'second', now, ttl)).toBeNull()
-    expect(releaseLensRounds(sql, 'first', now, ttl)).toBe(true)
-    expect(releaseLensRounds(sql, 'first', now, ttl)).toBe(false)
-    expect(claimLensRounds(sql, 'third', now, ttl)).toBe('third')
-    expect(claimLensRounds(sql, 'fourth', new Date(now.getTime() + ttl + 1), ttl)).toBe('fourth')
   })
 })

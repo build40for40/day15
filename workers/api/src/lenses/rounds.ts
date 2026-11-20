@@ -1,25 +1,26 @@
 import { LENS_IDS, LENS_NAMES, type LensId } from '@day15/shared/lenses'
 import { lensReportSchema, type LensReport, type RoomSnapshot } from '@day15/shared/schema'
-import { LENS_ROUNDS_BUDGET_MS, MAX_LENS_ROUNDS, type Env, type RoomStub, type RunLensRounds } from '../contracts'
+import { MAX_LENS_ROUNDS, type Env, type LensRoom, type RunLensRounds } from '../contracts'
 import { logModelError, ModelUnavailableError } from '../model'
 import { renderRoom } from '../room/render'
 import { lensPrompt, type LensPrompt } from './prompt'
 import { toLensFacts } from './proposals'
 
-const MIN_ROUND_MS = 8_000
+/** How long one lens call may take before it is aborted and saved as failed. */
+export const LENS_CALL_TIMEOUT_MS = 90_000
 
 /** One lens reading one snapshot. Injected so tests never reach the model. */
 export type CallLens = (env: Env, lens: LensId, prompt: LensPrompt, signal: AbortSignal) => Promise<LensReport>
 
 export interface LensRoundsOptions {
-  /** How long a set of rounds may take, inside the time `ctx.waitUntil` gives after the response. */
-  budgetMs?: number
-  /** A round only starts with at least this much of the budget left. */
-  minRoundMs?: number
-  now?: () => number
+  timeoutMs?: number
 }
 
-async function saveProposals(room: RoomStub, lensRunId: number, report: LensReport, snapshot: RoomSnapshot) {
+/** Settles when the signal aborts, even if the call it guards never listens to it. */
+const aborted = (signal: AbortSignal) =>
+  new Promise<never>((_resolve, reject) => signal.addEventListener('abort', () => reject(signal.reason), { once: true }))
+
+async function saveProposals(room: LensRoom, lensRunId: number, report: LensReport, snapshot: RoomSnapshot) {
   let added = 0
   for (const fact of toLensFacts(report.proposed_facts ?? [], lensRunId, snapshot)) {
     try {
@@ -34,17 +35,19 @@ async function saveProposals(room: RoomStub, lensRunId: number, report: LensRepo
 
 async function runLens(
   env: Env,
-  room: RoomStub,
+  room: LensRoom,
   callLens: CallLens,
   snapshot: RoomSnapshot,
   roomText: string,
   lens: LensId,
   round: number,
-  signal: AbortSignal,
+  timeoutMs: number,
 ): Promise<boolean> {
   let report: LensReport | null = null
   try {
-    const parsed = lensReportSchema.safeParse(await callLens(env, lens, lensPrompt(lens, snapshot, roomText), signal))
+    const signal = AbortSignal.timeout(timeoutMs)
+    const answer = await Promise.race([callLens(env, lens, lensPrompt(lens, snapshot, roomText), signal), aborted(signal)])
+    const parsed = lensReportSchema.safeParse(answer)
     if (parsed.success) report = parsed.data
     else logModelError(`The ${LENS_NAMES[lens]} lens`, parsed.error)
   } catch (error) {
@@ -58,55 +61,45 @@ async function runLens(
 /** All five lenses on one snapshot, each saved as soon as it answers. True when any of them added a fact. */
 async function runRound(
   env: Env,
-  room: RoomStub,
+  room: LensRoom,
   callLens: CallLens,
   snapshot: RoomSnapshot,
   round: number,
-  signal: AbortSignal,
+  timeoutMs: number,
 ): Promise<boolean> {
   const roomText = renderRoom(snapshot)
   const results = await Promise.allSettled(
-    LENS_IDS.map((lens) => runLens(env, room, callLens, snapshot, roomText, lens, round, signal)),
+    LENS_IDS.map((lens) => runLens(env, room, callLens, snapshot, roomText, lens, round, timeoutMs)),
   )
   const failed = results.find((result) => result.status === 'rejected')
   if (failed) throw failed.reason
   return results.some((result) => result.status === 'fulfilled' && result.value)
 }
 
-async function runRounds(env: Env, room: RoomStub, callLens: CallLens, timeLeft: () => number, minRoundMs: number) {
-  for (let round = 1; round <= MAX_LENS_ROUNDS && timeLeft() >= minRoundMs; round++) {
-    const snapshot = await room.read()
-    if (!snapshot) return
-    if (!(await runRound(env, room, callLens, snapshot, round, AbortSignal.timeout(Math.max(timeLeft(), 0))))) return
-  }
-}
-
-/**
- * Builds runLensRounds around a model call. One set of rounds runs per room at a time, and a call meanwhile queues
- * one more. Everything stops inside the budget and the lease is always released, so the runtime cutting off
- * `ctx.waitUntil` never leaves the room locked.
- */
-export function lensRounds(
-  callLens: CallLens,
-  { budgetMs = LENS_ROUNDS_BUDGET_MS, minRoundMs = MIN_ROUND_MS, now = Date.now }: LensRoundsOptions = {},
-): RunLensRounds {
+/** Builds runLensRounds around a model call. */
+export function lensRounds(callLens: CallLens, { timeoutMs = LENS_CALL_TIMEOUT_MS }: LensRoundsOptions = {}): RunLensRounds {
   return async (env, room) => {
-    const deadline = now() + budgetMs
-    const timeLeft = () => deadline - now()
     try {
-      const lease = await room.claimLensRounds()
-      if (!lease) return
-      let again: boolean
-      do {
-        try {
-          await runRounds(env, room, callLens, timeLeft, minRoundMs)
-        } catch (error) {
-          logModelError('Lens rounds', error)
-        }
-        again = await room.releaseLensRounds(lease)
-      } while (again)
+      for (let round = 1; round <= MAX_LENS_ROUNDS; round++) {
+        const snapshot = await room.read()
+        if (!snapshot) return
+        if (!(await runRound(env, room, callLens, snapshot, round, timeoutMs))) return
+      }
     } catch (error) {
       logModelError('Lens rounds', error)
     }
+  }
+}
+
+/** Saves a failed run for every lens on the room as it is now, for a set of rounds that is given up on. */
+export async function recordFailedRound(room: LensRoom): Promise<void> {
+  try {
+    const snapshot = await room.read()
+    if (!snapshot) return
+    for (const lens of LENS_IDS) {
+      await room.saveLensRun({ lens, round: 1, watermark: snapshot.watermark, report: null, status: 'failed' })
+    }
+  } catch (error) {
+    logModelError('Recording failed lens runs', error)
   }
 }

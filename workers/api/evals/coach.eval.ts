@@ -1,4 +1,6 @@
 // @vitest-environment node
+import { appendFileSync } from 'node:fs'
+
 import { afterAll, describe, expect, it } from 'vitest'
 
 import { anthropicGenerate, runCoachTurn } from '../src/coach/index'
@@ -18,9 +20,19 @@ describe('coach turn', () => {
       const speaker = fixture.people[testCase.speaker].participant
       const before = (await fixture.room.read())!
 
-      const reply = await runCoachTurn(generate, fixture.stub, speaker, testCase.message)
-      const after = (await fixture.room.read())!
-      const judgement = await judge(generate, { before, speaker, message: testCase.message, expect: testCase.expect, reply, after })
+      let reply: Awaited<ReturnType<typeof runCoachTurn>>
+      let after: NonNullable<Awaited<ReturnType<typeof fixture.room.read>>>
+      let judgement: Awaited<ReturnType<typeof judge>>
+      try {
+        reply = await runCoachTurn(generate, fixture.stub, speaker, testCase.message)
+        after = (await fixture.room.read())!
+        judgement = await judge(generate, { before, speaker, message: testCase.message, expect: testCase.expect, reply, after })
+      } catch (error) {
+        const name = error instanceof Error ? error.name : 'Unknown error'
+        const scores = Object.fromEntries(CRITERIA.map((criterion) => [criterion, 'error'])) as Record<Criterion, string>
+        results.push({ id: testCase.id, scores, failures: [`error: ${name}`] })
+        throw new Error(`The model call failed: ${name}`)
+      }
 
       const failures: string[] = []
       const scores = {} as Record<Criterion, string>
@@ -43,7 +55,7 @@ describe('coach turn', () => {
   }
 
   afterAll(() => {
-    const mark = (value: string) => (value === 'pass' ? 'pass' : value === 'na' ? '-' : 'FAIL')
+    const mark = (value: string) => (value === 'pass' ? 'pass' : value === 'na' ? '-' : value === 'error' ? 'ERROR' : 'FAIL')
     const width = Math.max(...CASES.map((testCase) => testCase.id.length))
     const lines = [
       '',
@@ -54,5 +66,21 @@ describe('coach turn', () => {
     for (const result of failed) lines.push('', `${result.id}:`, ...result.failures.map((failure) => `  ${failure}`))
     lines.push('', `${results.length - failed.length}/${CASES.length} cases passed`)
     console.log(lines.join('\n'))
+
+    const summary = process.env.GITHUB_STEP_SUMMARY
+    if (!summary) return
+    const cell = (text: string) => text.replace(/\|/g, '\\|').replace(/\s+/g, ' ')
+    const markdown = [
+      '## Coach evals',
+      '',
+      `| case | ${CRITERIA.join(' | ')} |`,
+      `| --- | ${CRITERIA.map(() => '---').join(' | ')} |`,
+      ...results.map((result) => `| ${result.id} | ${CRITERIA.map((name) => mark(result.scores[name])).join(' | ')} |`),
+      '',
+      `**${results.length - failed.length}/${CASES.length} cases passed**`,
+      ...(failed.length ? ['', '### Why', '', ...failed.flatMap((result) => result.failures.map((failure) => `- **${result.id}:** ${cell(failure)}`))] : []),
+      '',
+    ]
+    appendFileSync(summary, markdown.join('\n'))
   })
 })

@@ -1,6 +1,7 @@
 import { LENS_NAMES } from '@day15/shared/lenses'
+import { PRIORITY_MEANINGS, priorityLabel } from '@day15/shared/priorities'
 import { ref } from '@day15/shared/refs'
-import { PERSONA_NAMES, type Ask, type Fact, type Participant, type RoomSnapshot } from '@day15/shared/schema'
+import { PERSONA_NAMES, type Ask, type Fact, type OpenQuestion, type Participant, type RoomSnapshot } from '@day15/shared/schema'
 
 const oneLine = (text: string) => text.replace(/\s+/g, ' ').trim()
 
@@ -45,17 +46,34 @@ export function renderPerson(person: Participant): string {
   )
 }
 
+/** One open question on one line, with the lens that raised it, for the coach and the lenses. */
+export function renderQuestion(question: OpenQuestion): string {
+  const what = question.kind === 'conflict' ? `${question.severity} conflict` : 'gap'
+  const topic = oneLine(question.topic) ? ` on "${oneLine(question.topic)}"` : ''
+  const side = question.askSide === 'both' ? 'both sides' : `the ${question.askSide} side`
+  const head =
+    `${ref('question', question.id)} [${priorityLabel(question.priority)} priority] ${what}${topic}, for ${side}, raised by the ` +
+    `${LENS_NAMES[question.lens]} lens in ${ref('lensRun', question.raisedByRun)}`
+  const body =
+    question.kind === 'conflict'
+      ? `the agency said "${oneLine(question.agencySaid ?? '')}", the client said "${oneLine(question.clientSaid ?? '')}". ${oneLine(question.statement)}`
+      : `find out ${oneLine(question.statement)}.${question.because ? ` Because: ${oneLine(question.because)}` : ''}`
+  return `${head}: ${body}`.trimEnd()
+}
+
 function renderAsk(ask: Ask, people: Map<number, Participant>): string {
   const who = people.get(ask.addressedTo)
   const to = who ? `${ref('participant', who.id)} ${who.name}` : ref('participant', ask.addressedTo)
   const lens = ask.lens ? `, for the ${LENS_NAMES[ask.lens]} lens` : ''
+  const chasing = ask.questionId ? `, chasing ${ref('question', ask.questionId)}` : ''
   const because = ask.because ? ` Because: ${oneLine(ask.because)}` : ''
-  return `${ref('ask', ask.id)} to ${to}${lens}: ${oneLine(ask.ask)}${because}`
+  return `${ref('ask', ask.id)} to ${to}${lens}${chasing}: ${oneLine(ask.ask)}${because}`
 }
 
 /**
  * The whole room as text, the one way any model reads it. The project and the facts come first and only ever
- * grow at the end, so the text before the people and asks stays the same between calls and caches well.
+ * grow at the end, so the text before the people, open questions and asks stays the same between calls and caches
+ * well.
  */
 export function renderRoom(room: RoomSnapshot): string {
   const people = new Map(room.participants.map((participant) => [participant.id, participant]))
@@ -70,6 +88,9 @@ export function renderRoom(room: RoomSnapshot): string {
     room.facts.length ? room.facts.map(renderFact).join('\n') : 'No facts yet.',
     '## People',
     room.participants.length ? room.participants.map(renderPerson).join('\n') : 'Nobody yet.',
+    '## Open questions, most urgent first',
+    `What the lenses found still unresolved. ${PRIORITY_MEANINGS}`,
+    room.openQuestions.length ? room.openQuestions.map(renderQuestion).join('\n') : 'None.',
     '## Open asks',
     open.length ? open.map((ask) => renderAsk(ask, people)).join('\n') : 'None.',
   ].join('\n\n')

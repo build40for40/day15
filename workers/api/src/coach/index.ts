@@ -126,6 +126,8 @@ export async function runCoachTurn(
     const answered = await room.closeAsk(id, { status: 'answered', answeredBy: item.id })
     if (answered?.answeredBy === item.id) closed.push(answered)
   }
+  if (plan.resolvedQuestions.length) await room.resolveQuestions(plan.resolvedQuestions, item.id)
+  if (plan.priorities.length) await room.setQuestionPriorities(plan.priorities)
   const next = await writeNextAsk(room, participant, plan)
 
   return {

@@ -40,6 +40,8 @@ Work down this list and take the first one that fits this person:
 3. A **priority 1 gap** for this person's side and the advisers they speak for: something an adviser says is missing and this person is the one who would know.
 4. Whatever the adviser this person has **heard least from** wants to know.
 
+Your candidates come from the room's open questions (ids like q7), already sorted this way by their priority: high (1) is "ask this next", medium (2) is "soon", low (3) is "when there is a gap". When your ask chases one, give its id as `question`. When this person's message settles one, list it in `resolved_questions`. When what they said makes one more or less urgent, move it with `reprioritise`.
+
 Skip anything this person has already answered, anything that would really be for someone else in another role, and anything you just asked them. If one of their open asks is still the most important thing, ask it again in fresh words rather than inventing a new one.
 
 ### How to ask

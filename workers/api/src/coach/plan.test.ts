@@ -111,10 +111,10 @@ describe('planAnswered', () => {
 describe('planNextAsk', () => {
   it('adds the model’s ask and drops the person’s other open asks', async () => {
     const context = await setup()
-    const plan = planNextAsk({ ask: 'Who signs off?', because: 'b', lens: 'agency', same_as: null }, { ...context, answered: [] })
+    const plan = planNextAsk({ ask: 'Who signs off?', because: 'b', lens: 'agency', same_as: null, question: null }, { ...context, answered: [] })
     expect(plan).toEqual({
       keep: null,
-      ask: { addressedTo: context.participant.id, ask: 'Who signs off?', because: 'b', lens: 'agency' },
+      ask: { addressedTo: context.participant.id, ask: 'Who signs off?', because: 'b', lens: 'agency', questionId: null },
       dropped: [1],
       text: 'Who signs off?',
     })
@@ -122,7 +122,7 @@ describe('planNextAsk', () => {
 
   it('keeps an open ask the model is asking again, in its new words', async () => {
     const context = await setup()
-    const plan = planNextAsk({ ask: 'Voice: tone or talking?', because: 'b', lens: 'client', same_as: 'a1' }, { ...context, answered: [] })
+    const plan = planNextAsk({ ask: 'Voice: tone or talking?', because: 'b', lens: 'client', same_as: 'a1', question: null }, { ...context, answered: [] })
     expect(plan).toEqual({ keep: 1, ask: null, dropped: [], text: 'Voice: tone or talking?' })
   })
 
@@ -147,7 +147,7 @@ describe('planTurn', () => {
   it('does not drop an ask the same message answered', async () => {
     const context = await setup()
     const plan = planTurn(
-      output({ answered_asks: ['a1'], next_ask: { ask: 'Next?', because: 'b', lens: null, same_as: 'a1' } }),
+      output({ answered_asks: ['a1'], next_ask: { ask: 'Next?', because: 'b', lens: null, same_as: 'a1', question: null } }),
       context,
     )
     expect(plan.answered).toEqual([1])

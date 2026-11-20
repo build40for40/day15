@@ -98,4 +98,14 @@ describe('renderRoom', () => {
     expect(text).toContain('Nobody yet.')
     expect(text).toContain('## Open asks\n\nNone.')
   })
+
+  it('lists open questions most urgent first after the people, outside the fact prefix', async () => {
+    const { room } = await fixtureRoom()
+    await room.setQuestionPriorities([{ id: 1, priority: 2 }])
+    const text = renderRoom((await room.read())!)
+    const open = text.slice(text.indexOf('## Open questions'), text.indexOf('## Open asks'))
+    expect(text.indexOf('## Open questions')).toBeGreaterThan(text.indexOf('## People'))
+    expect(open.indexOf('q2 [high (1) priority] gap, for the client side, raised by the CFO lens in r1')).toBeGreaterThan(0)
+    expect(open.indexOf('q2 ')).toBeLessThan(open.indexOf('q1 [medium (2) priority] fundamental conflict on "What the price covers"'))
+  })
 })

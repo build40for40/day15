@@ -1,6 +1,7 @@
 import type { Ask, Fact, Participant } from '@day15/shared/schema'
 import type { TeamDirectory } from './directory/team-directory'
 import type { ProjectRoom } from './room/project-room'
+import type { RoomStore } from './room/store'
 
 export interface Env {
   ANTHROPIC_API_KEY?: string
@@ -21,8 +22,6 @@ export type DirectoryStub = DurableObjectStub<TeamDirectory>
 export const API_PATH = '/api'
 export const MCP_PATH = '/mcp'
 export const MAX_LENS_ROUNDS = 3
-/** Lens rounds run in `ctx.waitUntil`, which the runtime cuts off about 30 seconds after the response. */
-export const LENS_ROUNDS_BUDGET_MS = 25_000
 
 /** What the coach hands back after a person says something. */
 export interface CoachReply {
@@ -59,11 +58,14 @@ export type CoachTurn = (env: Env, room: RoomStub, participant: Participant, mes
 /** What the coach says when someone opens the room. */
 export type OpeningBriefFn = (env: Env, room: RoomStub, participant: Participant) => Promise<OpeningBrief>
 
+/** What lens rounds need from a room. The ProjectRoom runs them on its own store, from its alarm. */
+export type LensRoom = Pick<RoomStore, 'read' | 'saveLensRun' | 'addFacts'>
+
 /**
- * Runs all five lenses on one snapshot, again while a round adds proposed facts, at most MAX_LENS_ROUNDS times and
- * within LENS_ROUNDS_BUDGET_MS. Never throws.
+ * Runs all five lenses on one snapshot, all five again on a fresh one while a round adds proposed facts, at most
+ * MAX_LENS_ROUNDS times. Never throws.
  */
-export type RunLensRounds = (env: Env, room: RoomStub) => Promise<void>
+export type RunLensRounds = (env: Env, room: LensRoom) => Promise<void>
 
 /** Everything under MCP_PATH. */
 export type HandleMcp = (request: Request, env: Env, ctx: ExecutionContext) => Promise<Response>

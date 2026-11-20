@@ -43,10 +43,11 @@ Every persona harness runs as a lens inside the same wrapper, [`wrapper.md`](wra
 Each lens call is one prompt in two parts. The whole data room comes first, rendered by `renderRoom` in `workers/api/src/room/render.ts`: every fact on its own line in id order, then the people (with the lenses each speaks for) and the open asks. It is the same text for all five lenses in a round, so it caches well. The wrapper comes after it, with three slots:
 
 - `{{persona}}` takes the persona file.
-- `{{previous}}` takes the lens's own last report, the newest fact it had seen then (its watermark) and the ids of the facts that arrived since. A lens that has never reported is told everything is new.
+- `{{previous}}` takes the lens's own last report without its conflicts and questions, the newest fact it had seen then (its watermark) and the ids of the facts that arrived since. A lens that has never reported is told everything is new.
+- `{{open_questions}}` takes the lens's own open questions, each with its id (`q7`).
 - `{{topics}}` takes the fixed list of fact topics.
 
-A lens never addresses a person. It writes only for the coach, which is the one agent people talk to. It does not repeat a conflict or question from its last report unless a fact that arrived since changes it, but always gives coverage in full.
+A lens never addresses a person. It writes only for the coach, which is the one agent people talk to. It does not repeat one of its open questions: it names the one a changed conflict or question updates with `same_as`, and resolves the ones the room now settles with `resolved`. It always gives coverage in full.
 
 ## What every persona harness sends back
 
@@ -61,12 +62,21 @@ A lens never addresses a person. It writes only for the coach, which is the one 
       "agency_said": "their words (f3)",
       "client_said": "their words (f9)",
       "severity": "fundamental | workable | minor",
-      "note": "one sentence on why it matters"
+      "note": "one sentence on why it matters",
+      "same_as": "q7, only when this updates one of your open questions"
     }
   ],
   "questions": [
-    { "ask": "agency | client", "find_out": "what the coach needs to learn", "because": "one sentence", "priority": 1 }
+    {
+      "ask": "agency | client",
+      "find_out": "what the coach needs to learn",
+      "because": "one sentence",
+      "priority": 1,
+      "topic": "one of the persona's topics",
+      "same_as": "q8, only when this updates one of your open questions"
+    }
   ],
+  "resolved": ["q3"],
   "done": false,
   "proposed_facts": [
     { "topic": "budget", "statement": "Estimate: app store fees add a yearly cost.", "based_on": ["f1", "f9"] }
@@ -76,18 +86,29 @@ A lens never addresses a person. It writes only for the coach, which is the one 
 
 - **settled** means a stranger could read the answer and know what was meant. **thin** means it was touched but is vague, or uses a word the other side might read differently. **missing** means nobody has said it.
 - **fundamental** means the project should not start until it is sorted (the two sides want different things, or one cannot give what the other needs). **workable** means a trade-off will fix it. **minor** means it only needs writing down.
-- **priority** is 1 for "ask this next", 2 for "soon", 3 for "when there is a gap".
+- **priority** is a number with a label: high (1) for "ask this next", medium (2) for "soon", low (3) for "when there is a gap". Give the number.
 - **done** is true when every topic is settled on both sides and there are no open conflicts.
+- **same_as**, **topic** and **resolved** are optional. `same_as` names the lens's own open question that a conflict or question updates, and `resolved` lists the ones the room now settles. A report that says `done` resolves all of that lens's open questions.
 - **proposed_facts** is optional, and most reports leave it empty. A lens proposes a fact only when it follows from facts in the room, which it cites in `based_on`, or when it is safe general knowledge it labels as an estimate. It may set `supersedes` only to replace an earlier lens fact, never what a person said.
 
 ## How the reports are used
 
-After each coach turn, the Worker runs the lenses in rounds, outside the Durable Object so slow model calls never hold up the room.
+After each coach turn, the coach's reply goes back to the person at once, and the project's room sets its alarm. The lenses run from that alarm, inside the room but outside any storage write, so the room keeps answering while they think.
 
-1. Every round takes one snapshot of the room and runs its lenses on it in parallel. Round 1 runs all five.
-2. Each run is saved with its watermark and report. A lens that errors or sends back something that isn't a report is saved as failed, and the rest of the round carries on.
-3. Proposed facts go into the room as proposed lens facts. The Worker drops any that cite no fact in the room, repeat a fact that still holds, or try to replace a person's words, and keeps at most three per report.
-4. If a round added a fact, the lenses that added one run again on a fresh snapshot. The others sit out. There are never more than three rounds.
-5. Only one set of rounds runs per room at a time. A coach turn that lands while rounds are running makes that set go once more when it finishes.
+1. Every round takes one snapshot of the room and runs all five lenses on it in parallel.
+2. Each run is saved with its watermark and report as soon as that lens answers. A lens that errors, sends back something that isn't a report, or takes longer than its timeout is aborted and saved as failed, and the rest of the round carries on.
+3. Saving a report turns its conflicts and questions into open questions (below), and keeps the report as it came for the record.
+4. Proposed facts go into the room as proposed lens facts. The Worker drops any that cite no fact in the room, repeat a fact that still holds, or try to replace a person's words, and keeps at most three per report.
+5. If a round added a fact, all five lenses run again on a fresh snapshot. There are never more than three rounds.
+6. Only one set of rounds runs per room at a time. However many coach turns land while a set is running, exactly one more set runs after it, on the newer room.
 
-The coach reads the room and each lens's latest report, and turns what they say into its one next ask for the person in front of it. Only the coach asks people things.
+### Open questions
+
+Every conflict and question a lens raises becomes a row in the room's open questions, with an id like `q7`, and stays open until it is resolved, whichever report it came from.
+
+- Priority has three levels, stored as a number and shown with its label: high (1) "ask this next", medium (2) "soon", low (3) "when there is a gap". The mapping lives in `packages/shared/src/priorities.ts`.
+- A fundamental conflict starts high (1), a workable one medium (2) and a minor one low (3). A question keeps the priority its lens gave it. The coach may move any open question to another level.
+- A conflict or question updates the lens's own open question it names in `same_as`, or one it already has for the same thing, and is added as a new row otherwise. An update can make a row more urgent, never less.
+- A lens resolves its own open questions with `resolved`, or all of them by saying it is done. The coach resolves one when a person's answer settles it.
+
+The coach works down the open questions for the person in front of it, most urgent first (by priority, conflicts before gaps, then oldest), from the lenses that person speaks for and the ones nobody on their side speaks for, and turns the first that fits into its one next ask. Only the coach asks people things.
