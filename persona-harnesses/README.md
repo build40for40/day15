@@ -10,7 +10,7 @@ Neither the agency nor the client ever sees a persona, its name or its report. T
 | `personas/agency.md` | Agency | The team's ability to do good work |
 | `personas/procurement.md` | Procurement | That it can be built, is paid for and is written down. Covers the milestone items for scope, budget, onboarding and the contract |
 
-`personas/cfo.md` and `personas/delivery.md` are no longer loaded: the procurement persona carries money and delivery now. They stay until Samira removes them.
+There used to be CFO and delivery personas too. The procurement persona carries money and delivery now, and those two files have been removed.
 
 ## The mother agent
 
