@@ -12,6 +12,11 @@ Neither the agency nor the client ever sees a persona, its name or its report. T
 | `personas/procurement.md` | Procurement | The agreement, and the bad day |
 | `personas/delivery.md` | Delivery | The promise being buildable |
 
+## Who owns what
+
+- **The five files in `personas/`** are Samira's. Each is one persona's Actor, Instructions and Mission, and nothing else. Changes to who a persona is, what it covers or what it asks go there.
+- **Everything in this README below the AIM section** is Ben's: the shared wrapper, the report format and how the brain uses the reports. It may change to fit the architecture without the persona files needing to.
+
 ## AIM: Actor, Instructions, Mission
 
 Every persona harness is written in the same three parts.

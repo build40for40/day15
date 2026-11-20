@@ -40,7 +40,7 @@ Shared 40 for 40 context lives in `../AGENTS.md`.
 
 ## Persona harnesses
 
-`persona-harnesses/` holds the five persona harnesses (client, agency, CFO, procurement, delivery) as plain markdown, with the shared wrapper and report format in its `README.md`. Each is written as AIM: Actor, Instructions, Mission. Each one reads what both sides have said and reports to the main brain. They are drafts under review and are not wired into the Worker yet: the prototype still uses the shorter personas in `worker/personas.ts`.
+`persona-harnesses/` holds the five persona harnesses (client, agency, CFO, procurement, delivery) as plain markdown, with the shared wrapper and report format in its `README.md`. Each is written as AIM: Actor, Instructions, Mission. Samira owns the five persona files. Ben owns the shared wrapper, the report format and how they are wired in, so don't change those when asked to edit a persona. Each one reads what both sides have said and reports to the main brain. They are drafts under review and are not wired into the Worker yet: the prototype still uses the shorter personas in `worker/personas.ts`.
 
 ## The problem
 
