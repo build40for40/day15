@@ -136,6 +136,39 @@ ul.rows { list-style: none; display: grid; }
 .empty { color: var(--dim); font-size: 14px; }
 .toast { position: fixed; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 20px); background: var(--lit); color: #1a1408; padding: 10px 16px; border-radius: 999px; font: 500 13px var(--sans); opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; z-index: 20; max-width: calc(100vw - 40px); }
 .toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+.dock { position: fixed; right: max(20px, env(safe-area-inset-right, 0px)); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); z-index: 30; display: grid; gap: 12px; justify-items: end; width: min(380px, calc(100vw - 40px)); pointer-events: none; }
+.dock > * { pointer-events: auto; }
+.composer { width: 100%; border: 1px solid rgba(255,156,145,.5); border-radius: 16px; background: linear-gradient(180deg, rgba(38,24,34,.97), rgba(11,18,32,.98)); padding: 14px; display: grid; gap: 10px; box-shadow: 0 18px 50px rgba(0,0,0,.5), 0 0 40px rgba(255,156,145,.12); animation: openIn .22s ease-out; }
+.ctx { font: 600 13px var(--sans); color: var(--coral); }
+.prompt { font: 400 17px/1.45 var(--serif); color: var(--lit); margin: 0; }
+.composer textarea { width: 100%; min-height: 72px; resize: vertical; background: var(--midnight); color: var(--text); border: 1px solid var(--line-2); border-radius: 10px; padding: 10px 12px; font: 400 14px/1.5 var(--sans); }
+.crow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips button { all: unset; cursor: pointer; font: 500 12.5px var(--sans); padding: 6px 10px; border: 1px solid var(--line-2); border-radius: 999px; color: var(--text); }
+.chips button:hover, .chips button:focus-visible { border-color: var(--coral); color: var(--lit); }
+.dockrow { display: flex; align-items: center; gap: 12px; }
+.dlabel { font: 500 13px var(--sans); color: var(--lit); background: rgba(7,11,20,.88); border: 1px solid rgba(255,156,145,.4); border-radius: 999px; padding: 7px 13px; }
+.orbbtn { all: unset; cursor: pointer; width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; position: relative; flex: none;
+  background: radial-gradient(circle at 40% 35%, #fff9f6, #ffdcd4 60%, #ffb7ac); box-shadow: 0 0 14px 5px rgba(255,236,230,.5), 0 0 40px 16px rgba(255,156,145,.35), 0 0 80px 34px rgba(201,182,240,.14); transition: box-shadow .3s, opacity .3s, transform .15s; }
+.orbbtn:hover { transform: scale(1.05); }
+.orbbtn:focus-visible { outline: 2px solid var(--gold); outline-offset: 6px; }
+.orbbtn svg { width: 24px; height: 24px; stroke: #7a2f27; fill: none; stroke-width: 1.8; stroke-linecap: round; }
+.orbbtn::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; border: 1px solid rgba(255,156,145,.6); animation: ring 2.6s ease-out infinite; pointer-events: none; }
+.orbbtn.awake { box-shadow: 0 0 18px 7px rgba(255,236,230,.7), 0 0 52px 22px rgba(255,156,145,.5), 0 0 100px 44px rgba(201,182,240,.2); }
+.orbbtn.listening::after { animation-duration: 1.1s; border-color: rgba(255,156,145,.95); border-width: 2px; }
+.orbbtn.away { opacity: .3; }
+.spark { position: fixed; left: 0; top: 0; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: #fff1ec; z-index: 40; pointer-events: none; will-change: transform;
+  box-shadow: 0 0 12px 5px rgba(255,236,230,.75), 0 0 38px 16px rgba(255,156,145,.5), 0 0 80px 34px rgba(201,182,240,.2); }
+.trail { position: fixed; left: 0; top: 0; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: rgba(255,176,165,.95); box-shadow: 0 0 8px 3px rgba(255,156,145,.55); pointer-events: none; z-index: 39; animation: trailfade .7s ease-out forwards; }
+@keyframes trailfade { from { opacity: .9; } to { opacity: 0; } }
+.item.flash .head { animation: flashRow 1.6s ease-out; border-radius: 8px; }
+@keyframes flashRow { 0% { background: rgba(255,156,145,.28); } 100% { background: transparent; } }
+.toast { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+.toast.on { pointer-events: auto; }
+.toast .undo { all: unset; cursor: pointer; margin-left: 14px; font-weight: 600; text-decoration: underline; }
+.toast .undo:focus-visible { outline: 2px solid #1a1408; outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .orbbtn::after { animation: none; } .composer { animation: none; } .item.flash .head { animation: none; } }
 footer { margin-top: 40px; font-size: 12.5px; color: var(--dim); }
 
 @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } .stagecol { position: static; } .body { padding-left: 6px; } }
@@ -161,9 +194,7 @@ footer { margin-top: 40px; font-size: 12.5px; color: var(--dim); }
     <div class="stagecol">
       <div class="stage" id="stage">
         <svg id="svg" viewBox="0 0 760 736" role="img" aria-label="Alignment circle: twelve spokes, each joining an agency ball and a client ball"></svg>
-        <canvas id="dust" aria-hidden="true"></canvas>
         <div class="center" id="center"><span class="state" id="cstate"></span><span class="pct" id="cpct"></span></div>
-        <button type="button" class="glow" id="orb" aria-label="Open A-Line, the coach"><span class="hint" id="hint">Tap to talk</span></button>
       </div>
       <div class="ticker" id="ticker" aria-live="polite"></div>
       <div class="key" aria-label="How to read the circle">
@@ -182,11 +213,6 @@ footer { margin-top: 40px; font-size: 12.5px; color: var(--dim); }
     </div>
 
     <div class="listcol">
-      <section class="gaia" id="gaia" hidden aria-label="A-Line">
-        <h3 id="gtitle">A-Line is listening</h3>
-        <p class="muted" id="gsub"></p>
-        <div id="gbody"></div>
-      </section>
       <div class="bar">
         <div class="seg" id="seg" role="group" aria-label="Filter decisions"></div>
         <div class="viewas" id="viewas">Viewing as<div class="seg" id="roleseg" role="group" aria-label="Viewing as"></div></div>
@@ -196,12 +222,25 @@ footer { margin-top: 40px; font-size: 12.5px; color: var(--dim); }
   </div>
   <footer>Preview with sample data. Calling and editing are not connected yet.</footer>
 </div>
+<div class="dock" id="dock">
+  <section class="composer" id="composer" hidden role="dialog" aria-label="Talk to A-Line">
+    <div class="ctx" id="ctx"></div>
+    <p class="prompt" id="cprompt" hidden></p>
+    <textarea id="ctext" rows="3" aria-label="What changed" placeholder="Say or type what changed."></textarea>
+    <div class="chips" id="cpick" hidden></div>
+    <div class="crow"><button type="button" class="btn go" id="csend">Send</button><button type="button" class="btn" id="ccancel">Cancel</button><span class="muted" id="cstatus" role="status"></span></div>
+  </section>
+  <div class="dockrow"><span class="dlabel" id="dlabel">Tap to talk</span>
+    <button type="button" class="orbbtn" id="orb" aria-label="Talk to A-Line" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 18v3"/></svg></button></div>
+</div>
+<span class="spark" id="spark" hidden></span>
 <div class="toast" id="toast" role="status"></div>
 
 <script>
 (function () {
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
+  var dead = false, rafId = 0, startT = 0, flyId = 0;
   var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   var SVGNS = 'http://www.w3.org/2000/svg';
   function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -351,6 +390,7 @@ footer { margin-top: 40px; font-size: 12.5px; color: var(--dim); }
     g.addEventListener('click', function () { select(t.id, true); });
     g.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(t.id, true); } });
   });
+  var focusRing = mk('circle', { r: '18', fill: 'none', stroke: '#ff9c91', 'stroke-width': '1.8', filter: 'url(#glow)', 'pointer-events': 'none', style: 'display:none' });
   function fillFor(ball, lvl, color) {
     if (lvl === 'settled') { ball.setAttribute('fill', color); ball.setAttribute('fill-opacity', '1'); }
     else if (lvl === 'thin') { ball.setAttribute('fill', color); ball.setAttribute('fill-opacity', '0.38'); }
@@ -364,7 +404,6 @@ footer { margin-top: 40px; font-size: 12.5px; color: var(--dim); }
     }
     return d + 'Z';
   }
-  var orbPos = { x: CX, y: CY - 60 }, t0 = performance.now();
   function frame(now) {
     var pts = [];
     for (var i = 0; i < N; i++) {
@@ -398,32 +437,9 @@ footer { margin-top: 40px; font-size: 12.5px; color: var(--dim); }
     }
     if (pts.length >= 3) { var dd = spline(pts); blobFill.setAttribute('d', dd); blobGlow.setAttribute('d', dd); blobLine.setAttribute('d', dd); blobFill.style.display = blobGlow.style.display = blobLine.style.display = ''; }
     else { blobFill.style.display = blobGlow.style.display = blobLine.style.display = 'none'; }
-    orbStep(now); dustStep(now);
-    requestAnimationFrame(frame);
-  }
-
-  /* ---------- A-Line's orb and dust (the Glisten glow, in coral) ---------- */
-  var orb = $('orb'), stage = $('stage'), canvas = $('dust'), cx2 = canvas.getContext('2d'), motes = [], lastMote = 0, W = 0, H = 0, dpr = 1;
-  function sprite(rgb) { var c = document.createElement('canvas'); c.width = c.height = 32; var g = c.getContext('2d'), gr = g.createRadialGradient(16, 16, 0, 16, 16, 16); gr.addColorStop(0, 'rgba(' + rgb + ',1)'); gr.addColorStop(.25, 'rgba(' + rgb + ',.55)'); gr.addColorStop(1, 'rgba(' + rgb + ',0)'); g.fillStyle = gr; g.fillRect(0, 0, 32, 32); return c; }
-  var sprites = [sprite('255,241,236'), sprite('255,156,145'), sprite('214,198,245')];
-  function size() { dpr = Math.min(2, window.devicePixelRatio || 1); var r = canvas.getBoundingClientRect(); W = r.width; H = r.height; canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr); }
-  size(); window.addEventListener('resize', size);
-  if (window.ResizeObserver) new ResizeObserver(size).observe(canvas);
-  var ox = CX, oy = CY - 70;
-  function orbStep(now) {
-    var k = W / 760, tx, ty, t = now / 1000;
-    var idx = active ? TOPICS.findIndex(function (x) { return x.id === active; }) : -1;
-    if (idx >= 0) { var m = pt(Math.max(cur[idx], RIN + 30) * 0.5 + RIN * 0.5 + Math.sin(t * 1.4) * 10, els[idx].a + Math.sin(t * 0.9) * 0.05); tx = m.x; ty = m.y; }
-    else { tx = CX + Math.cos(t * 0.35) * 70; ty = CY + Math.sin(t * 0.35) * 56; }
-    if (t > 14 && $('hint') && !$('hint').dataset.gone) { $('hint').dataset.gone = '1'; $('hint').style.transition = 'opacity 1s'; $('hint').style.opacity = '0'; }
-    ox += (tx - ox) * 0.05; oy += (ty - oy) * 0.05; orbPos.x = ox; orbPos.y = oy;
-    orb.style.transform = 'translate(' + (ox * k).toFixed(1) + 'px,' + (oy * (H / 736)).toFixed(1) + 'px)';
-    if (!reduce && now - lastMote > 80 && motes.length < 50) { lastMote = now; motes.push({ x: ox * k + (Math.random() - .5) * 12, y: oy * (H / 736) + (Math.random() - .5) * 12, vx: (Math.random() - .5) * .25, vy: -.18 - Math.random() * .3, life: 0, max: 70 + Math.random() * 70, size: 7 + Math.random() * 10, img: sprites[(Math.random() * 3) | 0], ph: Math.random() * 6.28 }); }
-  }
-  function dustStep() {
-    cx2.setTransform(dpr, 0, 0, dpr, 0, 0); cx2.clearRect(0, 0, W, H); cx2.globalCompositeOperation = 'lighter';
-    for (var i = motes.length - 1; i >= 0; i--) { var m = motes[i]; m.life++; m.x += m.vx + Math.sin((m.life + m.ph * 20) / 18) * .15; m.y += m.vy; if (m.life > m.max) { motes.splice(i, 1); continue; } cx2.globalAlpha = Math.sin(m.life / m.max * Math.PI) * .85; cx2.drawImage(m.img, m.x - m.size / 2, m.y - m.size / 2, m.size, m.size); }
-    cx2.globalAlpha = 1; cx2.globalCompositeOperation = 'source-over';
+    var ai = active ? TOPICS.findIndex(function (x) { return x.id === active; }) : -1;
+    if (ai >= 0) { var fp = pt(cur[ai], els[ai].a); focusRing.setAttribute('cx', fp.x); focusRing.setAttribute('cy', fp.y); focusRing.setAttribute('r', 17 + 2 * Math.sin(now / 320)); focusRing.style.display = ''; } else focusRing.style.display = 'none';
+    if (!dead) rafId = requestAnimationFrame(frame);
   }
 
   /* ---------- Rendering the list, cards, ticker ---------- */
@@ -468,14 +484,14 @@ footer { margin-top: 40px; font-size: 12.5px; color: var(--dim); }
     var openHtml = open.length ? open.map(function (a) {
       var mine = a.to === viewer, p = a.to === 'client' ? 'Maya' : 'Jonah';
       return '<li class="q"><span class="meta"><span class="prio ' + a.priority + '">' + a.priority[0].toUpperCase() + a.priority.slice(1) + '</span><span class="tag"><i style="background:' + SIDE_COLOR[a.to] + '"></i>For ' + SIDE_NAME[a.to].toLowerCase() + '</span></span><span class="txt">' + esc(a.ask) + '</span><span class="meta">' + esc(a.because) + '</span>' +
-        (mine ? '<div class="answer"><textarea id="ans-' + a.id + '" aria-label="Your answer" placeholder="Say it the way you would say it out loud."></textarea><div class="row"><button type="button" class="btn go" data-answer="' + a.id + '" data-t="' + id + '">Send answer</button></div></div>' : '<div class="row acts"><span class="muted">Waiting on ' + p + '.</span><button type="button" class="btn" data-call="' + p + '">Call ' + p + '</button></div>') + '</li>';
+        (mine ? '<div class="row acts"><button type="button" class="btn go" data-ans="' + a.id + '" data-t="' + id + '">Answer by voice or text</button></div>' : '<div class="row acts"><span class="muted">Waiting on ' + p + '.</span><button type="button" class="btn" data-call="' + p + '">Call ' + p + '</button></div>') + '</li>';
     }).join('') : '<li class="empty">No open questions.</li>';
     var done = s.asks.filter(function (a) { return a.status === 'answered'; });
     var doneHtml = done.length ? done.map(function (a) { return '<li class="q"><span class="txt" style="color:var(--dim)">' + esc(a.ask) + '</span><span class="meta">Answered by the ' + a.to + '</span></li>'; }).join('') : '';
     var unlock = open.length ? '<p class="feeds">Answering this fills in <b>' + t.feeds.join('</b> and <b>') + '</b>.</p>' : '<p class="feeds">This feeds <b>' + t.feeds.join('</b> and <b>') + '</b>.</p>';
     return '<div class="body"><div class="sec"><h4>Facts</h4><ul>' + facts + '</ul></div><div class="sec"><h4>Findings</h4><ul>' + finds + '</ul></div><div class="sec"><h4>Open questions</h4><ul>' + openHtml + '</ul></div>' +
       (doneHtml ? '<div class="sec"><h4>Answered questions</h4><ul>' + doneHtml + '</ul></div>' : '') + unlock +
-      '<div class="acts"><button type="button" class="btn" data-update="' + id + '">Update a fact</button><button type="button" class="btn" data-gaia="' + id + '">Talk to A-Line</button><button type="button" class="btn" data-call="' + otherName + '">Call ' + otherName + '</button></div><div id="upd-' + id + '"></div></div>';
+      '<div class="acts">' + (canConfirm(id) ? '<button type="button" class="btn go" data-confirm="' + id + '">Confirm</button>' : '') + '<button type="button" class="btn" data-changed="' + id + '">This changed</button><button type="button" class="btn" data-unsure="' + id + '">Not sure yet</button><button type="button" class="btn" data-call="' + otherName + '">Call ' + otherName + '</button></div></div>';
   }
   function renderList() {
     var html = '';
@@ -490,71 +506,181 @@ footer { margin-top: 40px; font-size: 12.5px; color: var(--dim); }
     });
     $('rows').innerHTML = html || '<li class="empty" style="padding:16px 6px">Nothing here yet.</li>';
   }
-  function renderAll() { renderTicker(); renderHeaderState(); renderList(); renderGaia(); }
+  function renderAll() { renderTicker(); renderHeaderState(); renderList(); }
 
   function select(id, scroll) {
     selected = selected === id && !scroll ? null : id; active = id; if (scroll && playing) { /* keep playing */ }
     renderList();
     if (scroll) { var r = $('row-' + id); if (r) r.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'nearest' }); }
   }
-  function toast(msg) { var t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast.h); toast.h = setTimeout(function () { t.classList.remove('on'); }, 2600); }
+  function toast(msg, undo) {
+    var t = $('toast'); t.innerHTML = ''; t.appendChild(document.createTextNode(msg));
+    if (undo) { var b = document.createElement('button'); b.type = 'button'; b.className = 'undo'; b.textContent = 'Undo'; b.addEventListener('click', function () { undo(); t.classList.remove('on'); }); t.appendChild(b); }
+    t.classList.add('on'); clearTimeout(toast.h); toast.h = setTimeout(function () { t.classList.remove('on'); }, undo ? 7000 : 2600);
+  }
 
-  /* ---------- A-Line panel: the top question for whoever is viewing ---------- */
+  /* ---------- The dock: one fixed place to talk. Tap to start, tap to stop, and it applies at once. ---------- */
+  var orb = $('orb'), dock = $('dock'), composer = $('composer'), ctext = $('ctext'), spark = $('spark'), dlabel = $('dlabel');
+  var ctx = null, listening = false, rec = null, submitOnEnd = false, dBase = '', pendingText = '', trailN = 0;
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var TOPIC_WORDS = {
+    background: /background|pitch|won the|context/g,
+    objective: /goal|objective|outcome|purpose|why we|first choice/g,
+    audience: /audience|customer|runner|beginner|who it is for|target group/g,
+    insight: /insight|tension|underlying/g,
+    kpis: /success|kpi|metric|measure|sales|views|conversion|up \d+/g,
+    budget: /budget|£|\$|\d\s?k\b|cost|price|fee|money|spend|pay|contingenc|cheaper|expensive/g,
+    deliverables: /deliverable|film|cuts?\b|asset|scope|microsite|output|final files|video/g,
+    timeline: /timeline|date|deadline|launch|december|january|february|march|april|week|delay|late|schedule/g,
+    signoff: /sign.?off|approv|decision.?maker|ceo|checkpoint|final say/g,
+    legal: /legal|own|ownership|\bip\b|licen[cs]e|contract|rights|footage|music|trademark|indemnity|insurance/g,
+    feedback: /feedback|round|review|check.?in|comments|revisions/g,
+    outside: /outside|media|paid|\bads?\b|assumption|not in the|dependency|talent|location|access|risk|unplanned/g
+  };
+  function me() { return viewer === 'agency' ? 'jonah' : 'maya'; }
+  function topicName(id) { return TOPICS.filter(function (x) { return x.id === id; })[0].name; }
+  function guess(text) { var low = text.toLowerCase(), best = null, bestN = 0; TOPICS.forEach(function (t) { var m = low.match(TOPIC_WORDS[t.id]), n = m ? m.length : 0; if (n > bestN) { bestN = n; best = t.id; } }); return best; }
+  function sentence(t) { t = t.trim().replace(/\s+/g, ' '); t = t.charAt(0).toUpperCase() + t.slice(1); return /[.!?]$/.test(t) ? t : t + '.'; }
   function topAsk() {
     var best = null, ord = { high: 0, medium: 1, low: 2 };
     TOPICS.forEach(function (t) { S[t.id].asks.forEach(function (a) { if (a.status === 'open' && a.to === viewer && (!best || ord[a.priority] < ord[best.a.priority])) best = { a: a, t: t.id }; }); });
     return best;
   }
-  function renderGaia() {
-    var box = $('gaia'); box.hidden = !gaiaOpen; orb.classList.toggle('awake', gaiaOpen); if ($('hint')) $('hint').hidden = gaiaOpen;
-    if (!gaiaOpen) return;
-    var ta = topAsk(), who2 = viewer === 'agency' ? 'Jonah' : 'Maya';
-    $('gtitle').textContent = ta ? 'A-Line has one question for you' : 'Nothing is waiting on you';
-    $('gsub').textContent = ta ? 'Hi ' + who2 + '. It is the most important open question for the ' + viewer + ', and it fills in ' + TOPICS.filter(function (x) { return x.id === ta.t; })[0].feeds[0] + '.' : 'A-Line will ask again as soon as something changes.';
-    $('gbody').innerHTML = ta ? '<p style="font:400 19px/1.45 var(--serif);color:var(--lit);margin-bottom:8px">' + esc(ta.a.ask) + '</p><div class="answer"><textarea id="gans" aria-label="Your answer" placeholder="Say it the way you would say it out loud."></textarea><div class="row"><button type="button" class="btn go" id="gsend" data-answer="' + ta.a.id + '" data-t="' + ta.t + '" data-g="1">Send to A-Line</button><button type="button" class="btn" id="gclose">Close</button></div></div>' : '<div class="row"><button type="button" class="btn" id="gclose">Close</button></div>';
+  function myAsk(t) { var ord = { high: 0, medium: 1, low: 2 }, list = S[t].asks.filter(function (a) { return a.status === 'open' && a.to === viewer; }).sort(function (a, b) { return ord[a.priority] - ord[b.priority]; }); return list[0] || null; }
+  function status(msg) { $('cstatus').textContent = msg || ''; }
+  function setLabel() { dlabel.textContent = listening ? 'Listening. Tap to stop.' : composer.hidden ? 'Tap to talk' : (SR ? 'Tap to talk again' : 'Type, then Send'); orb.classList.toggle('listening', listening); orb.classList.toggle('awake', !composer.hidden); orb.setAttribute('aria-pressed', String(listening)); }
+  function setCtx(c) {
+    ctx = c; var pr = $('cprompt'), ta = c.topic ? null : topAsk();
+    $('ctx').textContent = c.askId ? 'Answering ' + topicName(c.topic) : c.topic ? 'Talking about ' + topicName(c.topic) : 'Talking about the whole project';
+    var q = c.askId ? c.askText : ta ? 'A-Line asks: ' + ta.a.ask : ''; pr.textContent = q; pr.hidden = !q;
+    ctext.placeholder = c.askId || ta ? 'Say or type your answer.' : 'Say or type what changed.';
   }
-  orb.addEventListener('click', function () { gaiaOpen = !gaiaOpen; renderGaia(); if (gaiaOpen) $('gaia').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'nearest' }); });
+  function openComposer(c) {
+    if (!c) { var ma = selected ? myAsk(selected) : null; c = selected ? (ma ? { topic: selected, askId: ma.id, askText: ma.ask } : { topic: selected }) : {}; }
+    setCtx(c); composer.hidden = false; $('cpick').hidden = true; status(''); ctext.value = '';
+    if (!startListening()) { setLabel(); ctext.focus(); }
+  }
+  function closeComposer() { stopListening(false); composer.hidden = true; $('cpick').hidden = true; status(''); setLabel(); }
+  function startListening() {
+    if (!SR) { status('Voice is not available here. Type instead.'); return false; }
+    try {
+      rec = new SR(); rec.lang = 'en-GB'; rec.continuous = true; rec.interimResults = true; dBase = ctext.value ? ctext.value.replace(/\s*$/, ' ') : '';
+      rec.onresult = function (e) { var t = ''; for (var i = 0; i < e.results.length; i++) t += e.results[i][0].transcript; ctext.value = dBase + t; };
+      rec.onerror = function (e) { listening = false; setLabel(); status(e.error === 'not-allowed' || e.error === 'service-not-allowed' ? 'The microphone is blocked. Type instead.' : e.error === 'no-speech' ? 'I did not hear anything. Tap to try again.' : 'Voice stopped. You can type instead.'); ctext.focus(); };
+      rec.onend = function () { var was = submitOnEnd; submitOnEnd = false; listening = false; setLabel(); if (was && ctext.value.trim()) submit(); };
+      rec.start(); listening = true; status(''); setLabel(); return true;
+    } catch (err) { status('Voice is not available here. Type instead.'); return false; }
+  }
+  function stopListening(send) { if (rec && listening) { submitOnEnd = !!send; try { rec.stop(); } catch (e) { listening = false; setLabel(); } } }
+  orb.addEventListener('click', function () {
+    if (composer.hidden) { openComposer(); return; }
+    if (listening) { stopListening(true); return; }
+    if (SR && !ctext.value.trim()) { startListening(); return; }
+    if (ctext.value.trim()) { submit(); return; }
+    closeComposer();
+  });
 
-  function answer(askId, t, text) {
-    var a = S[t].asks.filter(function (x) { return x.id === +askId; })[0]; if (!a || a.status !== 'open') return;
-    var side = a.to, me = side === 'agency' ? 'jonah' : 'maya', otherSide = side === 'agency' ? 'client' : 'agency';
+  function submit() {
+    var text = ctext.value.trim(); if (!text) { status('Say or type something first.'); return; }
+    stopListening(false);
+    var c = ctx || {}, topic = c.topic, askId = c.askId || null;
+    if (!topic) { var g = guess(text), ta = topAsk(); if (ta && (!g || g === ta.t)) { topic = ta.t; askId = ta.a.id; } else topic = g; }
+    if (!topic) { pendingText = text; var pick = $('cpick'); pick.innerHTML = TOPICS.map(function (t) { return '<button type="button" data-pick="' + t.id + '">' + t.label + '</button>'; }).join(''); pick.hidden = false; status('Which decision is this about?'); return; }
+    commit(topic, askId, text);
+  }
+  function snapshot(t) { return JSON.stringify(S[t]); }
+  function commit(topic, askId, text) {
+    var snap = snapshot(topic);
+    closeComposer();
+    if (!(askId && answerCore(askId, topic, text))) applyUpdate(topic, text);
+    afterChange(topic, topicName(topic) + ' updated. Proposed by you.', snap, text);
+  }
+  function applyUpdate(t, text) {
+    var side = viewer, other = side === 'agency' ? 'client' : 'agency', m = me(), prev = S[t].facts.filter(function (f) { return f.status === 'confirmed'; }).pop();
+    S[t].facts.forEach(function (f) { if (f.status !== 'replaced') f.status = 'replaced'; });
+    fact(t, sentence(text), 'proposed', [m]); cov(t, side, 'settled');
+    if (prev && prev.by.length > 1) { cov(t, other, 'thin'); conflict(t, 'workable', who(m).name + ' changed this after it was confirmed. The ' + other + ' has not seen the change.'); ask(t, other, 'Does this change work for you?', 'It was agreed before, and now it reads differently.', 'medium'); }
+  }
+  function canConfirm(t) {
+    var f = S[t].facts.filter(function (x) { return x.status !== 'replaced'; }).pop(); if (!f) return false;
+    return f.status !== 'confirmed' && f.by.indexOf(me()) < 0;
+  }
+  function confirmTopic(t) {
+    var f = S[t].facts.filter(function (x) { return x.status !== 'replaced'; }).pop(); if (!f) { toast('Nothing to confirm yet.'); return; }
+    var snap = snapshot(t), side = viewer, other = side === 'agency' ? 'client' : 'agency';
+    f.by.push(me()); cov(t, side, 'settled');
+    if (S[t].cov[other] === 'settled' && (!S[t].conflict || S[t].conflict.severity !== 'fundamental')) { S[t].conflict = null; f.status = 'confirmed'; }
+    afterChange(t, topicName(t) + ' confirmed by you.', snap, 'I confirm this.');
+  }
+  function unsure(t) {
+    var snap = snapshot(t); cov(t, viewer, 'thin'); finding(t, who(me()).name + ' is not sure yet.');
+    afterChange(t, 'Marked as not sure yet.', snap, 'I am not sure about this one yet.');
+  }
+  function answerCore(askId, t, text) {
+    var a = S[t].asks.filter(function (x) { return x.id === +askId; })[0]; if (!a || a.status !== 'open') return false;
+    var side = a.to, m = side === 'agency' ? 'jonah' : 'maya', otherSide = side === 'agency' ? 'client' : 'agency';
     a.status = 'answered'; cov(t, side, text.length > 14 ? 'settled' : 'thin');
-    if (text) fact(t, text, 'proposed', [me]);
+    if (text) fact(t, sentence(text), 'proposed', [m]);
     if (S[t].cov[side] === 'settled' && S[t].cov[otherSide] === 'settled' && (!S[t].conflict || S[t].conflict.severity !== 'fundamental')) {
       S[t].conflict = null; var last = S[t].facts[S[t].facts.length - 1]; if (last) { last.status = 'confirmed'; last.by = ['maya', 'jonah']; S[t].facts.forEach(function (f) { if (f !== last && f.status === 'proposed') f.status = 'replaced'; }); }
     }
-    active = t; tick = { who: me, to: 'A-Line', text: text || 'Answered.' }; renderAll(); renderTicker();
-    toast('A-Line has it. ' + TOPICS.filter(function (x) { return x.id === t; })[0].name + ' just moved.');
+    return true;
+  }
+  function afterChange(t, msg, snap, said) {
+    if (filter !== 'all') filter = 'all';
+    active = t; selected = t; tick = { who: me(), to: 'A-Line', text: said }; renderAll();
+    var row = $('row-' + t); if (row) row.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'nearest' });
+    flyThrough(t);
+    toast(msg, function () { S[t] = JSON.parse(snap); renderAll(); });
+  }
+
+  /* ---------- The glow flies from the dock to the spoke and the card, then home ---------- */
+  function center(el) { var r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, on: r.width > 0 && r.top > 0 && r.bottom < (window.innerHeight || 800) }; }
+  function leg(getFrom, getTo, ms, cb) {
+    var A = getFrom(), B = getTo(), C = { x: (A.x + B.x) / 2, y: Math.min(A.y, B.y) - 90 }, t0 = performance.now();
+    (function step(now) {
+      var k = Math.min(1, (now - t0) / ms), e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2, u = 1 - e;
+      var x = u * u * A.x + 2 * u * e * C.x + e * e * B.x, y = u * u * A.y + 2 * u * e * C.y + e * e * B.y;
+      spark.style.transform = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px)';
+      if (++trailN % 2 === 0) { var d = document.createElement('span'); d.className = 'trail'; d.style.transform = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px)'; spark.parentNode.appendChild(d); setTimeout(function () { d.remove(); }, 750); }
+      if (k < 1 && !dead) flyId = requestAnimationFrame(step); else if (cb) cb();
+    })(t0);
+  }
+  function flash(t) { var row = $('row-' + t); if (!row) return; row.classList.remove('flash'); void row.offsetWidth; row.classList.add('flash'); setTimeout(function () { row.classList.remove('flash'); }, 1700); }
+  function flyThrough(t) {
+    var idx = TOPICS.findIndex(function (x) { return x.id === t; });
+    if (reduce || !spark || idx < 0) { flash(t); return; }
+    var home = function () { return center(orb); }, ball = function () { return center(els[idx].outer); }, card = function () { var r = $('row-' + t), h = r && r.querySelector('.pair'); return h ? center(h) : home(); };
+    spark.hidden = false; orb.classList.add('away');
+    var start = home(); spark.style.transform = 'translate(' + start.x + 'px,' + start.y + 'px)';
+    function toCard() { leg(ball, card, 620, function () { flash(t); setTimeout(function () { leg(card, home, 640, function () { spark.hidden = true; orb.classList.remove('away'); }); }, 380); }); }
+    if (ball().on) leg(home, ball, 640, function () { setTimeout(toCard, 260); }); else leg(home, card, 700, function () { flash(t); setTimeout(function () { leg(card, home, 640, function () { spark.hidden = true; orb.classList.remove('away'); }); }, 380); });
   }
 
   /* ---------- Events ---------- */
   document.addEventListener('click', function (e) {
-    var el = e.target.closest('button'); if (!el) return;
-    if (el.dataset.row) { select(el.dataset.row, false); return; }
-    if (el.dataset.f) { filter = el.dataset.f; renderHeaderState(); renderList(); return; }
-    if (el.dataset.r) { viewer = el.dataset.r; renderHeaderState(); renderList(); renderGaia(); return; }
-    if (el.dataset.answer) { var ta = el.dataset.g ? $('gans') : $('ans-' + el.dataset.answer); var v = (ta && ta.value || '').trim(); if (!v) { toast('Type an answer first.'); return; } answer(el.dataset.answer, el.dataset.t, v); return; }
-    if (el.dataset.call) { toast('Preview only: calling ' + el.dataset.call + ' is not connected yet.'); return; }
-    if (el.dataset.gaia) { gaiaOpen = true; renderGaia(); $('gaia').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'nearest' }); return; }
-    if (el.dataset.update) {
-      var id = el.dataset.update, last = S[id].facts.filter(function (f) { return f.status !== 'replaced'; }).pop(), host = $('upd-' + id);
-      host.innerHTML = '<div class="answer"><textarea id="updt" aria-label="New wording">' + esc(last ? last.text : '') + '</textarea><div class="row"><button type="button" class="btn go" data-save="' + id + '">Save change</button></div></div>'; return;
-    }
-    if (el.dataset.save) {
-      var id2 = el.dataset.save, txt = ($('updt').value || '').trim(); if (!txt) return;
-      var me = viewer === 'agency' ? 'jonah' : 'maya', other = viewer === 'agency' ? 'client' : 'agency', prev = S[id2].facts.filter(function (f) { return f.status === 'confirmed'; }).pop();
-      S[id2].facts.forEach(function (f) { if (f.status !== 'replaced') f.status = 'replaced'; }); fact(id2, txt, 'proposed', [me]); cov(id2, viewer, 'settled');
-      if (prev && prev.by.length > 1) { cov(id2, other, 'thin'); conflict(id2, 'workable', (viewer === 'agency' ? 'Jonah' : 'Maya') + ' changed this after it was confirmed. The ' + other + ' has not seen the change.'); ask(id2, other, 'Does this change work for you?', 'It was agreed before, and now it reads differently.', 'medium'); }
-      active = id2; tick = { who: me, to: 'A-Line', text: 'I would like to change this one.' }; renderAll(); toast('Saved. The other side is asked to confirm.'); return;
-    }
-    if (el.id === 'gclose') { gaiaOpen = false; renderGaia(); return; }
+    var el = e.target.closest('button'); if (!el) return; var ds = el.dataset;
+    if (ds.row) { select(ds.row, false); return; }
+    if (ds.f) { filter = ds.f; renderHeaderState(); renderList(); return; }
+    if (ds.r) { viewer = ds.r; renderHeaderState(); renderList(); if (!composer.hidden) closeComposer(); return; }
+    if (ds.ans) { var a = S[ds.t].asks.filter(function (x) { return x.id === +ds.ans; })[0]; openComposer({ topic: ds.t, askId: +ds.ans, askText: a ? a.ask : '' }); return; }
+    if (ds.changed) { openComposer({ topic: ds.changed }); return; }
+    if (ds.confirm) { confirmTopic(ds.confirm); return; }
+    if (ds.unsure) { unsure(ds.unsure); return; }
+    if (ds.pick) { commit(ds.pick, null, pendingText); return; }
+    if (ds.call) { toast('Preview only: calling ' + ds.call + ' is not connected yet.'); return; }
   });
+  $('csend').addEventListener('click', submit);
+  $('ccancel').addEventListener('click', closeComposer);
+  ctext.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } });
   $('play').addEventListener('click', function () { playing = !playing; this.textContent = playing ? 'Pause' : 'Play'; if (playing) schedule(); else clearTimeout(timer); });
   $('replay').addEventListener('click', begin);
-  window.addEventListener('keydown', function (e) { if (e.key === 'Escape' && gaiaOpen) { gaiaOpen = false; renderGaia(); } });
+  var onKey = function (e) { if (e.key === 'Escape' && !composer.hidden) closeComposer(); };
+  window.addEventListener('keydown', onKey);
+  function stopAll() { dead = true; cancelAnimationFrame(rafId); cancelAnimationFrame(flyId); clearTimeout(timer); clearTimeout(startT); stopListening(false); window.removeEventListener('keydown', onKey); }
 
-  fresh(); BACKGROUND(); renderAll();
-  requestAnimationFrame(frame);
-  setTimeout(begin, 300);
+  fresh(); BACKGROUND(); renderAll(); setLabel();
+  rafId = requestAnimationFrame(frame);
+  startT = setTimeout(begin, 300);
 })();
 </script>
