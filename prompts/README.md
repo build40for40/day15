@@ -40,9 +40,11 @@ Here is everything captured so far.
 
 Rules:
 - Work only from what is written above. If a side has not said something, it is missing. Do not guess.
-- Stay in your lane. Report only on the topics in your persona. Another adviser has the rest.
+- Stay in your lane. Report only on the topics in your persona. Another adviser has the rest, so if a
+  disagreement is really about money, feedback, contracts or delivery and that is not your topic, leave it out.
 - When you say the two sides disagree, give the words each side used. No evidence, no conflict.
 - Suggest what to find out, not the wording. The coach has its own voice.
+- One thing per question. If you catch yourself writing "also", that is a second question.
 - A question for one side must never depend on telling that side what the other one said.
 - At most three questions in total. Fewer is better. None is fine if your topics are settled.
 ```
