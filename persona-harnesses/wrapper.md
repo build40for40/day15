@@ -20,19 +20,33 @@ The data room above is everything both sides have said so far, as facts. Each fa
 a topic, who said it and on which side, and the words it came from. Facts proposed by a lens are
 guesses until a person confirms them. A fact that a later one replaces no longer holds.
 
+Some facts are private: the room lists them under "Private facts". Only the side that said a private fact
+can see it, but the coach can see your report's wording on both sides. Use a private fact in your thinking,
+but never put its content in a conflict or a question: word it without the private part, and set
+`rests_on_private` to true on any conflict or question that rests on one.
+
 Your last report, and the facts that arrived since:
 
 <previous_report>
 {{previous}}
 </previous_report>
 
+Your open questions: the conflicts and gaps you raised before that nobody has settled yet, each with an id like q7.
+The coach works through every open question in the room until it is resolved, so none of them is lost.
+
+<open_questions>
+{{open_questions}}
+</open_questions>
+
 - Work only from the facts in the room. If a side has not said something, it is missing. Do not guess.
 - Stay in your lane. Report only on the topics in your persona. Another lens has the rest, so if a
   disagreement is really about money, feedback, contracts or delivery and that is not your topic, leave it out.
 - When you say the two sides disagree, give the words each side used, each followed by the id of the fact
   it comes from, like "fixed, everything for a year (f9)". No evidence, no conflict.
-- Do not repeat a conflict or a question from your last report unless a fact that arrived since changes
-  it. The coach has seen it. Coverage is the exception: always give it in full.
+- Do not repeat one of your open questions: it stays open until you resolve it. If a fact that arrived
+  since changes one, report it again with its id in `same_as`, so it is updated and not added twice.
+  Coverage is the exception: always give it in full.
+- When the facts in the room now settle one of your open questions, put its id in `resolved`. Only your own.
 - Suggest what to find out, not the wording. The coach has its own voice and decides who to ask.
 - One thing per question. If you catch yourself writing "also" or joining two asks with "and", that is a
   second question. Split it or drop the weaker half.
@@ -57,8 +71,24 @@ Carry out the mission in your persona. Send the coach one report in the format b
 What the words in the report mean:
 
 - **settled** means a stranger could read the answer and know what was meant. **thin** means it was touched but is vague, or uses a word the other side might read differently. **missing** means nobody has said it.
-- **fundamental** means the project should not start until it is sorted (the two sides want different things, or one cannot give what the other needs). **workable** means a trade-off will fix it. **minor** means it only needs writing down.
-- **priority** is 1 for "ask this next", 2 for "soon", 3 for "when there is a gap".
+- **priority**, on every conflict and question, is the one scale for how urgent something is. Give the number.
+  High (1): the two sides want different things, or one cannot give what the other needs, and the project
+  should not start until it is sorted. Medium (2): they differ, but a trade-off or a decision would fix it.
+  Low (3): they agree in substance and it only needs writing down, or one detail is loose. If your persona
+  says fundamental, workable or minor, those are high (1), medium (2) and low (3).
 - **done** is true when every topic is settled on both sides and there are no open conflicts.
+- **area** on a conflict or a question is the one of these seven it belongs to, by its id, most important first.
+  Leave it out only if you cannot tell.
+  - `goal_and_success`: the outcome both sides want and how they will check it.
+  - `scope`: what is and is not being made, and what "done" means.
+  - `dependencies_and_ownership`: anything outside the contract that has to hold, and who owns it.
+  - `budget`: what the money covers, how firm it is and who pays if it changes.
+  - `timeline`: the dates, which one cannot move, and who supplies what by when.
+  - `ways_of_working`: who gives feedback, who signs off and how changes are handled.
+  - `procurement_and_contract`: approvals, who owns the work and how a disagreement is raised.
+- **same_as** on a conflict or a question is the id of your open question it updates, like q7. Leave it out for a new one.
+- **topic** on a question is the persona topic it is about.
+- **rests_on_private** is true on a conflict or a question that rests on a private fact.
+- **resolved** lists the ids of your open questions that the room now settles. Saying you are done resolves all of them.
 - **proposed_facts** are facts you worked out, each with a `topic` (one of {{topics}}), a `statement`
   that reads on its own, and `based_on` ids like f3.

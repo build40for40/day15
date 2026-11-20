@@ -162,7 +162,7 @@ const CFO_REPORT: PersonaReport = {
       topic: 'What the price covers',
       agency_said: 'Hosting and app store fees sit outside that.',
       client_said: 'it has to cover everything for the first year, hosting included',
-      severity: 'fundamental',
+      priority: 1,
       note: 'They are pricing two different projects.',
     },
   ],

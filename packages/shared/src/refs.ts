@@ -1,5 +1,8 @@
-/** The short per-project ids models see: f12 for a fact, i3 for an item, a4 for an ask, p2 for a person, r5 for a lens run. */
-export const REF_PREFIXES = { fact: 'f', item: 'i', ask: 'a', participant: 'p', lensRun: 'r' } as const
+/**
+ * The short per-project ids models see: f12 for a fact, i3 for an item, a4 for an ask, p2 for a person, r5 for a
+ * lens run, q7 for an open question.
+ */
+export const REF_PREFIXES = { fact: 'f', item: 'i', ask: 'a', participant: 'p', lensRun: 'r', question: 'q' } as const
 export type RefKind = keyof typeof REF_PREFIXES
 
 export const ref = (kind: RefKind, id: number) => `${REF_PREFIXES[kind]}${id}`

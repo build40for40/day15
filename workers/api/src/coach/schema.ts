@@ -1,8 +1,8 @@
 import { z } from 'zod'
 
-import { areaRatingSchema } from '@day15/shared/alignment'
+import { alignmentAreaSchema } from '@day15/shared/areas'
 import { LENS_IDS } from '@day15/shared/lenses'
-import { personaSchema, SIDES, topicSchema } from '@day15/shared/schema'
+import { ASK_SIDES, personaSchema, SIDES, topicSchema } from '@day15/shared/schema'
 
 const noteSchema = z.object({
   topic: topicSchema,
@@ -15,6 +15,24 @@ const noteSchema = z.object({
     .string()
     .nullable()
     .describe('The id (like f12) of an earlier fact this corrects. Only one this person said or an adviser proposed.'),
+  private: z
+    .boolean()
+    .optional()
+    .describe('True when they asked to keep this from the other side ("between us", "off the record", "keep this private").'),
+})
+
+const privacySchema = z.object({
+  fact: z.string().describe('The id (like f12) of an earlier fact from this person\'s own side.'),
+  private: z.boolean().describe('True to keep it from the other side, false to release it.'),
+})
+
+const raisedQuestionSchema = z.object({
+  area: alignmentAreaSchema.describe('The area of your matrix it belongs to.'),
+  statement: z.string().describe('What is unresolved, in one plain sentence, with nothing private in it.'),
+  ask_side: z.enum(ASK_SIDES).describe('Which side needs to answer it.'),
+  priority: z
+    .number()
+    .describe('1 high, 2 medium or 3 low, with the same meanings as in reprioritise.'),
 })
 
 const confirmationSchema = z.object({
@@ -37,6 +55,22 @@ export const nextAskSchema = z.object({
     .string()
     .nullable()
     .describe("The id (like a4) of this person's open ask when you are asking it again, otherwise null."),
+  question: z
+    .string()
+    .nullable()
+    .optional()
+    .describe('The id (like q7) of the open question this ask chases, or null when it chases none.'),
+})
+
+const reprioritySchema = z.object({
+  question: z.string().describe('The id (like q7) of an open question.'),
+  priority: z
+    .number()
+    .describe(
+      'Its new priority as a number: 1 high (the sides want different things, or one cannot give what the other ' +
+        'needs, and it must be sorted before the project starts), 2 medium (a trade-off or a decision would fix it), ' +
+        '3 low (they agree in substance and it only needs writing down, or one detail is loose).',
+    ),
 })
 
 const mentionedPersonSchema = z.object({
@@ -59,14 +93,22 @@ export const coachTurnOutputSchema = z.object({
     .array(mentionedPersonSchema)
     .optional()
     .describe('People named in this message who are involved in the project and not in the people list yet.'),
-  alignment: z
-    .array(areaRatingSchema)
+  resolved_questions: z
+    .array(z.string())
     .optional()
-    .describe(
-      'Your priority matrix after this message: one rating for each of the seven areas in your harness. For high and ' +
-        'medium, say what the misalignment is in one plain line and give its cause. For the team only, never shown ' +
-        'to either side.',
-    ),
+    .describe('Ids (like q7) of open questions this message settles. Only ones it really settles.'),
+  reprioritise: z
+    .array(reprioritySchema)
+    .optional()
+    .describe('Open questions whose priority should change after this message. Empty when none should.'),
+  raise_questions: z
+    .array(raisedQuestionSchema)
+    .optional()
+    .describe('Open questions of your own, for a signal in this message that no adviser has raised yet. Usually none.'),
+  privacy: z
+    .array(privacySchema)
+    .optional()
+    .describe('Earlier facts from this person\'s side they asked to make private or to release. Usually none.'),
   noted: z.string().describe('One or two warm sentences playing back what you noted. No question here.'),
   next_ask: nextAskSchema.nullable().describe('The one next thing you need from this person, or null if nothing.'),
 })

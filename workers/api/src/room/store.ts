@@ -1,9 +1,9 @@
-import type { Assessment } from '@day15/shared/alignment'
 import type { LensId } from '@day15/shared/lenses'
 import type {
   Ask,
   AskStatus,
   CloseAsk,
+  OpenQuestion,
   Fact,
   Item,
   LensRun,
@@ -15,13 +15,13 @@ import type {
   ParticipantUpdate,
   Project,
   RoomSnapshot,
+  Side,
 } from '@day15/shared/schema'
 import { hashSecret, newSecret } from './keys'
+import * as questions from './questions'
 import * as room from './room'
 import { hasSchema, migrate } from './schema'
 import type { Sql } from './sql'
-
-const LEASE_TTL_MS = 60 * 1000
 
 /**
  * Everything the ProjectRoom Durable Object does, over any SQLite. The Durable Object forwards each method here,
@@ -128,18 +128,10 @@ export class RoomStore {
   }
 
   /** The mother agent's internal view. Only the coach reads it: it is not part of `read()`. */
-  async assessment(): Promise<Assessment | null> {
-    return this.migrated ? room.readAssessment(this.sql) : null
-  }
-
-  async saveAssessment(assessment: Assessment): Promise<void> {
-    this.exists()
-    room.writeAssessment(this.sql, assessment)
-  }
 
   async saveLensRun(run: NewLensRun): Promise<LensRun> {
     this.exists()
-    return room.saveLensRun(this.sql, run, this.now())
+    return this.transaction(() => room.saveLensRun(this.sql, run, this.now()))
   }
 
   async latestRuns(): Promise<Partial<Record<LensId, LensRun>>> {
@@ -159,13 +151,28 @@ export class RoomStore {
     return room.closeAsk(this.sql, askId, close, this.now())
   }
 
-  /** A lease token when no lens rounds are running, or null (and the running set is told to go again). */
-  async claimLensRounds(): Promise<string | null> {
-    return room.claimLensRounds(this.sql, crypto.randomUUID(), this.now(), LEASE_TTL_MS)
+  async openQuestions(): Promise<OpenQuestion[]> {
+    return this.migrated ? questions.listOpenQuestions(this.sql) : []
   }
 
-  /** True when the caller should keep its lease and run another set of rounds. */
-  async releaseLensRounds(lease: string): Promise<boolean> {
-    return room.releaseLensRounds(this.sql, lease, this.now(), LEASE_TTL_MS)
+  async setQuestionPriorities(changes: { id: number; priority: number }[]): Promise<OpenQuestion[]> {
+    this.exists()
+    return this.transaction(() => questions.setQuestionPriorities(this.sql, changes, this.now()))
+  }
+
+  async raiseQuestions(raised: questions.CoachQuestion[], itemId: number): Promise<OpenQuestion[]> {
+    this.exists()
+    return this.transaction(() => questions.raiseQuestions(this.sql, raised, itemId, this.now()))
+  }
+
+  /** Only facts from the speaker's own side change. */
+  async setFactPrivacy(factIds: number[], isPrivate: boolean, side: Side): Promise<Fact[]> {
+    this.exists()
+    return this.transaction(() => room.setFactPrivacy(this.sql, factIds, isPrivate, side))
+  }
+
+  async resolveQuestions(ids: number[], itemId: number): Promise<OpenQuestion[]> {
+    this.exists()
+    return this.transaction(() => questions.resolveQuestions(this.sql, ids, itemId, this.now()))
   }
 }

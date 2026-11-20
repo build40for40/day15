@@ -1,38 +1,32 @@
+import { areaName, TOPIC_AREA } from '@day15/shared/areas'
+import { PRIORITY_MEANINGS, priorityLabel } from '@day15/shared/priorities'
 import { ref } from '@day15/shared/refs'
-import {
-  PERSONA_NAMES,
-  TOPICS,
-  type Fact,
-  type Participant,
-  type PersonaReport,
-  type RoomSnapshot,
-  type Topic,
-} from '@day15/shared/schema'
+import { PERSONA_NAMES, TOPICS, type Fact, type Participant, type Topic } from '@day15/shared/schema'
 
-import type { CoachTurn, Env, Identity, OpeningBriefFn, RunLensRounds } from '../contracts'
+import type { CoachTurn, Env, Identity, OpeningBriefFn } from '../contracts'
 import { logModelError } from '../model'
+import { sideView, type SideQuestion, type SideView } from '../room/side-view'
 import {
   CHECKED_UP_TO,
   COACH_FAILED,
-  CONFLICTS_HEADING,
   NOT_CHECKED,
-  NO_CONFLICTS,
   NO_FACTS,
+  NO_OPEN_QUESTIONS,
   NO_PROJECT,
+  OPEN_QUESTIONS_HEADING,
   OPEN_ROOM_GUIDE,
   PROPOSED,
   TOPIC_LABELS,
+  WITHHELD,
 } from './text'
 
 export interface McpDeps {
   coachTurn: CoachTurn
   openingBrief: OpeningBriefFn
-  runLensRounds: RunLensRounds
 }
 
 export interface ToolContext {
   env: Env
-  ctx: Pick<ExecutionContext, 'waitUntil'>
   identity: Identity
   deps: McpDeps
 }
@@ -41,8 +35,6 @@ export interface ToolResult {
   text: string
   isError?: true
 }
-
-type Conflict = PersonaReport['conflicts'][number]
 
 const SAFE_ERRORS = new Set(['CoachError', 'ModelUnavailableError', 'RoomError'])
 
@@ -57,33 +49,49 @@ export async function openRoom({ env, identity, deps }: ToolContext): Promise<To
     const project = await identity.room.project()
     if (!project) return { text: NO_PROJECT, isError: true }
     const brief = await deps.openingBrief(env, identity.room, identity.participant)
-    return { text: openRoomText(identity.participant, project.name, brief.reply) }
+    const snapshot = await identity.room.read()
+    if (!snapshot) return { text: NO_PROJECT, isError: true }
+    return { text: openRoomText(identity.participant, sideView(snapshot, identity.participant.side), brief.reply) }
   } catch (error) {
     return failure('open_room', error)
   }
 }
 
-export async function tellCoach({ env, ctx, identity, deps }: ToolContext, message: string): Promise<ToolResult> {
+export async function tellCoach({ env, identity, deps }: ToolContext, message: string): Promise<ToolResult> {
   let reply: string
   try {
     reply = (await deps.coachTurn(env, identity.room, identity.participant, message)).reply
   } catch (error) {
     return failure('tell_coach', error)
   }
-  ctx.waitUntil(deps.runLensRounds(env, identity.room))
+  try {
+    await identity.room.scheduleLensRounds()
+  } catch (error) {
+    logModelError('Scheduling lens rounds', error)
+  }
   return { text: reply }
 }
 
-export async function readRoom({ identity }: ToolContext, topic?: Topic): Promise<ToolResult> {
-  const snapshot = await identity.room.read()
-  return snapshot ? { text: renderRoomView(snapshot, topic) } : { text: NO_PROJECT, isError: true }
+export interface ReadRoomFilter {
+  topic?: Topic
+  onlyOpenQuestions?: boolean
 }
 
-export function openRoomText(participant: Participant, projectName: string, reply: string): string {
+export async function readRoom({ identity }: ToolContext, filter: ReadRoomFilter = {}): Promise<ToolResult> {
+  const snapshot = await identity.room.read()
+  if (!snapshot) return { text: NO_PROJECT, isError: true }
+  return { text: renderRoomView(sideView(snapshot, identity.participant.side), filter) }
+}
+
+export function openRoomText(participant: Participant, view: SideView, reply: string): string {
+  const questions = view.openQuestions
   return [
-    `You're connected as ${participant.name}, ${PERSONA_NAMES[participant.persona]} on the ${participant.side} side of "${projectName}".`,
+    `You're connected as ${participant.name}, ${PERSONA_NAMES[participant.persona]} on the ${participant.side} side of "${view.project.name}".`,
     OPEN_ROOM_GUIDE,
     `The coach says:\n\n${reply}`,
+    ...(questions.length
+      ? [`${OPEN_QUESTIONS_HEADING}. ${PRIORITY_MEANINGS}\n\n${questions.map(questionLine).join('\n')}`]
+      : []),
   ].join('\n\n')
 }
 
@@ -105,52 +113,29 @@ function factLine(fact: Fact, people: Map<number, Participant>): string {
   return `- ${ref('fact', fact.id)} ${proposed}${oneLine(fact.statement)}${replaces} (${source})`
 }
 
-const words = (text: string) => text.toLowerCase().replace(/[^a-z0-9£$€]+/g, ' ').trim()
-
-const MIN_OVERLAP = 12
-
-function overlaps(a: string, b: string): boolean {
-  const [x, y] = [words(a), words(b)]
-  return x.length >= MIN_OVERLAP && y.length >= MIN_OVERLAP && (x.includes(y) || y.includes(x))
-}
-
-/** Lens conflicts carry free-text topics, so a conflict belongs to a topic when it names it or quotes one of its facts. */
-function conflictOnTopic(conflict: Conflict, topic: Topic, facts: Fact[]): boolean {
-  const named = words(conflict.topic)
-  if (named.includes(words(TOPIC_LABELS[topic])) || named.includes(words(topic))) return true
-  return facts.some(
-    (fact) =>
-      fact.topic === topic &&
-      [conflict.agency_said, conflict.client_said].some((said) =>
-        [fact.sourceQuote ?? '', fact.statement].some((text) => overlaps(said, text)),
-      ),
-  )
-}
-
-const SEVERITY_ORDER: Record<Conflict['severity'], number> = { fundamental: 0, workable: 1, minor: 2 }
-
-export function openConflicts(snapshot: RoomSnapshot): Conflict[] {
-  const seen = new Set<string>()
-  const conflicts: Conflict[] = []
-  for (const run of Object.values(snapshot.latestRuns)) {
-    for (const conflict of run?.report?.conflicts ?? []) {
-      const key = [conflict.topic, conflict.agency_said, conflict.client_said].map(words).join('|')
-      if (seen.has(key)) continue
-      seen.add(key)
-      conflicts.push(conflict)
-    }
+/** Lens names stay out: people never learn which lens raised a question. */
+export function questionLine(question: SideQuestion): string {
+  const head = `- ${ref('question', question.id)}, ${priorityLabel(question.priority)} priority: `
+  if (question.withheld) return `${head}${areaName(question.area)}. ${WITHHELD}`
+  const topic = oneLine(question.topic)
+  if (question.kind === 'conflict') {
+    return (
+      `${head}${topic || 'A disagreement'}. The agency side said: "${oneLine(question.agencySaid ?? '')}" ` +
+      `The client side said: "${oneLine(question.clientSaid ?? '')}" ${oneLine(question.statement)}`.trimEnd()
+    )
   }
-  return conflicts.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity])
+  const side = question.askSide === 'both' ? 'both sides' : `the ${question.askSide} side`
+  return `${head}${topic ? `${topic}. ` : ''}Still to hear from ${side}: ${oneLine(question.statement)}`
 }
 
-const conflictLine = (conflict: Conflict) =>
-  `- ${oneLine(conflict.topic)} (${conflict.severity}). The agency side said: "${oneLine(conflict.agency_said)}" ` +
-  `The client side said: "${oneLine(conflict.client_said)}" ${oneLine(conflict.note)}`.trimEnd()
-
-/** What read_room shows: current facts by topic, proposed ones marked, then the conflicts from the latest lens reports. */
-export function renderRoomView(snapshot: RoomSnapshot, topic?: Topic): string {
-  const people = new Map(snapshot.participants.map((participant) => [participant.id, participant]))
-  const current = snapshot.facts.filter((fact) => fact.status !== 'superseded')
+/**
+ * What read_room shows one side: the current facts it can see by topic, proposed ones marked, then every open
+ * question, most urgent first. With `onlyOpenQuestions`, just the open questions. With a topic, the open questions
+ * in that topic's area.
+ */
+export function renderRoomView(view: SideView, { topic, onlyOpenQuestions }: ReadRoomFilter = {}): string {
+  const people = new Map(view.participants.map((participant) => [participant.id, participant]))
+  const current = view.facts.filter((fact) => fact.status !== 'superseded')
   const topics = topic ? [topic] : TOPICS.filter((t) => current.some((fact) => fact.topic === t))
 
   const sections = topics.map((t) => {
@@ -159,19 +144,20 @@ export function renderRoomView(snapshot: RoomSnapshot, topic?: Topic): string {
   })
   if (!sections.length) sections.push(NO_FACTS)
 
-  const conflicts = openConflicts(snapshot).filter((conflict) => !topic || conflictOnTopic(conflict, topic, snapshot.facts))
-  const watermarks = Object.values(snapshot.latestRuns).map((run) => run?.watermark ?? 0)
-  const checkedUpTo = watermarks.length ? Math.min(...watermarks) : 0
+  const questions = view.openQuestions.filter((question) => !topic || question.area === TOPIC_AREA[topic])
+  const newest = current.at(-1)?.id ?? 0
   const stale =
-    checkedUpTo >= snapshot.watermark
+    view.checkedUpTo >= newest
       ? ''
-      : checkedUpTo
-        ? `\n\n${CHECKED_UP_TO(ref('fact', checkedUpTo))}`
+      : view.checkedUpTo
+        ? `\n\n${CHECKED_UP_TO(ref('fact', view.checkedUpTo))}`
         : `\n\n${NOT_CHECKED}`
+  const list = questions.length ? `${PRIORITY_MEANINGS}\n\n${questions.map(questionLine).join('\n')}` : NO_OPEN_QUESTIONS
+  const open = `## ${OPEN_QUESTIONS_HEADING}\n\n${list}${stale}`
 
   return [
-    `# "${oneLine(snapshot.project.name)}"${topic ? `: ${TOPIC_LABELS[topic]}` : ''}`,
-    ...sections,
-    `## ${CONFLICTS_HEADING}\n\n${conflicts.length ? conflicts.map(conflictLine).join('\n') : NO_CONFLICTS}${stale}`,
+    `# "${oneLine(view.project.name)}"${topic ? `: ${TOPIC_LABELS[topic]}` : ''}`,
+    ...(onlyOpenQuestions ? [] : sections),
+    open,
   ].join('\n\n')
 }

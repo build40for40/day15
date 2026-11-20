@@ -36,10 +36,14 @@ export function createRoomServer(context: ToolContext): McpServer {
     {
       title: READ_ROOM_TOOL.title,
       description: READ_ROOM_TOOL.description,
-      inputSchema: z.object({ topic: topicSchema.optional().describe(READ_ROOM_TOOL.topic) }),
+      inputSchema: z.object({
+        topic: topicSchema.optional().describe(READ_ROOM_TOOL.topic),
+        only_open_questions: z.boolean().optional().describe(READ_ROOM_TOOL.onlyOpenQuestions),
+      }),
       annotations: READ_ROOM_TOOL.annotations,
     },
-    async ({ topic }) => asCallResult(await readRoom(context, topic)),
+    async ({ topic, only_open_questions }) =>
+      asCallResult(await readRoom(context, { topic, onlyOpenQuestions: only_open_questions })),
   )
 
   return server
@@ -50,7 +54,7 @@ export function createHandleMcp(deps: McpDeps): HandleMcp {
   return async (request, env, ctx) => {
     const identity = await identify(request, env)
     if (!identity) return new Response('Not found', { status: 404 })
-    const handler = createMcpHandler(() => createRoomServer({ env, ctx, identity, deps }), {
+    const handler = createMcpHandler(() => createRoomServer({ env, identity, deps }), {
       route: new URL(request.url).pathname,
       onerror: (error) => console.error('MCP request failed:', error.name),
     })

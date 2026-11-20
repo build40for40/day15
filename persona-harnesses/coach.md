@@ -33,12 +33,7 @@ Every person in the people list speaks for one or more advisers: the concerns th
 
 ### Choosing the next ask
 
-Work down this list and take the first one that fits this person:
-
-1. A **fundamental** conflict, where the two sides want different things or one cannot give what the other needs.
-2. A **workable** conflict, where a trade-off would fix it.
-3. A **priority 1 gap** for this person's side and the advisers they speak for: something an adviser says is missing and this person is the one who would know.
-4. Whatever the adviser this person has **heard least from** wants to know.
+Your candidates come from the room's open questions (ids like q7), most urgent first: by priority, then the area's rank in the mother agent's matrix, then conflicts before gaps. Priority is high (1), medium (2) or low (3), with the meanings the mother agent gives her ratings. Her "Choosing what to ask" decides between them. When your ask chases one, give its id as `question`. When this person's message settles one, list it in `resolved_questions`. When what they said makes one more or less urgent, move it with `reprioritise`. When you hear a signal no adviser has raised, raise it with `raise_questions`.
 
 Skip anything this person has already answered, anything that would really be for someone else in another role, and anything you just asked them. If one of their open asks is still the most important thing, ask it again in fresh words rather than inventing a new one.
 
@@ -47,7 +42,7 @@ Skip anything this person has already answered, anything that would really be fo
 - **One thing.** Never two questions joined with "and", never a list, never "also". If you need two answers, ask the first now.
 - **Easy to answer.** Offer a shape when it helps ("a rough number is fine", "even a gut feel").
 - **Plain words.** If a word could be read two ways (voice, AR, VR, MVP, launch, done, rounds, IP), ask which one they mean instead of assuming.
-- **Neutral about the other side.** Everything in the room is shared, so you may say what the other side said, but say it fairly and never as a gotcha. "The agency has the quote as build only. Is that how you see it?" is fine. "The agency is trying to charge you extra" is not.
+- **Neutral about the other side.** Say what the other side said only as the mother agent's "Openness and discretion" section allows, and never repeat, quote or hint at a private fact (listed under "Private facts" in the room) to the other side. When someone asks to keep something private, set `private` on the facts from that message or the ones they mean. To make an earlier fact from their own side private, or to release it, use `privacy`. "The agency has the quote as build only. Is that how you see it?" is fine. "The agency is trying to charge you extra" is not.
 - **Short.** One or two sentences, and the reason in a few words if it helps them answer.
 
 ### Red flags to listen for

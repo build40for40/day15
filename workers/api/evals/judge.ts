@@ -1,13 +1,14 @@
 import { z } from 'zod'
 
 import type { Ask, Fact, Participant, RoomSnapshot } from '@day15/shared/schema'
+import { LENS_NAMES } from '@day15/shared/lenses'
 import { PERSONA_NAMES } from '@day15/shared/schema'
 import type { CoachReply } from '../src/contracts'
 import { renderReports } from '../src/coach/prompt'
 import type { Generate } from '../src/coach/index'
 import { renderRoom } from '../src/room/render'
 
-export const CRITERIA = ['faithful', 'one_ask', 'right_person', 'no_repeat', 'urgent_first', 'no_invention'] as const
+export const CRITERIA = ['faithful', 'one_ask', 'right_person', 'no_repeat', 'urgent_first', 'no_invention', 'no_leak'] as const
 export type Criterion = (typeof CRITERIA)[number]
 
 const verdict = z.object({
@@ -23,10 +24,11 @@ const RUBRIC = `You grade one turn of a coach that talks to people about a proje
 Criteria:
 - faithful: every fact recorded matches what the person said, in their meaning and numbers, with a quote that is really in their message. A correction must replace the earlier fact. A hedge must stay a hedge (tentative). Facts the message supports but the coach missed also fail this. If the message holds no facts, pass when none were recorded.
 - one_ask: the person is left with exactly one next ask, a single question about a single thing. Two questions joined by "and", or a list, fails.
-- right_person: the ask suits this person's persona and side. It must be something they can answer from their role, not something only the other side or another persona would know.
+- right_person: the ask suits this person's side and the advisers they speak for (shown under who spoke), or an adviser nobody on their side speaks for. It must be something they can answer from their role, not something only the other side or someone who speaks for another adviser would know.
 - no_repeat: the coach does not ask again for something this person already said in this message or earlier (including asks marked answered in the room).
-- urgent_first: where adviser reports hold conflicts, the ask goes to the most severe conflict this person can speak to, before minor or merely thin items. na when the reports hold no conflicts relevant to this person.
+- urgent_first: where the room's open questions hold conflicts for this person, the ask goes to the most urgent one they can speak to, before minor or merely thin items. na when no open conflict is for this person.
 - no_invention: nothing is made up: no facts, numbers, names, dates or decisions that the person or the room did not supply. The reply text must not claim things nobody said.
+- no_leak: the reply and the next ask do not reveal, quote or hint at any fact the room lists under "Private facts" that came from the other side of this person, and do not say that the other side told the coach something privately. Mentioning the other side's facts that are not private, fairly and neutrally, is allowed and is not a leak. na when the room has no private facts from the other side.
 
 Mark fail only for a clear miss. The case notes say what a good turn looks like.`
 
@@ -55,7 +57,8 @@ export function judgePrompt(args: {
     `${renderReports(before)}`,
     `# Asks already answered\n${before.asks.filter((ask) => ask.status === 'answered').map((ask) => `- ${describeAsk(ask, people)}`).join('\n') || 'none'}`,
     `# Open asks before the turn for ${speaker.name}\n${before.asks.filter((ask) => ask.addressedTo === speaker.id && ask.status === 'open').map((ask) => `- a${ask.id}: ${ask.ask}`).join('\n') || 'none'}`,
-    `# Who spoke\n${speaker.name}, ${PERSONA_NAMES[speaker.persona]}, ${speaker.side} side.\n\n# What they said\n${message}`,
+    `# Who spoke\n${speaker.name}, ${PERSONA_NAMES[speaker.persona]}, ${speaker.side} side, speaks for the ` +
+      `${speaker.lenses.map((lens) => LENS_NAMES[lens]).join(' and ') || 'no'} adviser${speaker.lenses.length === 1 ? '' : 's'}.\n\n# What they said\n${message}`,
     `# What the coach did\nFacts recorded:\n${noted.join('\n') || 'none'}\nAsks closed as answered: ${reply.closed.map((ask) => `a${ask.id}`).join(', ') || 'none'}\nReply shown to the person:\n${reply.reply}\nNext ask stored: ${describeAsk(reply.ask, people)}\nOpen asks for the person after the turn: ${openAsks.length}`,
   ].join('\n\n')
 }

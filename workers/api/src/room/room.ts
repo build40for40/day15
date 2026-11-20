@@ -1,7 +1,7 @@
-import { assessmentSchema, type Assessment } from '@day15/shared/alignment'
 import { LENS_IDS, type LensId } from '@day15/shared/lenses'
 import {
   lensReportSchema,
+  upgradeStoredReport,
   newAskSchema,
   newFactSchema,
   newLensRunSchema,
@@ -28,6 +28,7 @@ import {
   type Side,
   type Topic,
 } from '@day15/shared/schema'
+import { listOpenQuestions, recordLensReport } from './questions'
 import { all, first, type Sql } from './sql'
 
 /** A request the room refuses. The message is safe to show. */
@@ -67,6 +68,7 @@ type FactRow = {
   supersedes: number | null
   superseded_by: number | null
   created_at: string
+  private: number
 }
 type LensRunRow = {
   id: number
@@ -87,6 +89,7 @@ type AskRow = {
   answered_by: number | null
   created_at: string
   closed_at: string | null
+  question_id: number | null
 }
 
 const toProject = (row: ProjectRow): Project => ({
@@ -137,6 +140,7 @@ const toFact = (row: FactRow): Fact => ({
   basedOn: JSON.parse(row.based_on) as number[],
   supersedes: row.supersedes,
   supersededBy: row.superseded_by,
+  private: row.private === 1,
   createdAt: row.created_at,
 })
 
@@ -145,7 +149,7 @@ const toLensRun = (row: LensRunRow): LensRun => ({
   lens: row.lens as LensId,
   round: row.round,
   watermark: row.watermark,
-  report: row.report ? lensReportSchema.parse(JSON.parse(row.report)) : null,
+  report: row.report ? lensReportSchema.parse(upgradeStoredReport(JSON.parse(row.report))) : null,
   status: row.status as LensRun['status'],
   createdAt: row.created_at,
 })
@@ -160,6 +164,7 @@ const toAsk = (row: AskRow): Ask => ({
   answeredBy: row.answered_by,
   createdAt: row.created_at,
   closedAt: row.closed_at,
+  questionId: row.question_id,
 })
 
 const FACTS = `
@@ -348,8 +353,8 @@ export function addFacts(sql: Sql, input: NewFact[], now: Date): Fact[] {
       row = first<{ id: number }>(
         sql,
         `INSERT INTO facts (topic, statement, status, author_kind, participant_id, side, source_item_id, source_quote,
-           based_on, supersedes, created_at)
-         VALUES (?, ?, ?, 'person', ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+           based_on, supersedes, private, created_at)
+         VALUES (?, ?, ?, 'person', ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
         fact.topic,
         fact.statement,
         fact.status,
@@ -359,6 +364,7 @@ export function addFacts(sql: Sql, input: NewFact[], now: Date): Fact[] {
         fact.sourceQuote,
         JSON.stringify(basedOn),
         fact.supersedes ?? null,
+        fact.private ? 1 : 0,
         now.toISOString(),
       )
     } else {
@@ -382,6 +388,7 @@ export function addFacts(sql: Sql, input: NewFact[], now: Date): Fact[] {
   return added
 }
 
+/** Keeps the report as it came, and turns its conflicts and questions into open questions. Run it in a transaction. */
 export function saveLensRun(sql: Sql, input: NewLensRun, now: Date): LensRun {
   const run = newLensRunSchema.parse(input)
   const row = first<LensRunRow>(
@@ -394,7 +401,9 @@ export function saveLensRun(sql: Sql, input: NewLensRun, now: Date): LensRun {
     run.status,
     now.toISOString(),
   )!
-  return toLensRun(row)
+  const saved = toLensRun(row)
+  recordLensReport(sql, saved, now)
+  return saved
 }
 
 /** The newest finished run of each lens that has one. */
@@ -414,13 +423,18 @@ export function latestRuns(sql: Sql): Partial<Record<LensId, LensRun>> {
 export function addAsk(sql: Sql, input: NewAsk, now: Date): Ask {
   const ask = newAskSchema.parse(input)
   if (!getParticipant(sql, ask.addressedTo)) throw new RoomError(`There is no person p${ask.addressedTo} to ask.`)
+  const questionId = ask.questionId ?? null
+  if (questionId && !first(sql, 'SELECT id FROM open_questions WHERE id = ?', questionId)) {
+    throw new RoomError(`There is no open question q${questionId}.`)
+  }
   const row = first<AskRow>(
     sql,
-    'INSERT INTO asks (addressed_to, ask, because, lens, created_at) VALUES (?, ?, ?, ?, ?) RETURNING *',
+    'INSERT INTO asks (addressed_to, ask, because, lens, question_id, created_at) VALUES (?, ?, ?, ?, ?, ?) RETURNING *',
     ask.addressedTo,
     ask.ask,
     ask.because,
     ask.lens,
+    questionId,
     now.toISOString(),
   )!
   return toAsk(row)
@@ -465,70 +479,20 @@ export function readRoom(sql: Sql): RoomSnapshot | null {
     facts,
     asks: listAsks(sql),
     latestRuns: latestRuns(sql),
+    openQuestions: listOpenQuestions(sql),
     watermark: facts.at(-1)?.id ?? 0,
   }
 }
 
-type Lease = { token: string; expiresAt: number; again: boolean }
-
-const LEASE_KEY = 'lens_lease'
-
-function readLease(sql: Sql): Lease | null {
-  const row = first<{ value: string }>(sql, 'SELECT value FROM meta WHERE key = ?', LEASE_KEY)
-  return row ? (JSON.parse(row.value) as Lease) : null
-}
-
-function writeLease(sql: Sql, lease: Lease | null) {
-  if (lease) {
-    sql.exec(
-      'INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value',
-      LEASE_KEY,
-      JSON.stringify(lease),
-    )
-  } else {
-    sql.exec('DELETE FROM meta WHERE key = ?', LEASE_KEY)
-  }
-}
-
 /**
- * Lets one set of lens rounds run at a time. Returns a lease token, or null when another set is running,
- * in which case that set is told to go again when it finishes. A lease nobody released runs out after `ttlMs`.
+ * Makes facts private or releases them, in place: privacy is a setting, not part of the statement. Only person
+ * facts from the speaker's own side change. Returns the facts it changed.
  */
-export function claimLensRounds(sql: Sql, token: string, now: Date, ttlMs: number): string | null {
-  const held = readLease(sql)
-  if (held && held.expiresAt > now.getTime()) {
-    writeLease(sql, { ...held, again: true })
-    return null
-  }
-  writeLease(sql, { token, expiresAt: now.getTime() + ttlMs, again: false })
-  return token
-}
-
-/** Ends a lease. Returns true when someone asked for rounds meanwhile: the caller keeps the lease and goes again. */
-export function releaseLensRounds(sql: Sql, token: string, now: Date, ttlMs: number): boolean {
-  const held = readLease(sql)
-  if (!held || held.token !== token) return false
-  if (held.again) {
-    writeLease(sql, { token, expiresAt: now.getTime() + ttlMs, again: false })
-    return true
-  }
-  writeLease(sql, null)
-  return false
-}
-
-const ASSESSMENT_KEY = 'assessment'
-
-/** The mother agent's latest matrix and health reading. Kept apart from the snapshot so no view of the room shows it. */
-export function readAssessment(sql: Sql): Assessment | null {
-  const row = first<{ value: string }>(sql, 'SELECT value FROM meta WHERE key = ?', ASSESSMENT_KEY)
-  const parsed = row ? assessmentSchema.safeParse(JSON.parse(row.value)) : null
-  return parsed?.success ? parsed.data : null
-}
-
-export function writeAssessment(sql: Sql, assessment: Assessment): void {
-  sql.exec(
-    'INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value',
-    ASSESSMENT_KEY,
-    JSON.stringify(assessment),
-  )
+export function setFactPrivacy(sql: Sql, factIds: number[], isPrivate: boolean, side: Side): Fact[] {
+  return factIds.flatMap((id) => {
+    const fact = factById(sql, id)
+    if (!fact || fact.authorKind !== 'person' || fact.side !== side || fact.private === isPrivate) return []
+    sql.exec('UPDATE facts SET private = ? WHERE id = ?', isPrivate ? 1 : 0, id)
+    return [factById(sql, id)!]
+  })
 }

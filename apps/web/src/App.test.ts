@@ -67,12 +67,13 @@ describe('App', () => {
     expect(auth.signIn).toHaveBeenCalled()
   })
 
-  it('warns that a project is visible to both sides', async () => {
+  it('says a project is shared with both sides unless someone asks for privacy', async () => {
     auth.currentUser.mockResolvedValue({ id: 'user_fake' })
     serve({ team: null, projects: [] })
     const wrapper = mount(App)
     await flushPromises()
-    expect(wrapper.text()).toContain('visible to everyone in it, both sides')
+    expect(wrapper.text()).toContain('shared with both sides by default')
+    expect(wrapper.text()).toContain('it stays on your side')
     expect(wrapper.text()).toContain('name your team')
   })
 

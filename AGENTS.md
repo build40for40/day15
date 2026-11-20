@@ -16,15 +16,17 @@ person in Claude or ChatGPT
   -> MCP server at /mcp/<key>
   -> COACH: takes facts from what they said, closes asks, replies with one next ask
   -> DATA ROOM (one ProjectRoom Durable Object per project)
-  -> five LENSES in parallel, on one snapshot, in the background
-  -> reports back in the room, which the coach reads on its next turn
+  -> the room's ALARM runs five LENSES in parallel, on one snapshot, after the reply
+  -> their conflicts and gaps become OPEN QUESTIONS in the room, which the coach works through on its next turn
 ```
 
 - **Persona:** the seat a real person fills on a project (agency lead, marketing lead, procurement, CFO, delivery lead), on a side (agency or client).
 - **People:** everyone involved in a project, whether or not they can talk to the coach. Each has a name, job title, organisation, side, persona, notes (who they report to, what they sign off), and the lenses that speak for what they care about. Lenses default to the persona's own lens (`PERSONA_LENS`) but need not match it. Only people with a link can connect over MCP. The agency owner adds people on the setup page, and the coach adds people who come up in conversation, with no link.
-- **Data room:** the shared memory for one project, in the ProjectRoom's built-in SQLite. No privacy tiers yet: everything is shared, but every row records who added it and their side.
+- **Data room:** the shared memory for one project, in the ProjectRoom's built-in SQLite. Shared with both sides by default, private on request: a fact a person asked to keep private is seen only by their side, the coach and the lenses. Every row records who added it and their side.
 - **Lens:** a headless simulation of a persona, built from the files in `persona-harnesses/`. A lens reads the whole room and writes a report (coverage, conflicts, questions, done) plus optional proposed facts. Lenses never address people.
-- **Coach:** the one agent people talk to. In one turn it reads the room and the latest lens reports, takes facts from what the person just said, closes any ask they answered, adds anyone they named who isn't on the people list yet, and replies with what it noted plus one next ask for that person, sometimes with a short explanation before the ask. Only the coach asks people things.
+- **Open question:** one unresolved thing a lens or the coach raised, a conflict between the sides or a gap one side needs to fill, filed under one of the seven alignment areas and kept as a row until it is resolved.
+- **Priority:** the one scale for anything unresolved, stored as 1, 2 or 3 and always shown with its label, with the meanings the mother agent gives her ratings: high (1) the sides want different things or one cannot give what the other needs, and it must be sorted before the project starts; medium (2) a trade-off or a decision would fix it; low (3) they agree in substance and it only needs writing down, or one detail is loose (`packages/shared/src/priorities.ts`). The old words fundamental, workable and minor are read as 1, 2 and 3 there and nowhere else.
+- **Coach:** the one agent people talk to. In one turn it reads the room (open questions included) and where each lens stands, takes facts from what the person just said, closes any ask they answered, resolves open questions the answer settles, may re-rank open questions, adds anyone they named who isn't on the people list yet, and replies with what it noted plus one next ask for that person, sometimes with a short explanation before the ask. Only the coach asks people things.
 - **Routing:** a lens's asks go to the people on the relevant side whose lenses include it. When nobody on a side who has a link speaks for a lens, its asks may go to anyone on that side, marked as nobody's, and the coach tells agency-side people about the gap rather than inventing an owner. The selection is `askCandidates` in `workers/api/src/coach/select.ts`, and the coach's prompt shows who speaks for each lens on each side.
 
 ### The room
@@ -33,18 +35,22 @@ person in Claude or ChatGPT
 | --- | --- |
 | `participants` | The people list: name, job title, organisation, side, persona, lenses, notes, whether they have a link, who added them (`owner` or `coach`), when they were removed, and a SHA-256 hash of their key's secret |
 | `items` | What each person said or pasted, word for word |
-| `facts` | One statement each, under a topic, with its status and where it came from |
+| `facts` | One statement each, under a topic, with its status, where it came from, and whether it is private |
 | `lens_runs` | Each lens run: lens, round, watermark (highest fact id it saw), report |
-| `asks` | What the coach needs from one person, open until answered or dropped |
+| `asks` | What the coach needs from one person, open until answered or dropped, with the open question it chases if any |
+| `open_questions` | What is unresolved: kind (`conflict` or `gap`), lens (`coach` when the coach raised it), topic, area, statement, each side's words for a conflict, which side must answer (`agency`, `client` or `both`), priority 1 to 3, the facts it rests on, whether it rests on private material, status (`open`, `resolved` or `dropped`), the run or item that raised it and the run or item that resolved it |
 
 - People are a directory, not facts, so their details are edited in place. Removing a person sets `removed_at` and never deletes the row, since facts and asks point at it: their key stops working at once, their open asks are dropped, they leave the people list and routing, and their facts stay. A person with no link has `has_link` 0 and a placeholder in `key_hash`, which older rooms keep as NOT NULL.
 - Columns added after rooms already existed are added by `migrate` in `workers/api/src/room/schema.ts`, which checks the table's columns first, so it is safe on every start and on old rooms. It runs in a transaction.
 - Facts are never edited. A changed fact is a new row that supersedes the old one, and the old one reads as `superseded`. Its `statedAs` keeps the status it was written with, so its line in the room text never changes.
 - Every person fact points at the item and the quote it came from. Every lens fact points at the facts it was worked out from. Person and lens facts are always told apart.
 - Every fact has a topic from a client brief template: background, objective, audience, insight, kpis, budget, deliverables, timeline, sign_off, legal_ip, other.
-- Models see short per-project ids: `f12` a fact, `i3` an item, `p2` a person, `a4` an ask, `r5` a lens run.
-- **Loading the room into a model:** no retrieval, the whole room every time, through the one renderer in `workers/api/src/room/render.ts`. One fact per line, each readable alone, in id order. Facts only ever grow at the end, so the start of the text stays the same between calls and caches well. A fact line names its person by id and the side stored on the fact, never by editable details, so editing someone never moves it. The people list comes after the facts, one current person per line, then the open asks. Room text goes first in a prompt, agent instructions after.
-- **Lens rounds:** after each coach turn, all five lenses run in parallel on one snapshot. If a round adds proposed facts, another round runs, up to 3. They run in the Worker through `ctx.waitUntil`, never inside the Durable Object, so slow model calls never block the room. A lease in the room lets one set of rounds run at a time. The runtime cuts `waitUntil` off about 30 seconds after the response, so a set of rounds gets a 25 second budget (`LENS_ROUNDS_BUDGET_MS`): a round only starts with 8 seconds left, a model call still running at the end is aborted and saved as a failed run, and each lens's run is saved as soon as it answers. The lease runs out after a minute in case the runtime kills the Worker anyway. In practice that means round 1 and sometimes round 2, so moving lens rounds to a Durable Object alarm, a Queue or a Workflow is still an open decision.
+- Models see short per-project ids: `f12` a fact, `i3` an item, `p2` a person, `a4` an ask, `r5` a lens run, `q7` an open question.
+- **Loading the room into a model:** no retrieval, the whole room every time, through the one renderer in `workers/api/src/room/render.ts`. One fact per line, each readable alone, in id order. Facts only ever grow at the end, so the start of the text stays the same between calls and caches well. A fact line names its person by id and the side stored on the fact, never by editable details, so editing someone never moves it. The people list comes after the facts, one current person per line, then the open questions most urgent first, then the open asks. Room text goes first in a prompt, agent instructions after.
+- **Lens rounds:** after each coach turn, `tell_coach` asks the room to schedule lens rounds and returns the reply at once. The ProjectRoom sets its alarm, and `alarm()` runs the rounds on its own store, outside any storage transaction, so the room keeps answering while models think. All five lenses run in parallel on one snapshot. If a round adds proposed facts, all five run again on a fresh one, up to 3 rounds. Each lens's run is saved as soon as it answers, and a call still running after 90 seconds (`LENS_CALL_TIMEOUT_MS`) is aborted and saved as failed, so one hung lens never stalls the set. One set runs at a time (`LensAlarm` in `workers/api/src/lenses/alarm.ts`): a request while a set runs makes exactly one more set run after it, on the newer room. A failed set is logged by error name, never thrown, so the runtime doesn't retry it, and a set the runtime retried after a crash more than once is given up on with a failed run saved for each lens. The alarm needs the Anthropic key and optional workspace id, which the Durable Object reads from its own `env`.
+- **Open questions:** saving a lens run keeps its report as it came (older reports' severity words are read as priorities) and turns its conflicts and questions into rows in `open_questions` (`workers/api/src/room/questions.ts`). A lens gives every conflict and question a priority and an area, sees its own open rows with their ids, names one it updates with `same_as` (or repeats one word for word) instead of adding a duplicate, and resolves its own with `resolved`, or all of them by saying it is done. An update takes the lens's new priority. With no area, a row takes the area most of its cited facts' topics map to (`TOPIC_AREA` in `packages/shared/src/areas.ts`, the only bridge from topics to areas), else its lens's usual area. The coach picks from open rows routed to the person (the right side, and a lens they speak for, nobody on their side does, or the coach's own), most urgent first: by priority, then the area's rank in the matrix, then conflicts before gaps, then oldest. Its turn output may re-rank rows (`reprioritise`), resolve the ones the answer settles (`resolved_questions`), raise its own (`raise_questions`), and link its next ask to the row it chases (`next_ask.question`).
+- **The matrix:** the mother agent's seven areas are a rollup of the open questions, worked out in `workers/api/src/coach/rollup.ts` and shown to the coach each turn, never stored and never rated by the coach. An area stands at its most urgent open question's priority; with nothing open it is aligned when both sides have said something in it and unknown otherwise. The health reading uses the weights and rules in `packages/shared/src/alignment.ts`, counting unknown as low, with no reading until both sides have said something.
+- **Private facts:** when someone asks the coach to keep something private, the coach marks those facts private (`private` on a fact it takes), and the speaker can make an earlier fact from their own side private or release it (`privacy`). The flag is changed in place, and models see it as a separate "Private facts" list after the facts, so no fact line moves. A correction of a private fact stays private. Every MCP tool reads the room through `sideView` (`workers/api/src/room/side-view.ts`, one rule in `canSee`): it leaves out the other side's private facts and their quotes, any lens fact resting on one through `based_on`, and the wording of any open question resting on one (or flagged by its lens as resting on private material while the other side has a private fact). Everything else is shown to both sides.
 
 ### Who can get in
 
@@ -72,7 +78,8 @@ The address is only ever in the answer that made it.
 
 - `open_room`: who you are, where the project stands, and what the coach most needs from you.
 - `tell_coach`: free text in, the coach's reply out.
-- `read_room`: facts and open conflicts, by topic.
+- `read_room`: the facts the caller's side can see, by topic, then every open question most urgent first with its id and labelled priority, its wording withheld where it rests on the other side's private facts. Optional `topic` (its open questions are the ones in that topic's area), and `only_open_questions` for just the open questions.
+- `open_room` also lists the open questions, most urgent first, after the coach's words, through the same side view. Lens names never appear in what people read.
 
 ### The setup page
 
@@ -101,7 +108,7 @@ A pnpm workspace with three packages. `pnpm-workspace.yaml` lists them, the only
 | --- | --- | --- |
 | `apps/web/` | `web` | The agency setup page: sign in, then one page with a sidebar of the project's people and a pane for the one selected |
 | `workers/api/` | `api` | The Cloudflare Worker (`src/`), its `wrangler.jsonc` and `.dev.vars.example` |
-| `packages/shared/` | `@day15/shared` | The zod schemas and types both sides import: `schema`, `lenses` and `refs` |
+| `packages/shared/` | `@day15/shared` | The zod schemas and types both sides import: `schema`, `lenses`, `refs` and `priorities` |
 
 In `workers/api/src/`:
 
@@ -112,7 +119,7 @@ In `workers/api/src/`:
 | `room/` | The ProjectRoom Durable Object, its SQL, the renderer, the key helpers and a made-up fixture project |
 | `directory/` | The TeamDirectory Durable Object |
 | `coach/` | The coach: `coachTurn` and `openingBrief` |
-| `lenses/` | The five lenses: `runLensRounds`, and the loader for the persona markdown |
+| `lenses/` | The five lenses: `runLensRounds`, the `LensAlarm` that runs them from the room's alarm, and the loader for the persona markdown |
 | `mcp/` | The MCP server: `handleMcp` and `identify` |
 | `team/` | The agency owner's signed-in API: `handleTeamApi` |
 | `model.ts` | The one Anthropic model, its options, and the error-name-only logger |
@@ -136,7 +143,8 @@ All from the repo root.
 
 - `pnpm dev`: Vite on port 5173 plus `wrangler dev` on 8787, with Vite proxying `/api` and `/mcp` to the Worker. Open http://localhost:5173/. Copy `workers/api/.dev.vars.example` to `workers/api/.dev.vars` and add an `ANTHROPIC_API_KEY` first.
 - `pnpm test`: unit tests in every package.
-- `pnpm typecheck`: type-check every package (`vue-tsc` for the app, `tsc` for the Worker and the shared package).
+- `pnpm --filter api evals`: the coach evals against the real model (see `workers/api/evals/README.md`). In CI they run only by hand, through the "Evals" workflow (`gh workflow run evals.yml -R build40for40/day15`), which takes the organisation's `ANTHROPIC_API_KEY` secret and writes the pass and fail table to the job summary.
+- `pnpm typecheck`: type-check every package (`vue-tsc` for the app, `tsc` for the Worker, its evals and the shared package).
 - `pnpm build`: type-check, then build the app to `apps/web/dist/`.
 - `pnpm run deploy` (not `pnpm deploy`, which is a pnpm built-in): build, then deploy to production as the `40for40` wrangler profile. CI does this on every push to `main`, so it's only needed by hand before CI has its token.
 - Run wrangler as `pnpm wrangler <args>`, never `npx wrangler`. It runs in `workers/api/`, next to `wrangler.jsonc`.
@@ -147,6 +155,7 @@ All from the repo root.
 - A Cloudflare Worker named `day15` serves `a-line.build40for40.com` as a custom domain: the app at the root, the team API under `/api`, the MCP server under `/mcp`. Deploying creates the custom domain and its DNS record.
 - It also keeps the `day15.build40for40.com` custom domain and the `build40for40.com/day15` and `build40for40.com/day15/*` routes, and redirects them (308) to the same path and query on `a-line.build40for40.com` (`workers/api/src/hosts.ts`). That includes `/mcp/<key>` and `/api/*`, and the redirect logs nothing, since the path can hold a person's key.
 - Vite builds with `base: '/'` into `apps/web/dist/`. Static files are served with single-page-app fallback. `run_worker_first` is `true`, so every request reaches the Worker code first: that is what lets the old host redirect its static paths too.
+- `.github/workflows/evals.yml` runs the coach evals on demand only (`workflow_dispatch`).
 - CI (`.github/workflows/ci.yml`) tests and builds every push and PR, through the shared `build40for40/actions` (`setup`, `deploy-worker`, `preview-worker`). Pushes to `main` deploy to production. PRs upload a preview version and comment its public `workers.dev` link, which is named after the branch.
 - Deploys need the `CLOUDFLARE_API_TOKEN` secret on the repo. Without it CI still tests and builds, and skips deploying.
 - The Worker needs the `ANTHROPIC_API_KEY` Cloudflare secret, set once with `pnpm wrangler secret put ANTHROPIC_API_KEY`. Every Worker secret is listed, with an empty value, in `workers/api/.dev.vars.example`. `ANTHROPIC_WORKSPACE_ID` is optional: set it only when the key isn't scoped to a workspace, and the Worker sends it as the `anthropic-workspace-id` header.
@@ -155,11 +164,11 @@ All from the repo root.
 
 ## Persona harnesses
 
-`persona-harnesses/` holds the five persona harnesses (client, agency, CFO, procurement, delivery) as plain markdown, with the shared wrapper and report format in its `README.md`. Each is written as AIM: Actor, Instructions, Mission. Samira owns the five persona files. Ben owns the shared wrapper, the report format and how they are wired in, so don't change those when asked to edit a persona. They are the lenses: the Worker bundles these files as they are (a `rules` entry in `wrangler.jsonc`, and a small plugin in `workers/api/vitest.config.ts` for tests), so editing a persona file changes what that lens does on the next deploy, with no code change. The `##` headings (Actor, Instructions, Mission) are checked by a test. Lens id `cto` is the delivery persona. The coach's harness is two files beside them: `mother-agent.md` (Samira's: how the coach thinks, chooses and words an ask, its priority matrix, and when it explains before asking) and `coach.md` (Ben's: how facts are recorded), with the background it leans on in `coach-reference.md`. `workers/api/src/coach/prompt.ts` says which wins where they differ. What the coach knows about A-Line itself (what it is, how to use it, who sees what, and what stays behind the curtain) is `about-a-line.md`, loaded last. With every turn the coach rates seven alignment areas; `packages/shared/src/alignment.ts` holds the areas and weights and works out the health reading, which is stored in the room's `meta` table, kept out of the room snapshot, and shown to nobody yet.
+`persona-harnesses/` holds the five persona harnesses (client, agency, CFO, procurement, delivery) as plain markdown, with the shared wrapper and report format in its `README.md`. Each is written as AIM: Actor, Instructions, Mission. Samira owns the five persona files. Ben owns the shared wrapper, the report format and how they are wired in, so don't change those when asked to edit a persona. They are the lenses: the Worker bundles these files as they are (a `rules` entry in `wrangler.jsonc`, and a small plugin in `workers/api/vitest.config.ts` for tests), so editing a persona file changes what that lens does on the next deploy, with no code change. The `##` headings (Actor, Instructions, Mission) are checked by a test. Lens id `cto` is the delivery persona. The coach's harness is two files beside them: `mother-agent.md` (Samira's: how the coach thinks, chooses and words an ask, its priority matrix, and when it explains before asking) and `coach.md` (Ben's: how facts are recorded), with the background it leans on in `coach-reference.md`. `workers/api/src/coach/prompt.ts` says which wins where they differ. What the coach knows about A-Line itself (what it is, how to use it, who sees what, and what stays behind the curtain) is `about-a-line.md`, loaded last. The mother agent's area ratings and health reading are worked out from the open questions (see "The matrix" above), and the preamble in `prompt.ts` tells the coach so, since `mother-agent.md` still asks it to rate them itself.
 
 ## Parked
 
-Out of scope for now: privacy tiers (everything in a room is shared), OAuth for invited people, file upload, email nudges, clocks and milestones, a debate room, output documents (the project truth), voice, and any chat UI or visualisation in the web app.
+Out of scope for now: privacy beyond private facts (people, asks and open question priorities are seen by both sides), OAuth for invited people, file upload, email nudges, clocks and milestones, a debate room, output documents (the project truth), voice, and any chat UI or visualisation in the web app.
 
 ## History
 

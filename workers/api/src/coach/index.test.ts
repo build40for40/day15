@@ -29,7 +29,7 @@ describe('runCoachTurn', () => {
       answered_asks: ['a1'],
       confirmed: [{ fact: ref('fact', facts.budgetGap!.id), quote: 'we read the budget differently' }],
       noted: 'Got it: voice means tone.',
-      next_ask: { ask: 'What does the £60k need to cover?', because: 'Budget gap.', lens: 'cfo', same_as: null },
+      next_ask: { ask: 'What does the £60k need to cover?', because: 'Budget gap.', lens: 'cfo', same_as: null, question: null },
     })
 
     const reply = await runCoachTurn(generate, stub, casey, 'We mean the tone. Fair, we read the budget differently.')
@@ -43,27 +43,25 @@ describe('runCoachTurn', () => {
 
     const [roomText, reports, harness] = calls[0]!.instructions.map((part) => part.content)
     expect(roomText).toMatch(/^# The data room for "/)
-    expect(reports).toMatch(/^# What the five advisers reported/)
+    expect(reports).toMatch(/^# Where the five advisers stand/)
     expect(harness).toMatch(/^# Your two harnesses/)
     expect(harness).toContain('# Mother agent')
     expect(harness).toContain('# Coach harness')
     expect(calls[0]!.prompt).toContain('We mean the tone.')
   })
 
-  it("keeps the mother agent's matrix and health reading, away from every view of the room", async () => {
+  it('explains before the ask, and raises its own open question for a signal no adviser raised', async () => {
     const { room, stub, people } = await fixtureRoom()
-    const casey = people.casey.participant
-    const { generate, calls } = fake({
+    const { generate } = fake({
       facts: [],
       answered_asks: [],
       confirmed: [],
-      alignment: [
-        { area: 'scope', rating: 'high', misalignment: 'The two sides list different things as included.' },
-        { area: 'budget', rating: 'medium', misalignment: 'Whether VAT is in the figure.' },
+      raise_questions: [
+        { area: 'dependencies_and_ownership', statement: 'Who runs the app day to day after launch.', ask_side: 'client', priority: 1 },
       ],
       noted: 'Thanks.',
       next_ask: {
-        explain: 'On projects like this, running costs often sit in nobody\'s budget.',
+        explain: "On projects like this, running costs often sit in nobody's budget.",
         ask: 'Who pays for hosting after launch?',
         because: 'Running cost with no owner.',
         lens: 'cfo',
@@ -71,26 +69,42 @@ describe('runCoachTurn', () => {
       },
     })
 
-    const reply = await runCoachTurn(generate, stub, casey, 'Nothing new from me.')
+    const reply = await runCoachTurn(generate, stub, people.robin.participant, 'Nothing new from me.')
 
     expect(reply.reply).toBe(
       "Thanks.\n\nOn projects like this, running costs often sit in nobody's budget.\n\nWho pays for hosting after launch?",
     )
-    expect(reply.ask!.ask).toBe('Who pays for hosting after launch?')
+    const raised = (await room.openQuestions()).find((question) => question.lens === null)
+    expect(raised).toMatchObject({
+      kind: 'gap',
+      area: 'dependencies_and_ownership',
+      askSide: 'client',
+      priority: 1,
+      raisedByRun: null,
+      raisedByItem: reply.itemId,
+    })
+  })
 
-    const kept = await room.assessment()
-    expect(kept!.itemId).toBe(reply.itemId)
-    expect(kept!.areas).toHaveLength(7)
-    expect(kept!.areas[1]).toMatchObject({ area: 'scope', rating: 'high' })
-    expect(kept!.areas[0]).toMatchObject({ area: 'goal_and_success', rating: 'low' })
-    expect(kept!.health!.band).toBe('red')
-    expect(JSON.stringify(await room.read())).not.toContain('The two sides list different things as included.')
+  it('keeps a fact private when asked, lets its side release it, and ignores the other side changing it', async () => {
+    const { room, stub, people } = await fixtureRoom()
+    const note = { topic: 'budget' as const, quote: 'we could stretch to 70k', tentative: false, replaces: null }
+    const turn = (privacy: { fact: string; private: boolean }[], facts = [] as (typeof note & { statement: string; private?: boolean })[]) =>
+      fake({ facts, answered_asks: [], confirmed: [], privacy, noted: 'Noted.', next_ask: null }).generate
 
-    expect(calls[0]!.prompt).toContain('You have not rated this project yet.')
-    const again = fake({ facts: [], answered_asks: [], confirmed: [], noted: 'Ok.', next_ask: null })
-    await runCoachTurn(again.generate, stub, casey, 'Still nothing.')
-    expect(again.calls[0]!.prompt).toContain('- Scope (scope): high. The two sides list different things as included.')
-    expect((await room.assessment())!.itemId).toBe(reply.itemId)
+    const first = await runCoachTurn(
+      turn([], [{ ...note, statement: 'The client could stretch the budget to £70k.', private: true }]),
+      stub,
+      people.robin.participant,
+      'Between us, we could stretch to 70k.',
+    )
+    const id = first.noted[0]!.id
+    expect(first.noted[0]!.private).toBe(true)
+
+    await runCoachTurn(turn([{ fact: `f${id}`, private: false }]), stub, people.alex.participant, 'Make that public.')
+    expect((await room.read())!.facts.find((fact) => fact.id === id)!.private).toBe(true)
+
+    await runCoachTurn(turn([{ fact: `f${id}`, private: false }]), stub, people.robin.participant, 'Fine, share the 70k.')
+    expect((await room.read())!.facts.find((fact) => fact.id === id)!.private).toBe(false)
   })
 
   it('adds people the message named with no link, without duplicating anyone already listed', async () => {
@@ -126,6 +140,28 @@ describe('runCoachTurn', () => {
     expect(await room.participants()).toHaveLength(before + 1)
   })
 
+  it('re-ranks open questions, resolves the ones the answer settles, and links the next ask to its question', async () => {
+    const { room, stub, people } = await fixtureRoom()
+    const { generate } = fake({
+      facts: [],
+      answered_asks: [],
+      confirmed: [],
+      resolved_questions: ['q2'],
+      reprioritise: [
+        { question: 'q1', priority: 3 },
+        { question: 'q2', priority: 1 },
+      ],
+      noted: 'Noted: the board decides.',
+      next_ask: { ask: 'Which of the two readings of the £60k is yours?', because: 'b', lens: 'cfo', same_as: null, question: 'q1' },
+    })
+
+    const reply = await runCoachTurn(generate, stub, people.robin.participant, 'If hosting pushes us over, the board decides.')
+
+    expect((await room.openQuestions()).map((question) => [question.id, question.priority])).toEqual([[1, 3]])
+    expect((await room.read())!.openQuestions).toHaveLength(1)
+    expect(reply.ask).toMatchObject({ questionId: 1 })
+  })
+
   it('keeps what the person said even when the model is not set up', async () => {
     const { room, stub, people } = await fixtureRoom()
     const { generate } = fake(new ModelUnavailableError())
@@ -150,7 +186,7 @@ describe('runOpeningBrief', () => {
     const casey = people.casey.participant
     const { generate, calls } = fake({
       reply: 'Hi Casey! You are the client marketing lead on Orchard Dash.',
-      next_ask: { ask: 'Quick one: tone of voice, or a character that talks?', because: 'b', lens: 'client', same_as: 'a1' },
+      next_ask: { ask: 'Quick one: tone of voice, or a character that talks?', because: 'b', lens: 'client', same_as: 'a1', question: null },
     })
 
     const brief = await runOpeningBrief(generate, stub, casey)

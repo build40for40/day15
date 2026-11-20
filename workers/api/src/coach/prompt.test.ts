@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 
 import { renderRoom } from '../room/render'
 import { fixtureRoom } from '../testing'
-import { coachInstructions, openingPrompt, renderAssessment, renderCoverage, renderReports, turnPrompt } from './prompt'
+import { coachInstructions, openingPrompt, renderCoverage, renderReports, renderRollup, turnPrompt } from './prompt'
 import { askCandidates } from './select'
 
 describe('coachInstructions', () => {
@@ -41,13 +41,13 @@ describe('coachInstructions', () => {
 })
 
 describe('renderReports', () => {
-  it('shows each lens report, flags one that has not seen the newest facts, and notes lenses with none', async () => {
+  it('shows where each lens stands and its open questions, flags one that has not seen the newest facts, and notes lenses with none', async () => {
     const { room } = await fixtureRoom()
     const text = renderReports((await room.read())!)
     expect(text).toContain('### CFO adviser (r1, read up to f11, newer facts not seen yet)')
-    expect(text).toContain('- fundamental conflict on "What the price covers"')
     expect(text).toContain('Contingency (agency missing, client missing)')
-    expect(text).toContain('- from the client side, priority 1: what happens if hosting pushes the total past £60k.')
+    expect(text).toContain('Its open questions: q1, q2.')
+    expect(text).not.toContain('What the price covers')
     expect(text).toContain('### Procurement adviser\nNo report yet.')
   })
 })
@@ -84,8 +84,10 @@ describe('turnPrompt', () => {
     )
     expect(text).toContain('## Their open asks\n- a1 [Client], open: When you say the Pipsqueak voice')
     expect(text).toContain('Client 1, Procurement 0.')
-    expect(text).toContain("1. [nothing said yet, client] Find out their side's view on objective.")
-    expect(text).toContain('[nothing said yet, cto, nobody on their side speaks for this]')
+    expect(text).toContain("1. [nothing said yet, Goal and success, client] Find out their side's view on objective.")
+    expect(text).toContain('[nothing said yet, Scope, cto, nobody on their side speaks for this]')
+    expect(text).toContain('## Where each area stands')
+    expect(text.indexOf('## Where each area stands')).toBeLessThan(text.indexOf('<message>'))
     expect(text.indexOf('<message>')).toBeGreaterThan(text.indexOf('## Candidates'))
     expect(text).toContain(`(i${item.id})\n<message>\nWe mean the tone, not a talking character.\n</message>`)
   })
@@ -98,26 +100,14 @@ describe('turnPrompt', () => {
   })
 })
 
-describe('renderAssessment', () => {
-  it('lists the areas when the project has not been rated yet', () => {
-    const text = renderAssessment(null)
-    expect(text).toContain('You have not rated this project yet.')
-    expect(text).toContain('goal_and_success, scope, dependencies_and_ownership')
-  })
-
-  it("gives the mother agent its own last matrix and reading back, and says nobody else sees it", () => {
-    const text = renderAssessment({
-      itemId: 4,
-      areas: [{ area: 'scope', rating: 'high', misalignment: 'Different lists of what is included.', cause: 'knowledge_gap' }],
-      health: { score: 37, band: 'red' },
-    })
-    expect(text).toContain('as you left it after i4')
-    expect(text).toContain('- Scope (scope): high. Different lists of what is included. Cause: a gap in knowledge.')
-    expect(text).toContain('Health was 37 out of 100, red.')
+describe('renderRollup', () => {
+  it('shows each area worked out from the open questions, with the health reading, for the coach only', async () => {
+    const { room } = await fixtureRoom()
+    const text = renderRollup((await room.read())!)
+    expect(text).toContain('- Budget (budget), high: q1 high (1) conflict; q2 high (1) gap')
+    expect(text).toContain('- Timeline (timeline), aligned: nothing open, and both sides have said something here')
+    expect(text).toContain('- Goal and success (goal_and_success), unknown: nothing open, but one side or both')
+    expect(text).toContain('Health: 74 out of 100, amber.')
     expect(text).toContain('Nobody on either side sees any of this.')
-  })
-
-  it('says so when there was no reading yet', () => {
-    expect(renderAssessment({ itemId: 1, areas: [], health: null })).toContain('There was no health reading yet')
   })
 })

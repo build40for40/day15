@@ -6,7 +6,7 @@ import type { LensReport } from '@day15/shared/schema'
 import { MAX_LENS_ROUNDS, type Env } from '../contracts'
 import { ModelUnavailableError } from '../model'
 import { fixtureRoom } from '../testing'
-import { lensRounds, type CallLens, type LensRoundsOptions } from './rounds'
+import { lensRounds, recordFailedRound, type CallLens, type LensRoundsOptions } from './rounds'
 
 const env = {} as Env
 const quiet: LensReport = { coverage: [], conflicts: [], questions: [], done: false }
@@ -15,7 +15,7 @@ async function setUp(callLens: CallLens, options?: LensRoundsOptions) {
   const fixture = await fixtureRoom()
   const saved = vi.spyOn(fixture.room, 'saveLensRun')
   const rounds = () => saved.mock.calls.map(([run]) => [run.round, run.lens, run.status])
-  return { ...fixture, saved, rounds, run: () => lensRounds(callLens, options)(env, fixture.stub) }
+  return { ...fixture, saved, rounds, run: () => lensRounds(callLens, options)(env, fixture.room) }
 }
 
 const proposing = (lenses: LensId[], basedOn: string) => {
@@ -82,45 +82,23 @@ describe('lensRounds', () => {
     expect(saved).not.toHaveBeenCalled()
   })
 
-  it('starts no round once too little of the budget is left', async () => {
-    let clock = 0
-    const propose = proposing(['cfo'], 'f1')
-    const callLens = vi.fn<CallLens>(async (...args) => {
-      clock += 3_000
-      return propose(...args)
-    })
-    const { run, rounds } = await setUp(callLens, { budgetMs: 25_000, minRoundMs: 8_000, now: () => clock })
-    await run()
-    expect(rounds()).toEqual([1, 2].flatMap((round) => LENS_IDS.map((lens) => [round, lens, 'done'])))
-  })
-
-  it('cuts off a lens still running at the end of the budget, records it as failed and frees the room', async () => {
+  it('aborts a lens that hangs past its timeout, records it as failed, and lets the rest of the round finish', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
-    const callLens = vi.fn<CallLens>(async (_env, lens, _prompt, signal) => {
-      if (lens !== 'cfo') return quiet
-      return new Promise((_resolve, reject) => signal.addEventListener('abort', () => reject(signal.reason)))
-    })
-    const { run, rounds, room } = await setUp(callLens, { budgetMs: 20, minRoundMs: 0 })
+    const callLens = vi.fn<CallLens>(async (_env, lens) => (lens === 'cfo' ? new Promise<LensReport>(() => {}) : quiet))
+    const { run, rounds } = await setUp(callLens, { timeoutMs: 20 })
     await run()
     expect(rounds()).toHaveLength(LENS_IDS.length)
     expect(rounds()).toEqual(expect.arrayContaining(LENS_IDS.map((lens) => [1, lens, lens === 'cfo' ? 'failed' : 'done'])))
     expect(rounds().at(-1)).toEqual([1, 'cfo', 'failed'])
-    expect(await room.claimLensRounds()).not.toBeNull()
+    expect(callLens.mock.calls.find(([, lens]) => lens === 'cfo')![3].aborted).toBe(true)
   })
+})
 
-  it('runs once more, not twice at once, when asked while rounds are running', async () => {
-    let release!: () => void
-    const gate = new Promise<void>((resolve) => (release = resolve))
-    const callLens = vi.fn<CallLens>(async () => {
-      await gate
-      return quiet
-    })
-    const { stub, rounds } = await setUp(callLens)
-    const first = lensRounds(callLens)(env, stub)
-    await lensRounds(callLens)(env, stub)
-    expect(rounds()).toEqual([])
-    release()
-    await first
-    expect(rounds()).toHaveLength(LENS_IDS.length * 2)
+describe('recordFailedRound', () => {
+  it('saves a failed run for every lens on the room as it is now', async () => {
+    const { room, saved, rounds } = await setUp(async () => quiet)
+    await recordFailedRound(room)
+    expect(rounds()).toEqual(LENS_IDS.map((lens) => [1, lens, 'failed']))
+    expect(saved.mock.calls[0]![0].watermark).toBe((await room.read())!.watermark)
   })
 })

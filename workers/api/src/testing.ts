@@ -45,3 +45,41 @@ export async function fixtureRoom(now?: () => Date) {
   const room = memoryRoom(now)
   return { room, stub: asStub(room), ...(await seedFixture(room)) }
 }
+
+/** Alex's quote about hosting made private, and the CFO lens's conflict on it re-reported citing it. */
+export async function privateAgencyRoom() {
+  const fixture = await fixtureRoom()
+  const { room, facts } = fixture
+  await room.setFactPrivacy([facts.quoteCovers!.id], true, 'agency')
+  await room.saveLensRun({
+    lens: 'cfo',
+    round: 2,
+    watermark: facts.budgetGap!.id,
+    status: 'done',
+    report: {
+      coverage: [],
+      conflicts: [
+        {
+          topic: 'What the price covers',
+          agency_said: `the quote leaves something out (f${facts.quoteCovers!.id})`,
+          client_said: `everything for a year (f${facts.wholeBudget!.id})`,
+          priority: 1,
+          note: 'They are pricing two different projects.',
+          same_as: 'q1',
+          rests_on_private: true,
+        },
+      ],
+      questions: [],
+      done: false,
+    },
+  })
+  return fixture
+}
+
+export const AGENCY_PRIVATE = [
+  'Hosting and app store fees sit outside that.',
+  'covers building the app only',
+  'The two sides read the £60k differently',
+  'They are pricing two different projects.',
+  'the quote leaves something out',
+]

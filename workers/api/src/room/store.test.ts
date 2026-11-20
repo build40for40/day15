@@ -106,7 +106,7 @@ describe('RoomStore', () => {
     expect(snapshot.facts.find((fact) => fact.id === facts.monthlyBoard!.id)!.status).toBe('superseded')
     expect(snapshot.facts.at(-1)).toMatchObject({ authorKind: 'lens', lens: 'cfo', topic: 'budget' })
     expect(snapshot.watermark).toBe(facts.budgetGap!.id)
-    expect(snapshot.latestRuns.cfo!.report!.conflicts[0]!.severity).toBe('fundamental')
+    expect(snapshot.latestRuns.cfo!.report!.conflicts[0]!.priority).toBe(1)
     expect(snapshot.asks.filter((ask) => ask.status === 'open')).toHaveLength(1)
   })
 })
