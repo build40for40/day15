@@ -1,3 +1,4 @@
+import { assessmentSchema, type Assessment } from '@day15/shared/alignment'
 import { LENS_IDS, type LensId } from '@day15/shared/lenses'
 import {
   lensReportSchema,
@@ -513,4 +514,21 @@ export function releaseLensRounds(sql: Sql, token: string, now: Date, ttlMs: num
   }
   writeLease(sql, null)
   return false
+}
+
+const ASSESSMENT_KEY = 'assessment'
+
+/** The mother agent's latest matrix and health reading. Kept apart from the snapshot so no view of the room shows it. */
+export function readAssessment(sql: Sql): Assessment | null {
+  const row = first<{ value: string }>(sql, 'SELECT value FROM meta WHERE key = ?', ASSESSMENT_KEY)
+  const parsed = row ? assessmentSchema.safeParse(JSON.parse(row.value)) : null
+  return parsed?.success ? parsed.data : null
+}
+
+export function writeAssessment(sql: Sql, assessment: Assessment): void {
+  sql.exec(
+    'INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value',
+    ASSESSMENT_KEY,
+    JSON.stringify(assessment),
+  )
 }
