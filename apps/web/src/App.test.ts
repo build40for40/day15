@@ -107,19 +107,21 @@ describe('App', () => {
     await wrapper.get('form').trigger('submit')
     await flushPromises()
 
-    // The people: the client side is empty, so the coach says so, then a client person is added.
+    // Your client: nobody named yet, so the coach says so. Then the client rep and client procurement are created.
     expect(wrapper.text()).toContain('Nobody on the Make-Believe Foods side yet')
-    await wrapper.get('input[placeholder="Someone on the project"]').setValue('Robin Fakeworth')
-    await wrapper.get('input[value="cfo"]').setValue(true)
-    // The advisers follow the role until someone ticks one by hand.
-    expect((wrapper.get('.pill input[value="cfo"]').element as HTMLInputElement).checked).toBe(true)
-    await wrapper.get('input[placeholder="Head of Making Things Happen"]').setValue('Finance Director')
-    await wrapper.get('.pill input[value="procurement"]').setValue(true)
-    await wrapper.get('textarea').setValue('Reports to the CEO. Signs off the budget.')
-    await wrapper.get('form.adder').trigger('submit')
+    await wrapper.get('input[placeholder="Your day-to-day contact"]').setValue('Robin Fakeworth')
+    await wrapper.findAll('input[placeholder="Optional"]')[0]!.setValue('Head of Brand')
+    // The advisers follow the role: the client rep starts with the client adviser.
+    const repPills = wrapper.findAll('section.seat')[0]!.findAll('.pill input')
+    expect(repPills.filter((pill) => (pill.element as HTMLInputElement).checked).map((pill) => pill.attributes('value'))).toEqual(['client'])
+    await repPills.find((pill) => pill.attributes('value') === 'procurement')!.setValue(true)
+    await wrapper.findAll('section.seat')[0]!.get('textarea').setValue('Reports to the CEO. Signs off the budget.')
+    await wrapper.get('input[placeholder="Who handles the contract"]').setValue('Pat Pretend')
     await flushPromises()
     expect(wrapper.text()).not.toContain('Nobody on the Make-Believe Foods side yet')
     expect(wrapper.get('aside').text()).toContain('Robin Fakeworth')
+    expect(wrapper.get('aside').text()).toContain('Head of Brand')
+    expect(wrapper.get('aside').text()).toContain('Client procurement')
     await button(wrapper, 'Review').trigger('click')
     await flushPromises()
 
@@ -135,22 +137,35 @@ describe('App', () => {
     expect(bodies[2]![1]).toMatchObject({ name: 'Alex Example', jobTitle: 'Managing Director', side: 'agency', persona: 'agency_lead', organisation: 'Fake Agency', link: true })
     expect(bodies[3]![1]).toMatchObject({
       name: 'Robin Fakeworth',
-      jobTitle: 'Finance Director',
+      jobTitle: 'Head of Brand',
       side: 'client',
-      persona: 'cfo',
+      persona: 'marketing_lead',
       organisation: 'Make-Believe Foods',
-      lenses: ['cfo', 'procurement'],
+      lenses: ['client', 'procurement'],
       notes: 'Reports to the CEO. Signs off the budget.',
       link: true,
     })
+    expect(bodies[4]![1]).toMatchObject({
+      name: 'Pat Pretend',
+      side: 'client',
+      persona: 'procurement',
+      organisation: 'Make-Believe Foods',
+      lenses: ['procurement'],
+      link: true,
+    })
 
-    // Done: each link shown once, then on to the workspace.
+    // Done: the agency rep sends the client's people their links first, then has their own. Each is shown once.
     expect(wrapper.text()).toContain('Orchard Dash is open.')
-    expect(wrapper.findAll('.invites .message')).toHaveLength(2)
-    expect(wrapper.get('.invites .message').text()).toContain(ADDRESS)
+    const messages = wrapper.findAll('.invites .message').map((message) => message.text())
+    expect(messages).toHaveLength(3)
+    expect(messages[0]).toMatch(/^Hi Robin, Alex at Fake Agency has set you up on "Orchard Dash"/)
+    expect(messages[1]).toMatch(/^Hi Pat, Alex at Fake Agency has set you up/)
+    expect(messages[2]).toMatch(/^Hi Alex, you're on "Orchard Dash"/)
+    expect(wrapper.findAll('.invites .who strong').map((who) => who.text())).toEqual(['For Robin Fakeworth', 'For Pat Pretend', 'Your own link'])
+    expect(messages.every((message) => message.includes(ADDRESS))).toBe(true)
     await button(wrapper, 'Go to my project').trigger('click')
     await flushPromises()
-    expect(sidebarNames(wrapper)).toEqual(['Alex Example', 'Robin Fakeworth'])
+    expect(sidebarNames(wrapper)).toEqual(['Alex Example', 'Robin Fakeworth', 'Pat Pretend'])
   })
 
   it('skips the agency question when the team already exists, and carries on after a failure without repeating itself', async () => {

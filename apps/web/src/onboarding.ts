@@ -1,5 +1,5 @@
 import type { LensId } from '@day15/shared/lenses'
-import { PERSONA_LENS, type Persona, type Side } from '@day15/shared/schema'
+import { PERSONA_LENS, PERSONA_NAMES, type Persona, type Side } from '@day15/shared/schema'
 
 import type { PersonDetails } from './api'
 
@@ -10,7 +10,7 @@ export type Step = (typeof STEPS)[number]
 export const STEP_LABELS: Record<Step, string> = {
   hello: 'You',
   project: 'The win',
-  people: 'The people',
+  people: 'Your client',
   review: 'Review',
 }
 
@@ -39,6 +39,10 @@ export interface Guest {
 }
 
 export interface Draft {
+  /** The client's day-to-day contact, who owns the brief on their side. */
+  clientRep: Guest
+  /** The client's procurement contact, who handles terms and contracts. */
+  procurementRep: Guest
   yourName: string
   yourJobTitle: string
   agencyName: string
@@ -56,6 +60,21 @@ export interface Seat {
 
 /** The key the person who is signing up gets, so no guest can collide with it. */
 export const YOU_KEY = 0
+export const CLIENT_REP_KEY = -1
+export const PROCUREMENT_KEY = -2
+
+/** An empty profile for someone, with the advisers that speak for their role already chosen. */
+export const newGuest = (key: number, persona: Persona, side: Side): Guest => ({
+  key,
+  name: '',
+  persona,
+  side,
+  link: true,
+  jobTitle: '',
+  organisation: '',
+  lenses: [PERSONA_LENS[persona]],
+  notes: '',
+})
 
 /**
  * Everyone who goes on the project. The person setting it up comes first: they are the agency lead, and they
@@ -88,7 +107,8 @@ export function seats(draft: Draft, agencyName: string): Seat[] {
     lenses: [],
     notes: '',
   }
-  return [seat(YOU_KEY, true, me), ...draft.guests.map((guest) => seat(guest.key, false, guest))]
+  const others = [draft.clientRep, draft.procurementRep, ...draft.guests].filter((guest) => guest.name.trim())
+  return [seat(YOU_KEY, true, me), ...others.map((guest) => seat(guest.key, false, guest))]
 }
 
 /** What stops someone moving on from a step, or null when they can go. */
@@ -103,9 +123,18 @@ export function blocker(step: Step, draft: Draft, needsAgencyName: boolean): str
 
 /** The coach finds gaps between the sides, so it helps to know when one side is empty. */
 export function lonelySide(draft: Draft): Side | null {
-  const sides = new Set(draft.guests.map((guest) => guest.side))
+  const named = [draft.clientRep, draft.procurementRep, ...draft.guests].filter((guest) => guest.name.trim())
+  const sides = new Set(named.map((guest) => guest.side))
   sides.add('agency')
   return sides.has('client') ? null : 'client'
 }
 
 export const firstName = (name: string) => name.trim().split(/\s+/)[0] ?? ''
+
+/** What this person is called on a project: the three seats by their working names, anyone else by persona. */
+export function roleName(persona: Persona, side: Side): string {
+  if (persona === 'agency_lead' && side === 'agency') return 'Agency rep'
+  if (persona === 'marketing_lead' && side === 'client') return 'Client rep'
+  if (persona === 'procurement' && side === 'client') return 'Client procurement'
+  return PERSONA_NAMES[persona]
+}

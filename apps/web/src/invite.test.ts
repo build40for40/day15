@@ -13,6 +13,19 @@ describe('inviteMessage', () => {
   })
 })
 
+describe('inviteMessage from the agency lead', () => {
+  it('says who set them up', () => {
+    const message = inviteMessage({
+      personName: 'Robin Fakeworth',
+      projectName: 'Orchard Dash',
+      address: ADDRESS,
+      from: { name: 'Alex Example', agency: 'Fake Agency' },
+    })
+    expect(message).toMatch(/^Hi Robin, Alex at Fake Agency has set you up on "Orchard Dash" in A-Line/)
+    expect(message).toContain(ADDRESS)
+  })
+})
+
 describe('whatsappUrl', () => {
   it('opens WhatsApp with the whole message and no number picked', () => {
     const message = inviteMessage({ personName: 'Robin', projectName: 'Tea & Cake?', address: ADDRESS })

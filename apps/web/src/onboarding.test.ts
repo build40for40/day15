@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { blocker, lonelySide, seats, type Draft, type Guest } from './onboarding'
+import { blocker, CLIENT_REP_KEY, lonelySide, newGuest, PROCUREMENT_KEY, seats, type Draft, type Guest } from './onboarding'
 
 const guest = (overrides: Partial<Guest> = {}): Guest => ({
   key: 1,
@@ -16,6 +16,8 @@ const guest = (overrides: Partial<Guest> = {}): Guest => ({
 })
 
 const draft = (overrides: Partial<Draft> = {}): Draft => ({
+  clientRep: newGuest(CLIENT_REP_KEY, 'marketing_lead', 'client'),
+  procurementRep: newGuest(PROCUREMENT_KEY, 'procurement', 'client'),
   yourName: 'Alex Example',
   yourJobTitle: '',
   agencyName: 'Fake Agency',
@@ -50,6 +52,36 @@ describe('seats', () => {
       ['Robin Fakeworth', 'Make-Believe Foods', ['cfo'], true],
       ['Sam Pretend', 'Fake Agency', ['cto'], false],
     ])
+  })
+})
+
+describe('the three seats', () => {
+  const named = (key: number, persona: 'marketing_lead' | 'procurement', name: string) => ({
+    ...newGuest(key, persona, 'client'),
+    name,
+  })
+
+  it('makes the agency rep, then the client rep and client procurement once they are named', () => {
+    const people = seats(
+      draft({
+        clientRep: named(CLIENT_REP_KEY, 'marketing_lead', 'Robin Fakeworth'),
+        procurementRep: named(PROCUREMENT_KEY, 'procurement', 'Pat Pretend'),
+      }),
+      'Fake Agency',
+    )
+    expect(people.map((p) => [p.details.name, p.details.persona, p.details.side, p.details.lenses, p.link])).toEqual([
+      ['Alex Example', 'agency_lead', 'agency', ['agency'], true],
+      ['Robin Fakeworth', 'marketing_lead', 'client', ['client'], true],
+      ['Pat Pretend', 'procurement', 'client', ['procurement'], true],
+    ])
+  })
+
+  it('leaves out a seat nobody has named', () => {
+    expect(seats(draft(), 'Fake Agency')).toHaveLength(1)
+  })
+
+  it('counts a named client rep as someone on the client side', () => {
+    expect(lonelySide(draft({ clientRep: named(CLIENT_REP_KEY, 'marketing_lead', 'Robin') }))).toBeNull()
   })
 })
 
