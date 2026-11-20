@@ -6,7 +6,7 @@ Neither the agency nor the client ever sees a persona, its name or its report. T
 
 | File | Persona | Protects |
 | --- | --- | --- |
-| `personas/client.md` | Client | The reason the project exists |
+| `personas/client.md` | Client | The reason the project exists, and who it is for |
 | `personas/agency.md` | Agency | The team's ability to do good work |
 | `personas/cfo.md` | CFO | The money |
 | `personas/procurement.md` | Procurement | The agreement, and the bad day |
@@ -44,7 +44,8 @@ Rules:
   disagreement is really about money, feedback, contracts or delivery and that is not your topic, leave it out.
 - When you say the two sides disagree, give the words each side used. No evidence, no conflict.
 - Suggest what to find out, not the wording. The coach has its own voice.
-- One thing per question. If you catch yourself writing "also", that is a second question.
+- One thing per question. If you catch yourself writing "also" or joining two asks with "and", that is a
+  second question. Split it or drop the weaker half.
 - A question for one side must never depend on telling that side what the other one said.
 - At most three questions in total. Fewer is better. None is fine if your topics are settled.
 ```
