@@ -16,10 +16,10 @@ Neither the agency nor the client ever sees a persona, its name or its report. T
 
 [`mother-agent.md`](mother-agent.md) is Samira's AIM for the one voice people talk to. The Worker loads it together with `coach.md`, and the two split the job:
 
-- **The mother agent is how the coach thinks and speaks:** who it is, the signals it listens for from the project stories, what is at stake, its priority matrix and ratings, how it chooses and words the next ask, and when it explains something before asking.
+- **The mother agent is how the coach thinks and speaks:** who it is and its limits as a mediator, its four phases and four tools, the signals it listens for from the project stories, its priority matrix and ratings, how it chooses and words the next ask, and when it explains something before asking.
 - **`coach.md` is how the coach keeps the room:** taking facts from what a person says, corrections, confirmations and closing asks.
 
-Where the two differ on what to ask, how to word it or how to treat what the other side said, the mother agent wins. Where they differ on recording facts, `coach.md` wins. That rule is written once, in `workers/api/src/coach/prompt.ts`.
+Where the two differ on what to ask, how to word it or how open to be about what the other side said, the mother agent wins. Where they differ on recording facts, `coach.md` wins. That rule is written once, in `workers/api/src/coach/prompt.ts`.
 
 Three things come out of it:
 
@@ -29,7 +29,9 @@ Three things come out of it:
 
 The matrix and the reading are kept in the room but are not part of the room snapshot, so no tool, lens or page shows them. Only the coach reads them back, on its next turn. A view for the team does not exist yet.
 
-**Still to settle between Samira and Ben:** the mother agent assumes each side's conversation is private, and tells the coach never to quote or hint at what the other side said. The room is shared, and `read_room` shows every fact to everyone, so today the coach is discreet in a room that is not.
+**Openness:** the mother agent's default is transparency, which fits the shared room: the coach may say what the other side said, fairly and in neutral words. It keeps back anything a person asked it to keep private. Nothing in the app lets a person mark something private yet, so that part rests on the coach's judgement alone.
+
+The file follows Samira's "A-line: Mother, agent instructions (draft v1)" card on Superthread: who Mother is, mediator not adviser, the four phases (interrogate, sort, find the cause, escalate), the four tools, tone of voice and what she produces.
 
 ## A draft that is not wired in
 

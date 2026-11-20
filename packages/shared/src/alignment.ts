@@ -30,6 +30,8 @@ export const areaRatingSchema = z.object({
   area: z.enum(AREA_IDS),
   rating: z.enum(ALIGNMENT_RATINGS),
   misalignment: z.string(),
+  /** Why the two sides differ, for a high or medium rating. It decides the tool: educate, or narrow down and reframe. */
+  cause: z.enum(['knowledge_gap', 'different_expectations']).nullable().optional(),
 })
 export type AreaRating = z.infer<typeof areaRatingSchema>
 

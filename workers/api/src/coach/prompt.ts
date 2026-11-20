@@ -86,9 +86,8 @@ const HOW_THEY_FIT = [
     'What it calls your persona agents are the advisers whose reports are above.',
   '- **The coach harness** is how you keep the room: taking facts from what a person says, corrections, ' +
     'confirmations and closing asks.',
-  'Where they differ on what to ask next, how to word it, or how to treat what the other side said, follow the ' +
-    "mother agent. That includes keeping each side's confidence: do not quote or hint at what the other side said, " +
-    'even though facts are kept in one room. Where they differ on how facts are recorded, follow the coach harness.',
+  'Where they differ on what to ask next, how to word it, or how open to be about what the other side said, ' +
+    'follow the mother agent. Where they differ on how facts are recorded, follow the coach harness.',
 ].join('\n\n')
 
 /** The mother agent, the coach's harness and the reference pack, the same for every call. */
@@ -97,6 +96,8 @@ export function renderHarness(): string {
     '\n\n',
   )
 }
+
+const CAUSES = { knowledge_gap: 'a gap in knowledge', different_expectations: 'a genuine difference in expectation' } as const
 
 const AREA_NAMES = new Map<string, string>(ALIGNMENT_AREAS.map((area) => [area.id, area.name]))
 
@@ -111,7 +112,8 @@ export function renderAssessment(previous: Assessment | null | undefined): strin
     `## Your priority matrix, as you left it after ${ref('item', previous.itemId)}`,
     ...previous.areas.map(
       (row) =>
-        `- ${AREA_NAMES.get(row.area) ?? row.area} (${row.area}): ${row.rating}${row.misalignment ? `. ${oneLine(row.misalignment)}` : ''}`,
+        `- ${AREA_NAMES.get(row.area) ?? row.area} (${row.area}): ${row.rating}` +
+        `${row.misalignment ? `. ${oneLine(row.misalignment)}` : ''}${row.cause ? ` Cause: ${CAUSES[row.cause]}.` : ''}`,
     ),
     `${reading} The health reading is worked out for you from your ratings. Nobody on either side sees any of this.`,
   ].join('\n')

@@ -19,7 +19,7 @@ describe('coachInstructions', () => {
     const text = String(third!.content)
     expect(text.indexOf('# Mother agent')).toBeGreaterThan(0)
     expect(text.indexOf('# Coach harness')).toBeGreaterThan(text.indexOf('# Mother agent'))
-    for (const part of ['### Signals to listen for', '### Your priority matrix', '### Educating, discreetly']) {
+    for (const part of ['### The four phases', '### Signals to listen for', '### Your priority matrix', '### Educating']) {
       expect(text).toContain(part)
     }
     expect(third!.content).toContain('<reference>')
@@ -95,11 +95,11 @@ describe('renderAssessment', () => {
   it("gives the mother agent its own last matrix and reading back, and says nobody else sees it", () => {
     const text = renderAssessment({
       itemId: 4,
-      areas: [{ area: 'scope', rating: 'high', misalignment: 'Different lists of what is included.' }],
+      areas: [{ area: 'scope', rating: 'high', misalignment: 'Different lists of what is included.', cause: 'knowledge_gap' }],
       health: { score: 37, band: 'red' },
     })
     expect(text).toContain('as you left it after i4')
-    expect(text).toContain('- Scope (scope): high. Different lists of what is included.')
+    expect(text).toContain('- Scope (scope): high. Different lists of what is included. Cause: a gap in knowledge.')
     expect(text).toContain('Health was 37 out of 100, red.')
     expect(text).toContain('Nobody on either side sees any of this.')
   })
