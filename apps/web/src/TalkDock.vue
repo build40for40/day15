@@ -1,13 +1,17 @@
 <script setup lang="ts">
-import type { Topic } from '@day15/shared/schema'
+import type { Participant, Topic } from '@day15/shared/schema'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
-import type { TopicState } from './circle'
-import { sayToCoach } from './talk'
+import type { RoomQuestion, TopicState } from './circle'
+import { messageForCoach, messageForOwnAi, questionLine } from './talk'
 
 const props = defineProps<{
-  /** The card that is open, if any. The message points at it. */
+  /** The card that is open, if any. What you say is about it. */
   topic: TopicState | null
+  /** People on the agency side. The page can speak for them. */
+  speakers: Participant[]
+  /** Sends words to the coach as one of them, and resolves with what the coach says back. */
+  send: (participantId: number, message: string) => Promise<string>
 }>()
 
 const emit = defineEmits<{ show: [id: Topic] }>()
@@ -33,8 +37,12 @@ const Speech = speech.SpeechRecognition ?? speech.webkitSpeechRecognition
 const reduceMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 const open = ref(false)
-const text = ref('')
-const edited = ref(false)
+const said = ref('')
+/** The question being answered, when someone chose "Answer this" on it. */
+const asked = ref<RoomQuestion | null>(null)
+const speakerId = ref<number | null>(null)
+const sending = ref(false)
+const reply = ref('')
 const listening = ref(false)
 const copied = ref(false)
 const note = ref('')
@@ -48,19 +56,21 @@ const toastTopic = ref<Topic | null>(null)
 const toastOn = ref(false)
 
 let recognition: Recognition | undefined
+let sendWhenStopped = false
 let alive = true
 let frame = 0
 let toastTimer: ReturnType<typeof setTimeout> | undefined
 
-const suggestion = computed(() => sayToCoach(props.topic))
 watch(
-  suggestion,
-  (next) => {
-    if (!edited.value) text.value = next
+  () => props.speakers,
+  (people) => {
+    if (!people.some((person) => person.id === speakerId.value)) speakerId.value = people[0]?.id ?? null
   },
   { immediate: true },
 )
 
+const context = computed(() => (props.topic ? `About ${props.topic.name}` : 'About the whole project'))
+const waitingOn = computed(() => asked.value ?? props.topic?.questions[0] ?? null)
 const label = computed(() => (listening.value ? 'Listening. Tap to stop.' : 'Talk to the coach'))
 
 function startListening() {
@@ -69,19 +79,19 @@ function startListening() {
     return false
   }
   try {
-    const base = text.value ? text.value.replace(/\s*$/, ' ') : ''
+    const base = said.value ? said.value.replace(/\s*$/, ' ') : ''
     const heard = new Speech()
     heard.lang = 'en-GB'
     heard.continuous = true
     heard.interimResults = true
     heard.onresult = (event) => {
-      let said = ''
-      for (let index = 0; index < event.results.length; index++) said += event.results[index]?.[0]?.transcript ?? ''
-      text.value = base + said
-      edited.value = true
+      let words = ''
+      for (let index = 0; index < event.results.length; index++) words += event.results[index]?.[0]?.transcript ?? ''
+      said.value = base + words
     }
     heard.onerror = (event) => {
       listening.value = false
+      sendWhenStopped = false
       note.value =
         event.error === 'not-allowed' || event.error === 'service-not-allowed'
           ? 'The microphone is blocked. Type instead.'
@@ -91,6 +101,10 @@ function startListening() {
     }
     heard.onend = () => {
       listening.value = false
+      if (sendWhenStopped) {
+        sendWhenStopped = false
+        void submit()
+      }
     }
     recognition = heard
     heard.start()
@@ -103,27 +117,36 @@ function startListening() {
   }
 }
 
-function stopListening() {
+function stopListening(thenSend = false) {
   if (recognition && listening.value) {
+    sendWhenStopped = thenSend
     try {
       recognition.stop()
     } catch {
-      // Already stopped.
+      listening.value = false
     }
+    return
   }
   listening.value = false
 }
 
+/** Opens the panel. Called with a question when someone chose "Answer this" on it. */
+function show_(question: RoomQuestion | null = null) {
+  asked.value = question
+  reply.value = ''
+  note.value = ''
+  copied.value = false
+  open.value = true
+  void nextTick(() => area.value?.focus({ preventScroll: true }))
+}
+
 function tap() {
   if (!open.value) {
-    open.value = true
-    copied.value = false
-    note.value = ''
+    show_()
     startListening()
-    void nextTick(() => area.value?.focus({ preventScroll: true }))
     return
   }
-  if (listening.value) return stopListening()
+  if (listening.value) return stopListening(true)
   if (Speech) return void startListening()
   close()
 }
@@ -133,9 +156,34 @@ function close() {
   open.value = false
 }
 
+async function submit() {
+  const words = said.value.trim()
+  if (sending.value) return
+  if (!words) {
+    note.value = 'Say or type something first.'
+    return
+  }
+  if (speakerId.value === null) {
+    note.value = 'Add someone from the agency side in People, then speak as them.'
+    return
+  }
+  stopListening()
+  sending.value = true
+  note.value = ''
+  try {
+    reply.value = await props.send(speakerId.value, messageForCoach(props.topic, words, asked.value))
+    said.value = ''
+    asked.value = null
+  } catch (error) {
+    note.value = error instanceof Error ? error.message : 'Something went wrong. Try again?'
+  } finally {
+    sending.value = false
+  }
+}
+
 async function copy() {
   try {
-    await navigator.clipboard.writeText(text.value)
+    await navigator.clipboard.writeText(messageForOwnAi(props.topic, said.value.trim(), asked.value))
     copied.value = true
     note.value = ''
   } catch {
@@ -173,20 +221,20 @@ function dropTrail(point: Point) {
     position: 'fixed',
     left: '0',
     top: '0',
-    width: '8px',
-    height: '8px',
-    margin: '-4px 0 0 -4px',
+    width: '6px',
+    height: '6px',
+    margin: '-3px 0 0 -3px',
     borderRadius: '50%',
-    background: 'rgba(255,176,165,.95)',
-    boxShadow: '0 0 8px 3px rgba(255,156,145,.55)',
+    background: 'rgba(255,176,165,.9)',
+    boxShadow: '0 0 6px 2px rgba(255,156,145,.45)',
     pointerEvents: 'none',
     zIndex: '59',
     transform: `translate(${point.x.toFixed(1)}px,${point.y.toFixed(1)}px)`,
   })
   document.body.appendChild(dot)
   const done = () => dot.remove()
-  if (typeof dot.animate === 'function') dot.animate([{ opacity: 0.9 }, { opacity: 0 }], { duration: 700, easing: 'ease-out' }).onfinish = done
-  else setTimeout(done, 700)
+  if (typeof dot.animate === 'function') dot.animate([{ opacity: 0.8 }, { opacity: 0 }], { duration: 450, easing: 'ease-out' }).onfinish = done
+  else setTimeout(done, 450)
 }
 
 function leg(from: () => Point, to: () => Point, ms: number): Promise<void> {
@@ -202,7 +250,7 @@ function leg(from: () => Point, to: () => Point, ms: number): Promise<void> {
       const u = 1 - ease
       const at: Point = { x: u * u * a.x + 2 * u * ease * bend.x + ease * ease * b.x, y: u * u * a.y + 2 * u * ease * bend.y + ease * ease * b.y }
       place(at)
-      if (++count % 2 === 0) dropTrail(at)
+      if (++count % 3 === 0) dropTrail(at)
       if (k < 1 && alive) frame = requestAnimationFrame(step)
       else resolve()
     }
@@ -229,7 +277,7 @@ async function fly(id: Topic) {
   let from: () => Point = home
   for (const stop of stops) {
     await leg(from, stop, 640)
-    await pause(280)
+    await pause(240)
     from = stop
   }
   await leg(from, home, 640)
@@ -245,10 +293,10 @@ function announce(message: string, id: Topic | null = null) {
   clearTimeout(toastTimer)
   toastTimer = setTimeout(() => {
     toastOn.value = false
-  }, 8000)
+  }, 6000)
 }
 
-function show() {
+function jump() {
   if (toastTopic.value) emit('show', toastTopic.value)
   toastOn.value = false
 }
@@ -261,30 +309,46 @@ onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKey)
 })
 
-defineExpose({ fly, announce })
+defineExpose({ fly, announce, show: show_ })
 </script>
 
 <template>
   <Teleport to="body">
     <div class="dock">
       <section v-if="open" class="panel" role="dialog" aria-label="Talk to the coach">
-        <p class="ctx">{{ topic ? `About ${topic.name}` : 'About the whole project' }}</p>
-        <ol class="steps">
-          <li>
-            Open your own AI:
-            <a href="https://claude.ai/new" target="_blank" rel="noopener">Claude</a>
-            or
-            <a href="https://chatgpt.com/" target="_blank" rel="noopener">ChatGPT</a>.
-          </li>
-          <li>Paste this, and say what changed. Speak it here, or type.</li>
-        </ol>
-        <textarea ref="area" v-model="text" rows="4" aria-label="What to say to the coach" @input="edited = true" />
+        <p class="ctx">{{ context }}</p>
+        <p v-if="waitingOn" class="waiting">
+          <span>{{ asked ? 'Answering' : 'The coach is waiting on' }}</span>
+          {{ questionLine(waitingOn) }}
+        </p>
+
+        <label v-if="speakers.length > 1" class="as">
+          Speaking as
+          <select v-model="speakerId">
+            <option v-for="person in speakers" :key="person.id" :value="person.id">{{ person.name }}</option>
+          </select>
+        </label>
+        <p v-else-if="speakers.length === 1" class="as">Speaking as {{ speakers[0]?.name }}</p>
+        <p v-else class="as">Add someone from the agency side in People to speak here.</p>
+
+        <textarea
+          ref="area"
+          v-model="said"
+          rows="3"
+          aria-label="What to tell the coach"
+          placeholder="Say or type what changed."
+          @keydown.enter.exact.prevent="submit"
+        />
+
         <div class="row">
-          <button type="button" class="go" @click="copy">{{ copied ? 'Copied' : 'Copy' }}</button>
+          <button type="button" class="go" :disabled="sending" @click="submit">{{ sending ? 'Sending...' : 'Send to the coach' }}</button>
+          <button type="button" @click="copy">{{ copied ? 'Copied' : 'Copy for my own AI' }}</button>
           <button type="button" @click="close">Close</button>
-          <span v-if="note" class="note" role="status">{{ note }}</span>
         </div>
-        <p class="hint">You talk to the coach from your own AI, with your own link. This page updates by itself when anyone does.</p>
+        <p v-if="note" class="note" role="alert">{{ note }}</p>
+
+        <p v-if="reply" class="reply"><span class="who">A-Line</span>{{ reply }}</p>
+        <p v-else class="hint">The coach records it straight away. Everyone else talks to it from their own AI.</p>
       </section>
 
       <div class="dockrow">
@@ -297,9 +361,9 @@ defineExpose({ fly, announce })
 
     <span ref="spark" class="spark" hidden aria-hidden="true" />
 
-    <div class="toast" :class="{ on: toastOn }" role="status">
+    <div class="toast" :class="{ on: toastOn && !open }" role="status">
       <span>{{ toastText }}</span>
-      <button v-if="toastTopic && toastOn" type="button" class="see" @click="show">Show me</button>
+      <button v-if="toastTopic && toastOn" type="button" class="see" @click="jump">Show me</button>
     </div>
   </Teleport>
 </template>
@@ -313,7 +377,7 @@ defineExpose({ fly, announce })
   display: grid;
   gap: 12px;
   justify-items: end;
-  width: min(380px, calc(100vw - 40px));
+  width: min(400px, calc(100vw - 40px));
   pointer-events: none;
 }
 
@@ -328,7 +392,7 @@ defineExpose({ fly, announce })
   padding: 14px;
   border: 1px solid rgba(255, 156, 145, 0.5);
   border-radius: 16px;
-  background: linear-gradient(180deg, rgba(38, 24, 34, 0.97), rgba(11, 18, 32, 0.98));
+  background: linear-gradient(180deg, rgba(38, 24, 34, 0.98), rgba(11, 18, 32, 0.99));
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5), 0 0 40px rgba(255, 156, 145, 0.12);
   color: var(--text);
   animation: panel-in 0.22s ease-out;
@@ -347,21 +411,39 @@ defineExpose({ fly, announce })
   color: var(--coral);
 }
 
-.steps {
+.waiting {
   margin: 0;
-  padding-left: 1.2rem;
-  display: grid;
-  gap: 4px;
-  font: 400 14px/1.45 var(--sans);
+  font: 400 16px/1.45 var(--serif);
+  color: var(--lit);
 }
 
-.steps a {
-  color: var(--lit);
+.waiting span {
+  display: block;
+  font: 500 12px var(--sans);
+  color: var(--dim);
+}
+
+.as {
+  margin: 0;
+  font: 500 13px var(--sans);
+  color: var(--dim);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.as select {
+  font: 500 13px var(--sans);
+  color: var(--text);
+  background: var(--midnight);
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  padding: 5px 8px;
 }
 
 .panel textarea {
   width: 100%;
-  min-height: 84px;
+  min-height: 78px;
   resize: vertical;
   background: var(--midnight);
   color: var(--text);
@@ -388,21 +470,51 @@ defineExpose({ fly, announce })
   color: var(--text);
 }
 
-.row button:hover {
-  border-color: var(--gold);
-  color: var(--lit);
+.row button:hover:not(:disabled) {
+  border-color: var(--coral);
+  color: #fff;
+}
+
+.row button:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .row .go {
-  background: var(--lit);
-  color: #1a1408;
-  border-color: var(--lit);
+  background: var(--coral);
+  color: #2a0f0b;
+  border-color: var(--coral);
   font-weight: 600;
 }
 
+.row .go:hover:not(:disabled) {
+  color: #2a0f0b;
+  filter: brightness(1.06);
+}
+
 .note {
-  font: 12px var(--sans);
-  color: var(--dim);
+  margin: 0;
+  font: 12.5px/1.4 var(--sans);
+  color: var(--coral);
+}
+
+.reply {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 156, 145, 0.1);
+  font: 400 14px/1.5 var(--sans);
+  color: var(--text);
+}
+
+.reply .who {
+  display: inline-block;
+  margin-right: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--coral);
+  color: #2a0f0b;
+  font: 600 11.5px var(--sans);
 }
 
 .hint {
@@ -419,8 +531,8 @@ defineExpose({ fly, announce })
 
 .dlabel {
   font: 500 13px var(--sans);
-  color: var(--lit);
-  background: rgba(7, 11, 20, 0.88);
+  color: var(--text);
+  background: rgba(7, 11, 20, 0.9);
   border: 1px solid rgba(255, 156, 145, 0.4);
   border-radius: 999px;
   padding: 7px 13px;
@@ -505,21 +617,25 @@ defineExpose({ fly, announce })
   will-change: transform;
 }
 
+/* A quiet note above the dock, in the app's own dark, so it never sits on the cards like a sticker. */
 .toast {
   position: fixed;
-  left: 50%;
-  bottom: calc(96px + env(safe-area-inset-bottom, 0px));
-  transform: translate(-50%, 20px);
+  right: max(20px, env(safe-area-inset-right, 0px));
+  bottom: calc(92px + env(safe-area-inset-bottom, 0px));
   display: flex;
   align-items: center;
   gap: 14px;
-  max-width: calc(100vw - 40px);
-  padding: 10px 16px;
-  border-radius: 999px;
-  background: var(--lit);
-  color: #1a1408;
-  font: 500 13px var(--sans);
+  max-width: min(360px, calc(100vw - 40px));
+  padding: 10px 14px;
+  border: 1px solid var(--line-2);
+  border-left: 3px solid var(--coral);
+  border-radius: 12px;
+  background: var(--raise);
+  color: var(--text);
+  font: 400 13.5px/1.45 var(--sans);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
   opacity: 0;
+  transform: translateY(10px);
   pointer-events: none;
   transition: opacity 0.25s, transform 0.25s;
   z-index: 55;
@@ -527,19 +643,21 @@ defineExpose({ fly, announce })
 
 .toast.on {
   opacity: 1;
-  transform: translate(-50%, 0);
+  transform: none;
   pointer-events: auto;
 }
 
 .see {
   all: unset;
+  flex: none;
   cursor: pointer;
   font-weight: 600;
+  color: var(--coral);
   text-decoration: underline;
 }
 
 .see:focus-visible {
-  outline: 2px solid #1a1408;
+  outline: 2px solid var(--gold);
   outline-offset: 2px;
 }
 

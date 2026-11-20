@@ -1,8 +1,9 @@
-import { MAX_NAME_LENGTH, newParticipantSchema, participantUpdateSchema } from '@day15/shared/schema'
+import { MAX_ITEM_LENGTH, MAX_NAME_LENGTH, newParticipantSchema, participantUpdateSchema } from '@day15/shared/schema'
 import { z } from 'zod'
 
-import { API_PATH, MCP_PATH, type Env, type HandleTeamApi } from '../contracts'
+import { API_PATH, MCP_PATH, type CoachTurn, type Env, type HandleTeamApi } from '../contracts'
 import { DirectoryError } from '../directory/store'
+import { logModelError } from '../model'
 import { formatKey, isProjectId } from '../room/keys'
 import { RoomError } from '../room/room'
 import { sideView } from '../room/side-view'
@@ -12,6 +13,15 @@ export type SignedIn = (request: Request, env: Env) => Promise<string | null>
 const nameBody = z.object({ name: z.string().trim().min(1).max(MAX_NAME_LENGTH) })
 
 const newPersonBody = newParticipantSchema.extend({ link: z.boolean().optional() })
+
+const sayBody = z.object({ participantId: z.number().int().positive(), message: z.string().trim().min(1).max(MAX_ITEM_LENGTH) })
+
+/** What the owner's page needs to talk to the coach on someone's behalf. Left out in tests that do not need it. */
+export interface TeamDeps {
+  coachTurn: CoachTurn
+}
+
+const SAFE_COACH_ERRORS = new Set(['CoachError', 'ModelUnavailableError'])
 
 const PERSON_RULES = 'Each person needs a name, a persona and a side, and the rest has to be short enough.'
 
@@ -28,7 +38,7 @@ const address = (url: URL, projectId: string, secret: string) =>
   `${url.origin}${MCP_PATH}/${formatKey(projectId, secret)}`
 
 /** The agency owner's API, behind a sign-in check that is passed in so tests can fake it. */
-export function createTeamApi(signedIn: SignedIn): HandleTeamApi {
+export function createTeamApi(signedIn: SignedIn, deps?: TeamDeps): HandleTeamApi {
   return async (request, env) => {
     const signedInId = await signedIn(request, env)
     if (!signedInId) return fail('Sign in first.', 401)
@@ -76,7 +86,7 @@ export function createTeamApi(signedIn: SignedIn): HandleTeamApi {
         return json({ project: { ...project, participants: [] } }, 201)
       }
 
-      if (head === 'projects' && projectId && (tail === 'people' || tail === 'room')) {
+      if (head === 'projects' && projectId && (tail === 'people' || tail === 'room' || tail === 'say')) {
         if (!isProjectId(projectId) || !(await directory.hasProject(projectId))) return fail('No such project.', 404)
         const room = env.ROOMS.getByName(projectId)
 
@@ -87,6 +97,25 @@ export function createTeamApi(signedIn: SignedIn): HandleTeamApi {
           if (!snapshot) return fail('No such project.', 404)
           const { facts, openQuestions } = sideView(snapshot, 'agency')
           return json({ room: { facts, openQuestions, asks: snapshot.asks.filter((ask) => ask.status === 'open') } })
+        }
+
+        if (tail === 'say') {
+          if (segments.length !== 3) return fail('Not found.', 404)
+          if (method !== 'POST') return fail('Use POST.', 405)
+          if (!deps) return fail('Talking to the coach from here is not set up.', 501)
+          const body = await readBody(request, sayBody)
+          if (!body) return fail('Say something, and say who is speaking.', 400)
+          const speaker = (await room.participants()).find((person) => person.id === body.participantId && !person.removedAt)
+          if (!speaker) return fail('No such person.', 404)
+          // The owner can already give anyone a link, but the client's side stays the client's own.
+          if (speaker.side !== 'agency') return fail('You can speak here for people on the agency side. The client talks to the coach from their own link.', 403)
+          const { reply } = await deps.coachTurn(env, room, speaker, body.message)
+          try {
+            await room.scheduleLensRounds()
+          } catch (error) {
+            logModelError('Scheduling lens rounds', error)
+          }
+          return json({ reply })
         }
 
         if (segments.length === 3) {
@@ -130,6 +159,7 @@ export function createTeamApi(signedIn: SignedIn): HandleTeamApi {
       return await route()
     } catch (error) {
       if (error instanceof RoomError || error instanceof DirectoryError) return fail(error.message, 400)
+      if (error instanceof Error && SAFE_COACH_ERRORS.has(error.name)) return fail(error.message, 503)
       console.error('team api failed:', error instanceof Error ? error.name : 'Unknown error')
       return fail('Something went wrong on our side.', 500)
     }

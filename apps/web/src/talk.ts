@@ -1,15 +1,21 @@
 import type { Topic } from '@day15/shared/schema'
 
-import { questionText, type TopicState } from './circle'
+import { questionText, type RoomQuestion, type TopicState } from './circle'
 
 /** Lens wording cites facts by short ids, which mean nothing to a person. */
 const plain = (text: string) => text.replace(/\s*\((?:[a-z]\d+(?:,\s*|\s+and\s+)?)+\)/gi, '')
 
-/** What the room holds on a topic, in a few characters, so a refresh can tell that something moved. */
+/** The question as a person reads it. */
+export const questionLine = (question: RoomQuestion) => plain(questionText(question))
+
+/**
+ * What the room holds on a topic, in a few characters, so a refresh can tell that something moved.
+ * Sorted, so the coach reordering things does not look like a change.
+ */
 export function fingerprint(topic: TopicState): string {
-  const facts = topic.facts.map((fact) => `${fact.id}:${fact.status}`).join(',')
-  const questions = topic.questions.map((question) => question.id).join(',')
-  return `${topic.bucket}|${facts}|${questions}`
+  const facts = topic.facts.map((fact) => `${fact.id}:${fact.status}`).sort().join(',')
+  const questions = topic.questions.map((question) => question.id).sort((a, b) => a - b).join(',')
+  return `${facts}|${questions}`
 }
 
 export function fingerprints(topics: TopicState[]): Map<Topic, string> {
@@ -22,15 +28,14 @@ export function changedTopics(before: Map<Topic, string> | null, topics: TopicSt
   return topics.filter((topic) => before.get(topic.id) !== fingerprint(topic)).map((topic) => topic.id)
 }
 
-/**
- * What to say to the coach, ready to paste into the person's own AI. It points at the card that is open,
- * and at the question the coach is waiting on, so nobody has to explain where they are.
- */
-export function sayToCoach(topic: TopicState | null): string {
-  if (!topic) return 'Open my A-Line room. Then I will tell the coach what has changed on the project.'
-  const question = topic.questions[0]
-  if (question) {
-    return `Open my A-Line room. About ${topic.name}: the coach is waiting on "${plain(questionText(question))}" My answer is: `
-  }
-  return `Open my A-Line room. About ${topic.name}, here is what has changed: `
+/** What the coach is told: the card it is about, the question being answered if there is one, then the person's own words. */
+export function messageForCoach(topic: TopicState | null, said: string, question: RoomQuestion | null = null): string {
+  if (!topic) return said
+  const answering = question ? ` (the coach asked: "${questionLine(question)}")` : ''
+  return `About ${topic.name}${answering}: ${said}`
+}
+
+/** The same, ready to paste into the person's own AI, which has to open the room first. */
+export function messageForOwnAi(topic: TopicState | null, said: string, question: RoomQuestion | null = null): string {
+  return `Open my A-Line room. ${messageForCoach(topic, said, question)}`
 }
