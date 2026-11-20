@@ -8,6 +8,7 @@ import PersonLink from './PersonLink.vue'
 
 const props = defineProps<{
   person: Participant
+  projectName: string
   address: string | null
   busy: boolean
 }>()
@@ -36,7 +37,7 @@ const details = (): PersonDetails => ({
       </p>
     </header>
 
-    <PersonLink :person="person" :address="address" :busy="busy" @issue="emit('issue')" />
+    <PersonLink :person="person" :project-name="projectName" :address="address" :busy="busy" @issue="emit('issue')" />
 
     <section aria-labelledby="details-heading">
       <h3 id="details-heading">Details</h3>

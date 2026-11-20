@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import type { Participant } from '@day15/shared/schema'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
+
+import { inviteMessage, whatsappUrl } from './invite'
 
 const props = defineProps<{
   person: Participant
+  projectName: string
   /** Only known right after the link was made. */
   address: string | null
   busy: boolean
@@ -11,11 +14,15 @@ const props = defineProps<{
 
 const emit = defineEmits<{ issue: [] }>()
 
+const message = computed(() =>
+  props.address ? inviteMessage({ personName: props.person.name, projectName: props.projectName, address: props.address }) : null,
+)
+
 const copied = ref(false)
 const copyFailed = ref(false)
 
 watch(
-  () => props.address,
+  message,
   () => {
     copied.value = false
     copyFailed.value = false
@@ -23,9 +30,9 @@ watch(
 )
 
 async function copy() {
-  if (!props.address) return
+  if (!message.value) return
   try {
-    await navigator.clipboard.writeText(props.address)
+    await navigator.clipboard.writeText(message.value)
     copied.value = true
   } catch {
     copyFailed.value = true
@@ -37,14 +44,16 @@ async function copy() {
   <section class="link" aria-labelledby="link-heading">
     <h3 id="link-heading">Their link to the coach</h3>
 
-    <template v-if="address">
-      <input class="address" readonly :value="address" aria-label="MCP address" @focus="($event.target as HTMLInputElement).select()" />
-      <button type="button" @click="copy">{{ copied ? 'Copied' : 'Copy link' }}</button>
-      <p v-if="copyFailed" class="error" role="alert">Your browser wouldn't copy it. Select the link and copy it by hand.</p>
-      <p class="hint">Grab it now: we only keep a scrambled copy, so this is the one and only showing.</p>
-      <p class="hint">In Claude: Settings, Connectors, Add custom connector, paste the link.</p>
-      <p class="hint">In ChatGPT: Settings, Connectors, add a custom connector with the link.</p>
-      <p class="hint">It works like a password: anyone holding it talks to the coach as {{ person.name }}.</p>
+    <template v-if="message">
+      <p class="hint">Send {{ person.name }} this. It has their link and how to plug it into Claude or ChatGPT.</p>
+      <p class="message">{{ message }}</p>
+      <div class="actions">
+        <button type="button" @click="copy">{{ copied ? 'Copied' : 'Copy prompt' }}</button>
+        <a class="share" :href="whatsappUrl(message)" target="_blank" rel="noopener">WhatsApp</a>
+      </div>
+      <p v-if="copyFailed" class="error" role="alert">Your browser wouldn't copy it. Select the message and copy it by hand.</p>
+      <p class="hint">Send it now: we only keep a scrambled copy of the link, so this is the one and only showing.</p>
+      <p class="hint">The link works like a password: anyone holding it talks to the coach as {{ person.name }}.</p>
     </template>
 
     <template v-else-if="person.hasLink">
@@ -74,9 +83,32 @@ h3 {
   font-size: 1rem;
 }
 
-.address {
-  width: 100%;
-  font: 0.8125rem ui-monospace, monospace;
+.message {
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+  border-left: 3px solid var(--accent);
+  background: var(--paper);
+  font-size: 0.875rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.share {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
 }
 
 .error {
