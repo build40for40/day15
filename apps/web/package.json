@@ -2,19 +2,18 @@
   "name": "web",
   "version": "0.0.0",
   "private": true,
-  "description": "The Vue app, served at /day15/.",
+  "description": "The agency setup page, served at the root of day15.build40for40.com.",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "fake": "vite --mode fake",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "vue-tsc --build"
   },
   "dependencies": {
-    "@ai-sdk/vue": "^4.0.159",
     "@day15/shared": "workspace:*",
+    "@workos-inc/authkit-js": "^0.20.5",
     "vue": "^3.5.44"
   },
   "devDependencies": {

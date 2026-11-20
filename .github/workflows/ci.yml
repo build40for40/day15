@@ -35,6 +35,6 @@ jobs:
         with:
           api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           working-directory: workers/api
-          path: /day15/
+          path: /
           alias-length: "40"
           package-manager: ${{ steps.setup.outputs.package-manager }}

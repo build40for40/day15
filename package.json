@@ -6,7 +6,6 @@
   "packageManager": "pnpm@12.6.0",
   "scripts": {
     "dev": "pnpm --parallel --filter web --filter api dev",
-    "fake": "pnpm --filter web fake",
     "build": "pnpm typecheck && pnpm --filter web build",
     "preview": "pnpm --filter web preview",
     "test": "pnpm -r test",
