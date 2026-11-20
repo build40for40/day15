@@ -5,12 +5,14 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import AlignmentCircle from './AlignmentCircle.vue'
 import { getRoom } from './api'
-import { overall, questionText, statusLine, topicStates, type Bucket, type RoomQuestion, type RoomView } from './circle'
+import { overall, questionText, statusLine, topicStates, type Bucket, type RoomQuestion, type RoomView, type TopicState } from './circle'
 import PairGlyph from './PairGlyph.vue'
+import { changedTopics, fingerprints } from './talk'
+import TalkDock from './TalkDock.vue'
 
 const props = defineProps<{ projectId: string; people: Participant[] }>()
 
-const REFRESH_MS = 20_000
+const REFRESH_MS = 8_000
 const EMPTY: RoomView = { facts: [], openQuestions: [], asks: [] }
 
 const room = ref<RoomView>(EMPTY)
@@ -38,6 +40,13 @@ const rows = computed(() => topics.value.filter((topic) => shows[filter.value].i
 const names = computed(() => new Map(props.people.map((person) => [person.id, person.name])))
 const latest = computed(() => room.value.facts[room.value.facts.length - 1] ?? null)
 
+const dock = ref<InstanceType<typeof TalkDock> | null>(null)
+const flashId = ref<Topic | null>(null)
+const selectedState = computed(() => topics.value.find((topic) => topic.id === selected.value) ?? null)
+/** What each topic held at the last read, so a refresh can tell what someone just changed. */
+let seen: Map<Topic, string> | null = null
+let flashTimer: ReturnType<typeof setTimeout> | undefined
+
 /** Lens wording cites facts by their short ids, which mean nothing on this page. */
 const plain = (text: string) => text.replace(/\s*\((?:[a-z]\d+(?:,\s*|\s+and\s+)?)+\)/gi, '')
 
@@ -62,11 +71,30 @@ async function load() {
   try {
     room.value = (await getRoom(props.projectId)).room
     error.value = ''
+    const now = topicStates(room.value)
+    const changed = changedTopics(seen, now)
+    seen = fingerprints(now)
+    if (changed.length) react(changed, now)
   } catch (caught) {
     error.value = caught instanceof Error ? caught.message : 'Something went wrong.'
   } finally {
     loaded.value = true
   }
+}
+
+/** Someone talked to the coach: light up what changed, and let the glow fly there from the dock. */
+function react(ids: Topic[], now: TopicState[]) {
+  const first = ids[0]
+  if (!first) return
+  flashId.value = first
+  clearTimeout(flashTimer)
+  flashTimer = setTimeout(() => {
+    flashId.value = null
+  }, 1800)
+  const names = ids.map((id) => now.find((topic) => topic.id === id)?.name ?? id)
+  const list = names.length > 2 ? `${names[0]}, ${names[1]} and ${names.length - 2} more` : names.join(' and ')
+  dock.value?.announce(`${list} just changed in the room.`, first)
+  void dock.value?.fly(first)
 }
 
 function pick(id: Topic, fromCircle = false) {
@@ -82,12 +110,16 @@ onMounted(() => {
     if (!document.hidden) void load()
   }, REFRESH_MS)
 })
-onBeforeUnmount(() => clearInterval(timer))
+onBeforeUnmount(() => {
+  clearInterval(timer)
+  clearTimeout(flashTimer)
+})
 
 watch(
   () => props.projectId,
   () => {
     room.value = EMPTY
+    seen = null
     loaded.value = false
     selected.value = null
     void load()
@@ -152,7 +184,7 @@ watch(
       </div>
 
       <ul class="rows">
-        <li v-for="topic in rows" :key="topic.id" class="item" :class="{ open: selected === topic.id }">
+        <li v-for="topic in rows" :key="topic.id" class="item" :class="{ open: selected === topic.id, flash: flashId === topic.id }" :data-row="topic.id">
           <button type="button" class="head" :aria-expanded="selected === topic.id" @click="pick(topic.id)">
             <PairGlyph :topic="topic" />
             <span>
@@ -205,6 +237,8 @@ watch(
         <li v-if="!rows.length" class="empty none">Nothing here yet.</li>
       </ul>
     </div>
+
+    <TalkDock ref="dock" :topic="selectedState" @show="pick($event, true)" />
   </div>
 </template>
 
@@ -528,6 +562,26 @@ ul {
 @media (prefers-reduced-motion: reduce) {
   .body {
     animation: none;
+  }
+}
+.item.flash .head {
+  animation: row-flash 1.6s ease-out;
+  border-radius: 8px;
+}
+
+@keyframes row-flash {
+  0% {
+    background: rgba(255, 156, 145, 0.28);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item.flash .head {
+    animation: none;
+    background: rgba(255, 156, 145, 0.18);
   }
 }
 </style>

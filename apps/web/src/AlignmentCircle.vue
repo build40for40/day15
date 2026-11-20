@@ -291,7 +291,7 @@ onBeforeUnmount(() => {
         />
         <text class="lab" :x="spoke.label.x" :y="spoke.label.y" :text-anchor="spoke.label.anchor">{{ spoke.topic.label }}</text>
         <circle :cx="spoke.inner.x" :cy="spoke.inner.y" v-bind="spoke.agency" stroke-width="1.8" :filter="`url(#${uid}-glow)`" />
-        <circle :cx="spoke.outer.x" :cy="spoke.outer.y" v-bind="spoke.client" stroke-width="1.8" :filter="`url(#${uid}-glow)`" />
+        <circle :cx="spoke.outer.x" :cy="spoke.outer.y" v-bind="spoke.client" stroke-width="1.8" :filter="`url(#${uid}-glow)`" :data-ball="spoke.topic.id" />
       </g>
     </svg>
     <canvas ref="dust" aria-hidden="true" />
