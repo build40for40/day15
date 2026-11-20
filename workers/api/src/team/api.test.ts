@@ -132,6 +132,27 @@ describe('team API', () => {
     expect((await call('DELETE', `/api/projects/${projectId}/people/${added.participant.id}`)).status).toBe(404)
   })
 
+  it('shows the owner the room as the agency side sees it', async () => {
+    const { call, rooms, projectId } = await teamWithProject()
+    const { participant } = await data(await call('POST', `/api/projects/${projectId}/people`, { name: 'Dana', persona: 'cfo', side: 'client' }))
+    const room = rooms.get(projectId)!
+    const item = await room.addItem(participant.id, 'We have £60k. Between us, the board would stretch to £75k.')
+    const said = { authorKind: 'person' as const, participantId: participant.id, sourceItemId: item.id, status: 'confirmed' as const, topic: 'budget' as const }
+    await room.addFacts([
+      { ...said, statement: 'The budget is £60k.', sourceQuote: 'We have £60k.' },
+      { ...said, statement: 'The board would stretch to £75k.', sourceQuote: 'the board would stretch to £75k', private: true },
+    ])
+    await room.addAsk({ addressedTo: participant.id, ask: 'What does the £60k have to cover?', because: 'Nobody has said.', lens: null })
+
+    const res = await call('GET', `/api/projects/${projectId}/room`)
+    expect(res.status).toBe(200)
+    const view = (await data(res)).room
+    expect(view.facts.map((fact: { statement: string }) => fact.statement)).toEqual(['The budget is £60k.'])
+    expect(view.openQuestions).toEqual([])
+    expect(view.asks.map((ask: { ask: string }) => ask.ask)).toEqual(['What does the £60k have to cover?'])
+    expect(JSON.stringify(view)).not.toContain('£75k')
+  })
+
   it('rejects a person with no side', async () => {
     const { call, projectId } = await teamWithProject()
     expect((await call('POST', `/api/projects/${projectId}/people`, { name: 'Pat', persona: 'cfo' })).status).toBe(400)

@@ -84,7 +84,7 @@ const submit = () => emit('submit', { ...draft, lenses: [...draft.lenses] })
       />
     </label>
     <slot />
-    <button type="submit" :disabled="busy || !draft.name.trim()">{{ submitLabel }}</button>
+    <button type="submit" class="submit" :disabled="busy || !draft.name.trim()">{{ submitLabel }}</button>
   </form>
 </template>
 
@@ -97,7 +97,8 @@ const submit = () => emit('submit', { ...draft, lenses: [...draft.lenses] })
 label {
   display: grid;
   gap: 0.25rem;
-  font-size: 0.875rem;
+  font-size: 13px;
+  color: var(--dim);
 }
 
 .pair {
@@ -108,7 +109,7 @@ label {
 
 fieldset {
   border: 1px solid var(--line);
-  border-radius: 0.5rem;
+  border-radius: 14px;
   padding: 0.5rem 0.75rem 0.75rem;
   margin: 0;
   display: flex;
@@ -130,12 +131,16 @@ fieldset .hint {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  font-size: 1rem;
+  font-size: 15px;
+  color: var(--text);
 }
 
 .check input {
   min-height: auto;
   width: 1.1rem;
   height: 1.1rem;
+}
+.submit {
+  justify-self: start;
 }
 </style>

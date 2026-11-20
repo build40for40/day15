@@ -25,13 +25,52 @@ const person = (overrides: Record<string, unknown>) => ({
   ...overrides,
 })
 const team = { name: 'Fake Agency', ownerId: 'user_fake', createdAt: '2026-11-20T09:00:00Z' }
-const project = (participants: unknown[] = []) => ({ id: PROJECT_ID, name: 'Orchard Dash', createdAt: 'x', participants })
+const project = (participants: unknown[] = [], overrides: Record<string, unknown> = {}) => ({
+  id: PROJECT_ID,
+  name: 'Orchard Dash',
+  createdAt: 'x',
+  participants,
+  ...overrides,
+})
+
+const said = (id: number, side: string, statement: string) => ({
+  id,
+  topic: 'budget',
+  statement,
+  status: 'confirmed',
+  authorKind: 'person',
+  participantId: 1,
+  side,
+  basedOn: [],
+  private: false,
+})
+const ROOM = {
+  facts: [said(1, 'agency', 'The quote is £80k.'), said(2, 'client', 'The budget is £60k.')],
+  openQuestions: [
+    {
+      id: 1,
+      kind: 'conflict',
+      topic: 'budget',
+      area: 'budget',
+      statement: 'The quote is £20k over the budget (f1, f2).',
+      because: '',
+      agencySaid: null,
+      clientSaid: null,
+      askSide: 'both',
+      priority: 1,
+      basedOn: [1, 2],
+      withheld: false,
+    },
+  ],
+  asks: [],
+}
 
 function serve(session: unknown) {
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     const path = new URL(url, 'https://day15.test').pathname
     const body = init?.body ? JSON.parse(String(init.body)) : undefined
     if (path === '/api/session') return Response.json(session)
+    if (path.endsWith('/room')) return Response.json({ room: ROOM })
     if (path === '/api/projects') return Response.json({ project: project() }, { status: 201 })
     if (path.endsWith('/people') && init?.method === 'POST') {
       const { link, ...details } = body
@@ -85,7 +124,7 @@ describe('App', () => {
     await wrapper.get('input[aria-label="Project name"]').setValue('Orchard Dash')
     await wrapper.get('form').trigger('submit')
     await flushPromises()
-    expect(wrapper.get('nav').text()).toContain('Orchard Dash')
+    expect(wrapper.get('h2').text()).toBe('Orchard Dash')
     expect(wrapper.text()).toContain('Add a person')
   })
 
@@ -96,6 +135,7 @@ describe('App', () => {
     vi.stubGlobal('navigator', { clipboard: { writeText } })
     const wrapper = mount(App)
     await flushPromises()
+    await button(wrapper, 'People 1').trigger('click')
     expect(sidebarNames(wrapper)).toEqual(['Alex Example'])
 
     await button(wrapper, 'Add person').trigger('click')
@@ -134,5 +174,30 @@ describe('App', () => {
     await flushPromises()
     expect(sidebarNames(wrapper)).toEqual(['Alex Example'])
     expect(fetchMock.mock.calls.every(([, init]) => (init?.headers as Record<string, string>).Authorization === 'Bearer fake-token')).toBe(true)
+  })
+
+  it('opens a project with people on its circle, drawn from the room', async () => {
+    auth.currentUser.mockResolvedValue({ id: 'user_fake' })
+    const fetchMock = serve({ team, projects: [project([person({})])] })
+    const wrapper = mount(App)
+    await flushPromises()
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith(`/api/projects/${PROJECT_ID}/room`))).toBe(true)
+    expect(wrapper.get('.center').text()).toContain('Not started')
+    const budget = wrapper.findAll('.rows .head').find((row) => row.text().includes('Budget'))!
+    expect(budget.text()).toContain('Deal-breaker. The quote is £20k over the budget.')
+    await budget.trigger('click')
+    expect(wrapper.findAll('.rows .fact .txt').map((fact) => fact.text())).toEqual(['The budget is £60k.', 'The quote is £80k.'])
+    expect(wrapper.get('.rows .fact .meta').text()).toContain('Confirmed by')
+  })
+
+  it('switches between projects', async () => {
+    auth.currentUser.mockResolvedValue({ id: 'user_fake' })
+    const other = project([person({ name: 'Morgan Madeup' })], { id: '22222222-2222-4222-8222-222222222222', name: 'Biscuit Bonanza' })
+    serve({ team, projects: [project(), other] })
+    const wrapper = mount(App)
+    await flushPromises()
+    await wrapper.get('select').setValue(other.id)
+    await button(wrapper, 'People 1').trigger('click')
+    expect(sidebarNames(wrapper)).toEqual(['Morgan Madeup'])
   })
 })

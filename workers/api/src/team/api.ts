@@ -5,6 +5,7 @@ import { API_PATH, MCP_PATH, type Env, type HandleTeamApi } from '../contracts'
 import { DirectoryError } from '../directory/store'
 import { formatKey, isProjectId } from '../room/keys'
 import { RoomError } from '../room/room'
+import { sideView } from '../room/side-view'
 
 export type SignedIn = (request: Request, env: Env) => Promise<string | null>
 
@@ -75,9 +76,18 @@ export function createTeamApi(signedIn: SignedIn): HandleTeamApi {
         return json({ project: { ...project, participants: [] } }, 201)
       }
 
-      if (head === 'projects' && projectId && tail === 'people') {
+      if (head === 'projects' && projectId && (tail === 'people' || tail === 'room')) {
         if (!isProjectId(projectId) || !(await directory.hasProject(projectId))) return fail('No such project.', 404)
         const room = env.ROOMS.getByName(projectId)
+
+        if (tail === 'room') {
+          if (segments.length !== 3) return fail('Not found.', 404)
+          if (method !== 'GET') return fail('Use GET.', 405)
+          const snapshot = await room.read()
+          if (!snapshot) return fail('No such project.', 404)
+          const { facts, openQuestions } = sideView(snapshot, 'agency')
+          return json({ room: { facts, openQuestions, asks: snapshot.asks.filter((ask) => ask.status === 'open') } })
+        }
 
         if (segments.length === 3) {
           if (method !== 'POST') return fail('Use POST.', 405)

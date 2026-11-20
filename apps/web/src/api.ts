@@ -2,6 +2,7 @@ import type { LensId } from '@day15/shared/lenses'
 import type { Participant, Persona, Side } from '@day15/shared/schema'
 
 import { getAccessToken } from './auth'
+import type { RoomView } from './circle'
 
 export interface Team {
   name: string
@@ -75,3 +76,4 @@ export const removePerson = (projectId: string, participantId: number) =>
   request<{ participant: Participant }>(person(projectId, participantId), 'DELETE')
 export const freshAddress = (projectId: string, participantId: number) =>
   request<PersonWithAddress & { address: string }>(`${person(projectId, participantId)}/address`, 'POST')
+export const getRoom = (projectId: string) => request<{ room: RoomView }>(`projects/${projectId}/room`)
