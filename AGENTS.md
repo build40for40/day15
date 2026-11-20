@@ -81,7 +81,7 @@ The address is only ever in the answer that made it.
 - Signed out, `SignInScreen` offers WorkOS sign-in. Signed in with no team, `NameForm` names it.
 - `ProjectWorkspace` holds the state: the projects, the current one, who is selected, and any address made this session. With no project yet it asks for one.
 - `PeopleSidebar` lists the current project's people (name, job title, and whether they have a link or were only mentioned to the coach), with "Add person" at the top and a project switcher plus "New project".
-- `PersonPanel` shows one person: `PersonLink` (copy the address while it's fresh, get a new link, or give them one), `PersonForm` to edit their details, and remove with a confirm step. Adding a person uses the same `PersonForm`, with lenses that follow the persona until ticked by hand.
+- `PersonPanel` shows one person: `PersonLink` (while the address is fresh, a ready-to-send message from `invite.ts` with the address and how to connect, behind "Copy prompt" and "WhatsApp" buttons, and otherwise get a new link or give them one), `PersonForm` to edit their details, and remove with a confirm step. Adding a person uses the same `PersonForm`, with lenses that follow the persona until ticked by hand.
 
 ## Worker secrets
 
