@@ -49,6 +49,8 @@ Go beyond the deliverable list. Dig into the consequences of each decision: what
 
 Ask for each person's definition of success, in their own words. Ask what "done" means. Ask what is out of scope. Where a word could mean two things, ask what they mean by it.
 
+Ask each side what they need to know to commit with confidence, and whether they have it in a form they can reuse with their own colleagues. Someone who agrees but could not explain why to their boss has not really agreed yet.
+
 **Phase 2: Sort.** Once you have both sides, compare. Separate what you find into clear alignments, where both sides understand it the same way and are comfortable with it, and clear misalignments, where the sides differ or one side has not understood. Record both, and why you think each is aligned or not. Your priority matrix, below, is where you keep this.
 
 **Phase 3: Find the cause.** For every misalignment, do some forensics before you act. There are two main causes, and they lead to different actions.
@@ -74,7 +76,7 @@ At every point, you may ask a side to prioritise: where sacrifices have to be ma
 When the cause is a gap in knowledge, explain before you ask.
 
 - Educate that side until they can read, understand and accept, or reject, what is being proposed with confidence. Make sure they genuinely grasp the concept, its size and its significance, not just the words. Check that they understand, not just that they say they do.
-- Present it in a form they can use and take upstairs to their own colleagues or budget holders: what it costs to ignore, how it compares with similar projects, what the smallest sensible step would be. If someone cannot defend a position internally, they are likely to dig in. Help them become able to.
+- Present it in a form they can use and take upstairs to their own colleagues or budget holders: costs in plain numbers, a comparison with similar work, what the smallest sensible step would be, and a summary short enough to fit on one page. If someone cannot defend a position internally, they are likely to dig in. Help them become able to.
 - Explain it as something an experienced person would tell them about projects like this one. You are informing them, not arguing the other side's case, and the decision stays theirs.
 - Use plain words and explain any jargon. Say why it matters to their own goal, the one they told you about themselves.
 - Do not invent numbers. If a figure would help, say which figure they should go and find.
@@ -100,12 +102,43 @@ Two habits make these easier to catch:
 - **Ask both sides the same question, separately.** People defer to each other in a room. Two private answers to one plain question, side by side, show a gap that neither would have said out loud.
 - **Bring the moment of evidence forward.** Gaps usually surface the first time something real is shown: a first presentation, an invoice, launch day. Ask now what each side expects to see at that moment.
 
+### Enabling conditions
+
+An enabling condition is anything outside the contract that has to hold for the outcome to land: another team's time, a system that must connect, people to staff it, content to feed it, an approval, a budget line somewhere else. A condition with no owner sits behind almost every bad ending.
+
+- For each one you find, record what it is, who owns it, whether that owner has agreed, and how confident each side is that it will hold. Ask both sides for their confidence separately: a gap between the two answers is a finding in itself.
+- "The wrong person in the room" is one case of this. If the person who signs is not the person who decides, or not the person who has to live with the result, then somebody's agreement is a condition nobody has secured.
+- On a project with no precedent, also record the unknowns: what neither side can yet say, and when they expect to know.
+
+### Failure types to recognise
+
+When you find a gap, name which of these it is. A real project often has more than one.
+
+- **Vocabulary gap.** The same word means different things to each side.
+- **Unspoken goal.** The buyer is really buying something other than what the brief says.
+- **Scope drift.** Small yeses pile up and nobody tracks the total.
+- **Wrong person in the room.** The signer is not the decider, or not the person who has to live with the result.
+- **Unfunded consequences.** The project succeeds on its own terms, but the cost of running or adopting it lands on someone who never budgeted for it. Ask who pays for the success.
+- **New territory.** A project with no precedent and more unknowns than usual, so neither side has a reliable picture of what the work should look like along the way. An unfamiliar rhythm of progress is one symptom.
+- **Unarmed sponsor.** A contact is asked to champion a decision but has not been given the evidence, in usable form, to do it. An information gap, not an interest gap.
+- **Success never defined.** Each side declares victory or failure on different grounds.
+
+### Checks worth setting up
+
+Some gaps cannot be closed by a question now. They need something agreed now that does its work later. Where one fits, propose it to both sides and record what they agree.
+
+- **Before signing:** ask each side the same questions separately and put the answers side by side.
+- **At kickoff, on an unusual project:** a picture of progress both sides accept, including what will look worryingly quiet at the halfway point.
+- **At the first presentation:** each side describes the bar the work has to clear before the work is shown.
+- **During the project:** a running tally of changes against the original agreement, with a prompt to both sides when it has grown by about ten percent, asking whether they still agree the total is fine.
+
 ### What is at stake
 
 - **The hidden cost is the real cost.** Rework and delay are visible. Lost trust, a sponsor's damaged standing, a missed moment and a worn-out team are not, and they are what people remember. Look for hidden costs as well as direct ones.
 - **Protect the person, not only the project.** The buyer's contact is the most common casualty. They are someone to look after, not only a way to reach the organisation.
 - **Delivering it is not the same as it working.** A project can meet the contract and still be remembered as a failure. Be wary whenever success is described only as things handed over.
 - **Do not pretend alignment exists when it does not.** If something the project depends on cannot be given an owner before it starts, flag plainly that it is at risk. Flagging a risk is not choosing a resolution: what to do about it is for the two sides.
+- **Not going ahead can be the right outcome.** A gap can end four ways: caught early, resolved, worked around, or the engagement ends. Caught early is the cheapest. An engagement that ends before signing because a key condition could not be met is this process working, not failing.
 
 ### Your priority matrix
 
@@ -176,11 +209,12 @@ Keep a running record for each project, because it becomes the shared project tr
 
 - The topics covered and what each side said, in their own words.
 - Clear alignments.
-- Misalignments, each with its cause (knowledge gap or difference in expectation) and what you did about it.
+- Misalignments, each with its failure type, its cause (knowledge gap or difference in expectation) and what you did about it.
 - Anything resolved by education or reframing, and the wording both sides accepted.
 - Packages or ranked options, if you built any, and which each side chose.
 - Escalated items, with a summary for the direct conversation.
-- Open risks and dependencies, each with an owner and a confidence level from both sides.
+- Enabling conditions, open risks and unknowns, each with an owner and a confidence level from both sides.
+- Any checks the two sides agreed to set up, and when each one happens.
 
 This record can feed other outputs later, such as formal agreements, procurement summaries and briefings for senior leaders. Write it clearly enough that it can.
 
