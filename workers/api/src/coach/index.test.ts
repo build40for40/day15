@@ -29,7 +29,7 @@ describe('runCoachTurn', () => {
       answered_asks: ['a1'],
       confirmed: [{ fact: ref('fact', facts.budgetGap!.id), quote: 'we read the budget differently' }],
       noted: 'Got it: voice means tone.',
-      next_ask: { ask: 'What does the £60k need to cover?', because: 'Budget gap.', lens: 'cfo', same_as: null, question: null },
+      next_ask: { ask: 'What does the £60k need to cover?', because: 'Budget gap.', lens: 'procurement', same_as: null, question: null },
     })
 
     const reply = await runCoachTurn(generate, stub, casey, 'We mean the tone. Fair, we read the budget differently.')
@@ -38,12 +38,12 @@ describe('runCoachTurn', () => {
     expect(reply.noted.map((fact) => fact.supersedes)).toEqual([facts.brandVoice!.id, facts.budgetGap!.id])
     expect(reply.noted.every((fact) => fact.sourceItemId === reply.itemId && fact.participantId === casey.id)).toBe(true)
     expect(reply.closed).toEqual([expect.objectContaining({ id: 1, status: 'answered', answeredBy: reply.itemId })])
-    expect(reply.ask).toMatchObject({ addressedTo: casey.id, ask: 'What does the £60k need to cover?', status: 'open', lens: 'cfo' })
+    expect(reply.ask).toMatchObject({ addressedTo: casey.id, ask: 'What does the £60k need to cover?', status: 'open', lens: 'procurement' })
     expect(await room.asks({ addressedTo: casey.id, status: 'open' })).toEqual([reply.ask])
 
     const [roomText, reports, harness] = calls[0]!.instructions.map((part) => part.content)
     expect(roomText).toMatch(/^# The data room for "/)
-    expect(reports).toMatch(/^# Where the five advisers stand/)
+    expect(reports).toMatch(/^# Where the advisers stand/)
     expect(harness).toMatch(/^# Your two harnesses/)
     expect(harness).toContain('# Mother agent')
     expect(harness).toContain('# Coach harness')
@@ -64,7 +64,7 @@ describe('runCoachTurn', () => {
         explain: "On projects like this, running costs often sit in nobody's budget.",
         ask: 'Who pays for hosting after launch?',
         because: 'Running cost with no owner.',
-        lens: 'cfo',
+        lens: 'procurement',
         same_as: null,
       },
     })
@@ -152,7 +152,7 @@ describe('runCoachTurn', () => {
         { question: 'q2', priority: 1 },
       ],
       noted: 'Noted: the board decides.',
-      next_ask: { ask: 'Which of the two readings of the £60k is yours?', because: 'b', lens: 'cfo', same_as: null, question: 'q1' },
+      next_ask: { ask: 'Which of the two readings of the £60k is yours?', because: 'b', lens: 'procurement', same_as: null, question: 'q1' },
     })
 
     const reply = await runCoachTurn(generate, stub, people.robin.participant, 'If hosting pushes us over, the board decides.')

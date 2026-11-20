@@ -50,12 +50,12 @@ describe('lensRounds', () => {
   })
 
   it('writes proposed facts as lens facts, and all five lenses run again when one proposed a fact', async () => {
-    const { run, rounds, room, facts } = await setUp(proposing(['cfo'], 'f1'))
+    const { run, rounds, room, facts } = await setUp(proposing(['procurement'], 'f1'))
     await run()
     expect(rounds()).toEqual([1, 2, 3].flatMap((round) => LENS_IDS.map((lens) => [round, lens, 'done'])))
     const added = (await room.read())!.facts.filter((fact) => fact.id > facts.budgetGap!.id)
     expect(added).toHaveLength(3)
-    expect(added.every((fact) => fact.authorKind === 'lens' && fact.lens === 'cfo' && fact.status === 'proposed')).toBe(true)
+    expect(added.every((fact) => fact.authorKind === 'lens' && fact.lens === 'procurement' && fact.status === 'proposed')).toBe(true)
     expect(added[0]!.basedOn).toEqual([1])
   })
 
@@ -63,11 +63,11 @@ describe('lensRounds', () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     const callLens = vi.fn<CallLens>(async (_env, lens) => {
       if (lens === 'procurement') throw new TypeError('secret words people typed')
-      return lens === 'cto' ? ({ nonsense: true } as unknown as LensReport) : quiet
+      return lens === 'agency' ? ({ nonsense: true } as unknown as LensReport) : quiet
     })
     const { run, rounds, room } = await setUp(callLens)
     await run()
-    expect(rounds()).toEqual(LENS_IDS.map((lens) => [1, lens, lens === 'procurement' || lens === 'cto' ? 'failed' : 'done']))
+    expect(rounds()).toEqual(LENS_IDS.map((lens) => [1, lens, lens === 'procurement' || lens === 'agency' ? 'failed' : 'done']))
     expect((await room.read())!.latestRuns.client?.status).toBe('done')
     expect(JSON.stringify(error.mock.calls)).not.toContain('secret words')
     expect(error).toHaveBeenCalledWith('The Procurement lens failed:', 'TypeError')
@@ -84,13 +84,13 @@ describe('lensRounds', () => {
 
   it('aborts a lens that hangs past its timeout, records it as failed, and lets the rest of the round finish', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
-    const callLens = vi.fn<CallLens>(async (_env, lens) => (lens === 'cfo' ? new Promise<LensReport>(() => {}) : quiet))
+    const callLens = vi.fn<CallLens>(async (_env, lens) => (lens === 'procurement' ? new Promise<LensReport>(() => {}) : quiet))
     const { run, rounds } = await setUp(callLens, { timeoutMs: 20 })
     await run()
     expect(rounds()).toHaveLength(LENS_IDS.length)
-    expect(rounds()).toEqual(expect.arrayContaining(LENS_IDS.map((lens) => [1, lens, lens === 'cfo' ? 'failed' : 'done'])))
-    expect(rounds().at(-1)).toEqual([1, 'cfo', 'failed'])
-    expect(callLens.mock.calls.find(([, lens]) => lens === 'cfo')![3].aborted).toBe(true)
+    expect(rounds()).toEqual(expect.arrayContaining(LENS_IDS.map((lens) => [1, lens, lens === 'procurement' ? 'failed' : 'done'])))
+    expect(rounds().at(-1)).toEqual([1, 'procurement', 'failed'])
+    expect(callLens.mock.calls.find(([, lens]) => lens === 'procurement')![3].aborted).toBe(true)
   })
 })
 

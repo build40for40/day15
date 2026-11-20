@@ -44,28 +44,32 @@ describe('renderReports', () => {
   it('shows where each lens stands and its open questions, flags one that has not seen the newest facts, and notes lenses with none', async () => {
     const { room } = await fixtureRoom()
     const text = renderReports((await room.read())!)
-    expect(text).toContain('### CFO adviser (r1, read up to f11, newer facts not seen yet)')
+    expect(text).toContain('### Procurement adviser (r1, read up to f11, newer facts not seen yet)')
     expect(text).toContain('Contingency (agency missing, client missing)')
     expect(text).toContain('Its open questions: q1, q2.')
     expect(text).not.toContain('What the price covers')
-    expect(text).toContain('### Procurement adviser\nNo report yet.')
+    expect(text).toContain('### Agency adviser\nNo report yet.')
   })
 })
 
 describe('renderCoverage', () => {
   it('lists who speaks for each adviser and tells an agency person about the gaps without inventing an owner', async () => {
     const { room, people } = await fixtureRoom()
+    expect(renderCoverage((await room.read())!, people.dana.participant)).toContain(
+      '- Agency side. Client: nobody; Agency: p1 Alex Example; Procurement: p1 Alex Example, p2 Dana Placeholder.',
+    )
+    for (const person of [people.alex, people.robin, people.pat]) await room.removeParticipant(person.participant.id)
     const text = renderCoverage((await room.read())!, people.dana.participant)
-    expect(text).toContain('- Agency side. CFO: p1 Alex Example; Delivery: p2 Dana Placeholder; Agency: p1 Alex Example; ')
-    expect(text).toContain('Client: p3 Casey Sample, p6 Morgan Madeup (no link);')
-    expect(text).toContain('Gaps: the agency side has nobody for Procurement; the client side has nobody for Delivery.')
+    expect(text).toContain('- Client side. Client: p3 Casey Sample, p6 Morgan Madeup (no link); Agency: nobody; Procurement: nobody.')
+    expect(text).toContain('Gaps: the agency side has nobody for Agency; the client side has nobody for Procurement.')
     expect(text).toContain('suggest they add someone.')
     expect(text).toContain('Never treat anyone as owning a gap.')
   })
 
   it('tells a client person that a gap may fall to them without making it theirs', async () => {
     const { room, people } = await fixtureRoom()
-    const text = renderCoverage((await room.read())!, people.robin.participant)
+    for (const person of [people.robin, people.pat]) await room.removeParticipant(person.participant.id)
+    const text = renderCoverage((await room.read())!, people.casey.participant)
     expect(text).toContain('never treat them as owning it')
     expect(text).not.toContain('suggest they add someone')
   })
@@ -83,9 +87,8 @@ describe('turnPrompt', () => {
         'They speak for what the Client adviser cares about.',
     )
     expect(text).toContain('## Their open asks\n- a1 [Client], open: When you say the Pipsqueak voice')
-    expect(text).toContain('Client 1, Procurement 0.')
+    expect(text).toContain('Client 1, Agency 0, Procurement 0.')
     expect(text).toContain("1. [nothing said yet, Goal and success, client] Find out their side's view on objective.")
-    expect(text).toContain('[nothing said yet, Scope, cto, nobody on their side speaks for this]')
     expect(text).toContain('## Where each area stands')
     expect(text.indexOf('## Where each area stands')).toBeLessThan(text.indexOf('<message>'))
     expect(text.indexOf('<message>')).toBeGreaterThan(text.indexOf('## Candidates'))

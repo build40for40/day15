@@ -25,11 +25,18 @@ function submit() {
 <style scoped>
 .name-form {
   display: grid;
-  gap: 0.75rem;
+  gap: 14px;
+  justify-items: start;
+  max-width: 32rem;
+  padding-top: clamp(8px, 3vw, 40px);
 }
 
 h2 {
   margin: 0;
-  font-size: 1.25rem;
+  font: 300 clamp(28px, 4vw, 42px) / 1.1 var(--serif);
+}
+
+input {
+  width: 100%;
 }
 </style>

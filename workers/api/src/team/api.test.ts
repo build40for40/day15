@@ -96,14 +96,14 @@ describe('team API', () => {
       side: 'client',
       jobTitle: 'Finance Director',
       organisation: 'Fake Juice Co',
-      lenses: ['procurement', 'cfo'],
+      lenses: ['procurement', 'client'],
       notes: 'Signs anything over £10k.',
       link: false,
     })
     expect(res.status).toBe(201)
     const { participant, address } = await data(res)
     expect(address).toBeNull()
-    expect(participant).toMatchObject({ jobTitle: 'Finance Director', lenses: ['cfo', 'procurement'], hasLink: false })
+    expect(participant).toMatchObject({ jobTitle: 'Finance Director', lenses: ['client', 'procurement'], hasLink: false })
 
     const linked = await data(await call('POST', `/api/projects/${projectId}/people/${participant.id}/address`))
     expect(linked.participant.hasLink).toBe(true)
@@ -113,9 +113,9 @@ describe('team API', () => {
   it('updates a person in place', async () => {
     const { call, projectId } = await teamWithProject()
     const { participant } = await data(await call('POST', `/api/projects/${projectId}/people`, { name: 'Dana', persona: 'cfo', side: 'client' }))
-    const res = await call('PATCH', `/api/projects/${projectId}/people/${participant.id}`, { jobTitle: 'CFO', lenses: ['cfo', 'cto'] })
+    const res = await call('PATCH', `/api/projects/${projectId}/people/${participant.id}`, { jobTitle: 'CFO', lenses: ['client', 'procurement'] })
     expect(res.status).toBe(200)
-    expect((await data(res)).participant).toMatchObject({ id: participant.id, name: 'Dana', jobTitle: 'CFO', lenses: ['cfo', 'cto'] })
+    expect((await data(res)).participant).toMatchObject({ id: participant.id, name: 'Dana', jobTitle: 'CFO', lenses: ['client', 'procurement'] })
     expect((await call('PATCH', `/api/projects/${projectId}/people/${participant.id}`, { side: 'neither' })).status).toBe(400)
     expect((await call('PATCH', `/api/projects/${projectId}/people/999`, { name: 'Nobody' })).status).toBe(404)
   })
@@ -130,6 +130,27 @@ describe('team API', () => {
     const { projects } = await data(await call('GET', '/api/projects'))
     expect(projects[0].participants).toEqual([])
     expect((await call('DELETE', `/api/projects/${projectId}/people/${added.participant.id}`)).status).toBe(404)
+  })
+
+  it('shows the owner the room as the agency side sees it', async () => {
+    const { call, rooms, projectId } = await teamWithProject()
+    const { participant } = await data(await call('POST', `/api/projects/${projectId}/people`, { name: 'Dana', persona: 'cfo', side: 'client' }))
+    const room = rooms.get(projectId)!
+    const item = await room.addItem(participant.id, 'We have £60k. Between us, the board would stretch to £75k.')
+    const said = { authorKind: 'person' as const, participantId: participant.id, sourceItemId: item.id, status: 'confirmed' as const, topic: 'budget' as const }
+    await room.addFacts([
+      { ...said, statement: 'The budget is £60k.', sourceQuote: 'We have £60k.' },
+      { ...said, statement: 'The board would stretch to £75k.', sourceQuote: 'the board would stretch to £75k', private: true },
+    ])
+    await room.addAsk({ addressedTo: participant.id, ask: 'What does the £60k have to cover?', because: 'Nobody has said.', lens: null })
+
+    const res = await call('GET', `/api/projects/${projectId}/room`)
+    expect(res.status).toBe(200)
+    const view = (await data(res)).room
+    expect(view.facts.map((fact: { statement: string }) => fact.statement)).toEqual(['The budget is £60k.'])
+    expect(view.openQuestions).toEqual([])
+    expect(view.asks.map((ask: { ask: string }) => ask.ask)).toEqual(['What does the £60k have to cover?'])
+    expect(JSON.stringify(view)).not.toContain('£75k')
   })
 
   it('rejects a person with no side', async () => {

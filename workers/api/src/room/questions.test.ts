@@ -35,54 +35,54 @@ const summary = (sql: ReturnType<typeof room>['sql']) =>
 describe('open questions', () => {
   it('takes the area a lens gives, else the area of the facts it cites, else its lens default', () => {
     const { sql, report } = room()
-    report('cfo', { conflicts: [price], questions: [{ ...gap, area: 'dependencies_and_ownership' }] })
-    report('procurement', { questions: [{ ...gap, find_out: 'who signs' }] })
+    report('procurement', { conflicts: [price], questions: [{ ...gap, area: 'dependencies_and_ownership' }] })
+    report('agency', { questions: [{ ...gap, find_out: 'who signs' }] })
     expect(listOpenQuestions(sql).map((question) => [question.id, question.area])).toEqual([
       [2, 'dependencies_and_ownership'],
       [1, 'budget'],
-      [3, 'procurement_and_contract'],
+      [3, 'ways_of_working'],
     ])
   })
 
   it('turns a report into rows, with the priority the lens gives and the facts it cites', () => {
     const { sql, report, fact } = room()
-    const run = report('cfo', { conflicts: [{ ...price, priority: 1 }], questions: [{ ...gap, topic: 'Contingency' }] })
+    const run = report('procurement', { conflicts: [{ ...price, priority: 1 }], questions: [{ ...gap, topic: 'Contingency' }] })
     expect(listOpenQuestions(sql)).toMatchObject([
-      { id: 1, kind: 'conflict', lens: 'cfo', askSide: 'both', priority: 1, basedOn: [fact.id], raisedByRun: run.id },
-      { id: 2, kind: 'gap', lens: 'cfo', askSide: 'client', priority: 2, statement: 'who holds the contingency', topic: 'Contingency' },
+      { id: 1, kind: 'conflict', lens: 'procurement', askSide: 'both', priority: 1, basedOn: [fact.id], raisedByRun: run.id },
+      { id: 2, kind: 'gap', lens: 'procurement', askSide: 'client', priority: 2, statement: 'who holds the contingency', topic: 'Contingency' },
     ])
   })
 
   it('updates the row a lens names or repeats instead of adding it twice, taking the priority it gives now', () => {
     const { sql, report } = room()
-    report('cfo', { conflicts: [price], questions: [gap] })
-    report('cfo', { conflicts: [{ ...price, priority: 1, note: 'Worse now.' }], questions: [{ ...gap, priority: 3 }] })
-    report('cfo', { questions: [{ ...gap, find_out: 'who holds the cushion', same_as: 'q2' }] })
-    report('procurement', { conflicts: [price] })
+    report('procurement', { conflicts: [price], questions: [gap] })
+    report('procurement', { conflicts: [{ ...price, priority: 1, note: 'Worse now.' }], questions: [{ ...gap, priority: 3 }] })
+    report('procurement', { questions: [{ ...gap, find_out: 'who holds the cushion', same_as: 'q2' }] })
+    report('agency', { conflicts: [price] })
     expect(summary(sql)).toEqual([
-      [1, 'conflict', 'cfo', 1],
-      [3, 'conflict', 'procurement', 2],
-      [2, 'gap', 'cfo', 2],
+      [1, 'conflict', 'procurement', 1],
+      [2, 'gap', 'procurement', 2],
+      [3, 'conflict', 'agency', 2],
     ])
     expect(listOpenQuestions(sql)[0]!.statement).toBe('Worse now.')
-    expect(listOpenQuestions(sql)[2]!.statement).toBe('who holds the cushion')
+    expect(listOpenQuestions(sql)[1]!.statement).toBe('who holds the cushion')
   })
 
   it('lets a lens resolve only its own rows, and resolves all of them when it says it is done', () => {
     const { sql, report } = room()
-    report('cfo', { conflicts: [price], questions: [gap] })
-    report('procurement', { questions: [{ ...gap, find_out: 'who signs' }] })
-    report('procurement', { resolved: ['q1', 'q3'] })
-    expect(summary(sql).map(([id]) => id)).toEqual([1, 2])
-    report('cfo', { done: true })
+    report('procurement', { conflicts: [price], questions: [gap] })
+    report('agency', { questions: [{ ...gap, find_out: 'who signs' }] })
+    report('agency', { resolved: ['q1', 'q3'] })
+    expect(summary(sql).map(([id]) => id).sort()).toEqual([1, 2])
+    report('procurement', { done: true })
     expect(listOpenQuestions(sql)).toEqual([])
   })
 
   it('moves open questions to the priority the coach sets, clamped, and leaves closed ones alone', () => {
     const { sql, report, item } = room()
-    report('cfo', { conflicts: [price], questions: [gap] })
+    report('procurement', { conflicts: [price], questions: [gap] })
     expect(resolveQuestions(sql, [2, 2, 99], item.id, now)).toMatchObject([{ id: 2, status: 'resolved', resolvedByItem: item.id }])
     expect(setQuestionPriorities(sql, [{ id: 1, priority: 9 }, { id: 2, priority: 1 }], now)).toMatchObject([{ id: 1, priority: 3 }])
-    expect(summary(sql)).toEqual([[1, 'conflict', 'cfo', 3]])
+    expect(summary(sql)).toEqual([[1, 'conflict', 'procurement', 3]])
   })
 })

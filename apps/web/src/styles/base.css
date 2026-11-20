@@ -4,47 +4,54 @@
   box-sizing: border-box;
 }
 
-html,
-body {
-  margin: 0;
-}
-
-body {
-  font-family: var(--sans);
-  font-size: 16px;
-  line-height: 1.5;
-  overflow-x: hidden;
-}
-
 :root {
-  /* A-Line's look: Glisten midnight. One dark look, by choice. Teal is the agency, orange the client, coral A-Line itself. */
   color-scheme: dark;
   --midnight: #070b14;
   --midnight-2: #0d1424;
-  --paper: #070b14;
-  --card: #0d1424;
+  --panel: #0b1220;
   --raise: #111a2e;
-  --ink: #c9d1e0;
-  --lit: #f7ecd2;
-  --muted: #8a96b0;
   --line: #1c2840;
   --line-2: #2a3a58;
-  --accent: #f2c86b;
-  --on-accent: #070b14;
-  --danger: #ff9c91;
-  --agency: #46d6c8;
-  --client: #ffae6b;
-  --coach: #ff9c91;
+  --text: #c9d1e0;
+  --dim: #8a96b0;
+  --lit: #f7ecd2;
+  --gold: #f2c86b;
   --done: #5de0a8;
+  --teal: #46d6c8;
+  --orange: #ffae6b;
+  --coral: #ff9c91;
+  --crack: #fff4e6;
+  /* Names the onboarding uses, mapped onto the palette above. */
+  --paper: var(--midnight);
+  --card: var(--midnight-2);
+  --ink: var(--text);
+  --muted: var(--dim);
+  --accent: var(--gold);
+  --on-accent: var(--midnight);
+  --danger: var(--coral);
+  --agency: var(--teal);
+  --client: var(--orange);
+  --coach: var(--coral);
   --serif: 'Spectral', Georgia, 'Times New Roman', serif;
   --sans: 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
+html,
 body {
-  background: radial-gradient(120% 70% at 50% -10%, var(--midnight-2), var(--midnight) 62%) fixed;
-  background-color: var(--midnight);
-  color: var(--ink);
+  margin: 0;
+  background: var(--midnight);
+}
+
+body {
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
+  background: radial-gradient(120% 70% at 50% -10%, var(--midnight-2), var(--midnight) 62%) var(--midnight);
+  background-attachment: fixed;
+  min-height: 100vh;
+  overflow-x: hidden;
 }
 
 h1,
@@ -53,89 +60,179 @@ h3 {
   font-family: var(--serif);
   font-weight: 400;
   color: var(--lit);
+  line-height: 1.2;
 }
 
 :focus-visible {
-  outline: 3px solid var(--accent);
-  outline-offset: 2px;
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+
+[hidden] {
+  display: none !important;
 }
 
 input,
 select,
-textarea,
-button {
-  font: inherit;
-  padding: 0.6rem 0.75rem;
+textarea {
+  font: 400 15px/1.5 var(--sans);
+  padding: 0.55rem 0.75rem;
   min-height: 2.75rem;
-  border: 1px solid var(--line);
-  border-radius: 0.6rem;
-  background: var(--raise);
-  color: var(--lit);
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  background: var(--midnight);
+  color: var(--text);
   min-width: 0;
   max-width: 100%;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--dim);
+  opacity: 0.7;
 }
 
 textarea {
   resize: vertical;
 }
 
-button {
-  background: var(--accent);
-  color: var(--on-accent);
-  font-weight: 600;
+input[type='checkbox'] {
+  accent-color: var(--teal);
+}
+
+button,
+a.share {
+  font: 600 14px/1.2 var(--sans);
+  padding: 0.6rem 1.1rem;
+  min-height: 2.75rem;
+  border: 1px solid var(--lit);
+  border-radius: 999px;
+  background: var(--lit);
+  color: #1a1408;
   cursor: pointer;
-  border-color: transparent;
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  max-width: 100%;
 }
 
 button:hover:not(:disabled) {
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent), 0 6px 20px -6px color-mix(in srgb, var(--accent) 55%, transparent);
+  background: #fff7e2;
 }
 
-input::placeholder,
-textarea::placeholder {
-  color: color-mix(in srgb, var(--muted) 75%, transparent);
-}
-
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible {
-  border-color: var(--accent);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  button {
-    transition: none;
-  }
-}
-
-button.quiet {
+button.quiet,
+a.share {
   background: transparent;
-  color: var(--ink);
+  color: var(--text);
   border-color: var(--line-2);
+  font-weight: 500;
+}
+
+button.quiet:hover:not(:disabled),
+a.share:hover {
+  background: transparent;
+  border-color: var(--gold);
+  color: var(--lit);
 }
 
 button.danger {
   background: transparent;
-  color: var(--danger);
-  border-color: var(--danger);
+  color: var(--coral);
+  border-color: rgba(255, 156, 145, 0.5);
+  font-weight: 500;
+}
+
+button.danger:hover:not(:disabled) {
+  background: rgba(255, 156, 145, 0.08);
+  border-color: var(--coral);
 }
 
 button:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
+}
+
+.seg {
+  display: inline-flex;
+  flex-wrap: wrap;
+  border: 1px solid var(--line-2);
+  border-radius: 18px;
+  padding: 3px;
+  gap: 2px;
+  justify-self: start;
+}
+
+.seg button {
+  font: 500 13px var(--sans);
+  min-height: 2.25rem;
+  padding: 6px 12px;
+  border: 0;
+  background: none;
+  color: var(--dim);
+}
+
+.seg button:hover:not(:disabled) {
+  background: none;
+  color: var(--lit);
+}
+
+.seg button[aria-pressed='true'] {
+  background: var(--raise);
+  color: var(--lit);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+}
+
+.pill {
+  font: 500 12px/1 var(--sans);
+  padding: 5px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line-2);
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.pill.crack {
+  background: var(--crack);
+  color: #2a1a05;
+  border-color: var(--crack);
+  font-weight: 600;
+}
+
+.pill.decided {
+  border-color: rgba(93, 224, 168, 0.55);
+  color: var(--done);
+}
+
+.dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dot.agency {
+  background: var(--teal);
+  box-shadow: 0 0 8px rgba(70, 214, 200, 0.6);
+}
+
+.dot.client {
+  background: var(--orange);
+  box-shadow: 0 0 8px rgba(255, 174, 107, 0.6);
+}
+
+.dot.coach {
+  background: #fff1ec;
+  box-shadow: 0 0 8px 2px rgba(255, 156, 145, 0.7);
 }
 
 .muted,
 .hint {
-  color: var(--muted);
+  color: var(--dim);
 }
 
 .hint {
   margin: 0;
-  font-size: 0.875rem;
+  font-size: 13px;
 }
 
 .error {
-  color: var(--danger);
+  color: var(--coral);
 }

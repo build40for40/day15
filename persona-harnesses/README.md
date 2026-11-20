@@ -1,6 +1,6 @@
 # Persona harnesses
 
-Five persona harnesses feed the coach, which is the brain the persona files mention. Each one reads everything both sides have told the coach so far and reports back, through its own lens, what is settled, what is missing and where the two sides are heading for a row. The coach reads all five reports and decides what it asks next, following [`coach.md`](coach.md).
+Three persona harnesses feed the coach, which is the brain the persona files mention. Each one reads everything both sides have told the coach so far and reports back, through its own lens, what is settled, what is missing and where the two sides are heading for a row. The coach reads all three reports and decides what it asks next, following [`coach.md`](coach.md).
 
 Neither the agency nor the client ever sees a persona, its name or its report. They only ever meet one warm coach.
 
@@ -8,9 +8,9 @@ Neither the agency nor the client ever sees a persona, its name or its report. T
 | --- | --- | --- |
 | `personas/client.md` | Client | The reason the project exists, and who it is for |
 | `personas/agency.md` | Agency | The team's ability to do good work |
-| `personas/cfo.md` | CFO | The money |
 | `personas/procurement.md` | Procurement | That it can be built, is paid for and is written down. Covers the milestone items for scope, budget, onboarding and the contract |
-| `personas/delivery.md` | Delivery | The promise being buildable |
+
+There used to be CFO and delivery personas too. The procurement persona carries money and delivery now, and those two files have been removed.
 
 ## The mother agent
 
@@ -24,12 +24,12 @@ Where the two differ on what to ask, how to word it or how open to be about what
 Three things come out of it:
 
 - **An explanation before the question,** when the coach is educating. It is read once in the reply and is not stored with the ask.
-- **The priority matrix:** with every turn the coach rates the seven areas high, medium, low or aligned. The areas, weights and sums live in `packages/shared/src/alignment.ts`.
-- **The health reading,** worked out in code from those ratings, and absent until both sides have said something.
+- **The priority matrix:** the seven areas stand high, medium, low, aligned or unknown, worked out in code from the open questions (see "The matrix and health, worked out" below), not rated by the coach. The areas and weights live in `packages/shared/src/alignment.ts`.
+- **The health reading,** worked out from that rollup, and absent until both sides have said something.
 
-The matrix and the reading are kept in the room but are not part of the room snapshot, so no tool, lens or page shows them. Only the coach reads them back, on its next turn. A view for the team does not exist yet.
+The coach sees both each turn. No tool, lens or page shows them to people. `mother-agent.md` still asks the coach to rate the areas itself, so the preamble in `prompt.ts` tells it they are worked out for it.
 
-**Openness:** the mother agent's default is transparency, which fits the shared room: the coach may say what the other side said, fairly and in neutral words. It keeps back anything a person asked it to keep private. Nothing in the app lets a person mark something private yet, so that part rests on the coach's judgement alone.
+**Openness:** the mother agent's default is transparency, which fits a room shared with both sides by default: the coach may say what the other side said, fairly and in neutral words. What a person asks to keep private, the coach marks private, and it stays on their side (see "Private facts" below).
 
 The file follows Samira's "A-line: Mother, agent instructions (draft v1)" card on Superthread: who Mother is, mediator not adviser, the four phases (interrogate, sort, find the cause, escalate), the four tools, tone of voice and what she produces.
 
@@ -37,7 +37,7 @@ The file follows Samira's "A-line: Mother, agent instructions (draft v1)" card o
 
 ## Who owns what
 
-- **The five files in `personas/` and `mother-agent.md`** are Samira's. Each is one persona's Actor, Instructions and Mission, and nothing else. Changes to who a persona is, what it covers or what it asks go there.
+- **The files in `personas/` and `mother-agent.md`** are Samira's. Each is one persona's Actor, Instructions and Mission, and nothing else. Changes to who a persona is, what it covers or what it asks go there.
 - **`wrapper.md` and everything in this README below the AIM section** are Ben's: the shared wrapper, the report format and how the coach uses the reports. So are `coach.md` and `coach-reference.md`, the coach's own harness. It may change to fit the architecture without the persona files needing to.
 
 ## AIM: Actor, Instructions, Mission
@@ -54,7 +54,7 @@ The shared wrapper below follows the same shape.
 
 Every persona harness runs as a lens inside the same wrapper, [`wrapper.md`](wrapper.md), which the Worker loads as it is (`workers/api/src/lenses/`).
 
-Each lens call is one prompt in two parts. The whole data room comes first, rendered by `renderRoom` in `workers/api/src/room/render.ts`: every fact on its own line in id order, then the people (with the lenses each speaks for) and the open asks. It is the same text for all five lenses in a round, so it caches well. The wrapper comes after it, with three slots:
+Each lens call is one prompt in two parts. The whole data room comes first, rendered by `renderRoom` in `workers/api/src/room/render.ts`: every fact on its own line in id order, then the people (with the lenses each speaks for) and the open asks. It is the same text for all three lenses in a round, so it caches well. The wrapper comes after it, with three slots:
 
 - `{{persona}}` takes the persona file.
 - `{{previous}}` takes the lens's own last report without its conflicts and questions, the newest fact it had seen then (its watermark) and the ids of the facts that arrived since. A lens that has never reported is told everything is new.
@@ -114,11 +114,11 @@ A lens never addresses a person. It writes only for the coach, which is the one 
 
 After each coach turn, the coach's reply goes back to the person at once, and the project's room sets its alarm. The lenses run from that alarm, inside the room but outside any storage write, so the room keeps answering while they think.
 
-1. Every round takes one snapshot of the room and runs all five lenses on it in parallel.
+1. Every round takes one snapshot of the room and runs all three lenses on it in parallel.
 2. Each run is saved with its watermark and report as soon as that lens answers. A lens that errors, sends back something that isn't a report, or takes longer than its timeout is aborted and saved as failed, and the rest of the round carries on.
 3. Saving a report turns its conflicts and questions into open questions (below), and keeps the report as it came for the record.
 4. Proposed facts go into the room as proposed lens facts. The Worker drops any that cite no fact in the room, repeat a fact that still holds, or try to replace a person's words, and keeps at most three per report.
-5. If a round added a fact, all five lenses run again on a fresh snapshot. There are never more than three rounds.
+5. If a round added a fact, all three lenses run again on a fresh snapshot. There are never more than three rounds.
 6. Only one set of rounds runs per room at a time. However many coach turns land while a set is running, exactly one more set runs after it, on the newer room.
 
 ### Open questions
@@ -138,3 +138,7 @@ The mother agent's area matrix is a rollup of the open questions, not a second j
 ### Private facts
 
 What a person tells the coach is shared with both sides by default. When they ask for something to be kept private, the coach marks those facts private: only that person's side, the coach and the lenses see them. A lens never puts a private fact's content in its wording, and flags anything resting on one with `rests_on_private`. People see the room through one side view that leaves out the other side's private facts, any lens fact resting on one, and the wording of any open question resting on one.
+
+### Lens ids from before there were three
+
+Rooms made before the three lenses still hold the ids `cfo` and `cto` in a person's lenses, in lens runs, in open questions and in asks. They are read as `procurement` wherever they are read (`currentLens` in `packages/shared/src/lenses.ts`), and lists are folded so each lens appears once. Stored rows are never rewritten. People keep their five seats: the procurement, CFO and delivery lead seats all default to the procurement lens.

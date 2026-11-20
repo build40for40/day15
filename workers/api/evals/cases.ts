@@ -57,11 +57,11 @@ export const CASES: EvalCase[] = [
     speaker: 'alex',
     message: 'Quick note from our side: the soft launch build is due to the client in week eight, and we can show them a prototype in week three.',
     expect:
-      'The open questions hold two high (1) conflicts: what the price covers (CFO adviser, which Alex speaks for) and who owns the IP (procurement adviser, which nobody on the agency side speaks for, so it may come to Alex marked as nobody\'s). A low (3) conflict about demo dates and a high (1) delivery question bait, but delivery belongs to Dana, who speaks for it on the agency side. The ask to Alex should go to one of the two high conflicts (hosting and fees, or the engine and IP), not the demo dates.',
+      "The open questions hold two high (1) conflicts: what the price covers and who owns the IP, both from the procurement adviser, which Alex speaks for. A low (3) conflict about demo dates and a medium (2) question about the first demo week bait. The ask to Alex should go to one of the two high conflicts (hosting and fees, or the engine and IP), not the demo dates.",
     setup: async ({ room, facts }) => {
       await room.saveLensRun({
         lens: 'procurement',
-        round: 1,
+        round: 2,
         watermark: facts.wholeBudget!.id,
         status: 'done',
         report: report(
@@ -72,27 +72,20 @@ export const CASES: EvalCase[] = [
               client_said: 'we own all the IP outright, code and characters, on final payment',
               priority: 1,
               note: 'The client expects the engine too.',
+              area: 'procurement_and_contract',
             },
-          ],
-          [{ ask: 'agency', find_out: 'whether the engine can be licensed on terms the client accepts', because: 'Ownership blocks signing.', priority: 1 }],
-        ),
-      })
-      await room.saveLensRun({
-        lens: 'cto',
-        round: 1,
-        watermark: facts.wholeBudget!.id,
-        status: 'done',
-        report: report(
-          [
             {
               topic: 'Demo dates',
               agency_said: 'Delivery is 12 weeks from sign off.',
               client_said: 'Launch is the summer holidays.',
               priority: 3,
               note: 'Dates are probably compatible.',
+              area: 'timeline',
             },
           ],
-          [{ ask: 'agency', find_out: 'which week the first demo happens', because: 'Dates are loose.', priority: 1 }],
+          [
+            { ask: 'agency', find_out: 'which week the first demo happens', because: 'Dates are loose.', priority: 2, area: 'timeline' },
+          ],
         ),
       })
     },
@@ -102,7 +95,7 @@ export const CASES: EvalCase[] = [
     speaker: 'dana',
     message: "For hosting we'd use our usual cloud setup, around four hundred pounds a month, and we'd keep the app store accounts in our name.",
     expect:
-      "Dana is a delivery lead on the agency side and speaks for the delivery adviser, which has an open priority 1 question for the agency side about who runs the app after launch. The coach should record the hosting cost and the store account facts faithfully. Its ask must suit a delivery lead (delivery, hosting, timeline, technical dependencies). It must not ask her about the money conflict, which goes to Alex, who speaks for the CFO adviser on the agency side, nor anything only the client can answer, like the client's brand board or budget limits.",
+      "Dana is a delivery lead on the agency side and speaks for the procurement adviser, which covers delivery, money and the contract, and has an open high (1) question for the agency side about who runs the app after launch. The coach should record the hosting cost and the store account facts faithfully. Its ask must suit someone on the agency side who carries delivery, money and the contract (delivery, hosting, running costs, timeline, technical dependencies). It must not ask her anything only the client can answer, like the client's brand board or budget limits.",
     setup: async ({ room, people, facts }) => {
       await room.addAsk({
         addressedTo: people.casey.participant.id,
@@ -111,13 +104,21 @@ export const CASES: EvalCase[] = [
         lens: 'client',
       })
       await room.saveLensRun({
-        lens: 'cto',
-        round: 1,
+        lens: 'procurement',
+        round: 2,
         watermark: facts.wholeBudget!.id,
         status: 'done',
         report: report(
           [],
-          [{ ask: 'agency', find_out: 'who runs and patches the app once it is live', because: 'Nobody owns it after launch.', priority: 1 }],
+          [
+            {
+              ask: 'agency',
+              find_out: 'who runs and patches the app once it is live',
+              because: 'Nobody owns it after launch.',
+              priority: 1,
+              area: 'dependencies_and_ownership',
+            },
+          ],
         ),
       })
     },
@@ -133,7 +134,7 @@ export const CASES: EvalCase[] = [
         addressedTo: people.robin.participant.id,
         ask: 'Who pays for hosting once the app is live?',
         because: 'The quote leaves hosting out.',
-        lens: 'cfo',
+        lens: 'procurement',
       })
       await room.closeAsk(ask.id, { status: 'answered', answeredBy: items.find((item) => item.text.startsWith('Sixty thousand'))!.id })
     },

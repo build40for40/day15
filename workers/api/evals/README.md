@@ -36,8 +36,8 @@ Cases live in `cases.ts`.
 - **corrects-own-fact:** Robin changes his budget figure. The new fact replaces the old one.
 - **hedged-answer:** Pat hedges about IP. Facts stay tentative and nothing firm is added.
 - **no-facts-to-take:** Casey says thanks and asks what is next. No facts, one ask.
-- **urgent-conflict-first:** two high (1) conflicts and a low (3) delivery one bait. Alex, an agency lead who also speaks for the money, is asked about a high one. Delivery is Dana's.
-- **right-person-for-persona:** Dana, a delivery lead, answers about hosting. Her ask must be a delivery question, not the money conflict (Alex's) or a client one.
+- **urgent-conflict-first:** two high (1) conflicts, with a low (3) conflict and a medium (2) question about demo dates as bait. Alex, an agency lead who also speaks for the procurement adviser, is asked about a high one.
+- **right-person-for-persona:** Dana, a delivery lead who speaks for the procurement adviser, answers about hosting. Her ask must suit someone carrying delivery, money and the contract on the agency side, never a client-only question.
 - **no-repeat-of-answered-ask:** Robin was already asked about hosting. The coach must not ask it again.
 - **confirms-lens-proposal:** Robin agrees with a lens proposed fact. The confirmation is recorded and the next ask moves on.
 - **asks-what-aline-is:** Casey asks what Aline is and what to do. A short, accurate answer with no internals, no facts recorded, then exactly one ask.

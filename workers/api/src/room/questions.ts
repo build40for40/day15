@@ -1,6 +1,6 @@
 import { ALIGNMENT_AREAS, type AlignmentAreaId } from '@day15/shared/alignment'
 import { areaRank, LENS_AREA, TOPIC_AREA } from '@day15/shared/areas'
-import type { LensId } from '@day15/shared/lenses'
+import { currentLens, storedIds, type LensId } from '@day15/shared/lenses'
 import { toPriority } from '@day15/shared/priorities'
 import { parseRef } from '@day15/shared/refs'
 import { ASK_SIDES, type LensReport, type LensRun, type OpenQuestion, type Topic } from '@day15/shared/schema'
@@ -36,7 +36,7 @@ type QuestionRow = {
 const toQuestion = (row: QuestionRow): OpenQuestion => ({
   id: row.id,
   kind: row.kind as OpenQuestion['kind'],
-  lens: row.lens === COACH ? null : (row.lens as LensId),
+  lens: currentLens(row.lens),
   topic: row.topic,
   area: row.area as AlignmentAreaId,
   statement: row.statement,
@@ -181,7 +181,12 @@ export function recordLensReport(sql: Sql, run: LensRun, now: Date): void {
   const facts = new Map(
     all<{ id: number; topic: string }>(sql, 'SELECT id, topic FROM facts').map((row) => [row.id, row.topic as Topic]),
   )
-  const open = all<QuestionRow>(sql, `SELECT * FROM open_questions WHERE status = 'open' AND lens = ?`, run.lens).map(
+  const ids = storedIds(run.lens)
+  const open = all<QuestionRow>(
+    sql,
+    `SELECT * FROM open_questions WHERE status = 'open' AND lens IN (${ids.map(() => '?').join(', ')})`,
+    ...ids,
+  ).map(
     toQuestion,
   )
   const touched = new Set<number>()

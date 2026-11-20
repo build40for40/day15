@@ -166,7 +166,7 @@ const finish = () => emit('finish', madeTeam.value!, madeProject.value!)
         :class="{ done: index < stepIndex, now: index === stepIndex }"
         :aria-current="index === stepIndex ? 'step' : undefined"
       >
-        <span class="dot" aria-hidden="true">{{ index < stepIndex ? '✓' : index + 1 }}</span>
+        <span class="step-dot" aria-hidden="true">{{ index < stepIndex ? '✓' : index + 1 }}</span>
         <span class="label">{{ STEP_LABELS[name] }}</span>
       </li>
     </ol>
@@ -406,7 +406,7 @@ const finish = () => emit('finish', madeTeam.value!, madeProject.value!)
   font-size: 0.875rem;
 }
 
-.dot {
+.step-dot {
   display: grid;
   place-items: center;
   width: 1.75rem;
@@ -418,7 +418,7 @@ const finish = () => emit('finish', madeTeam.value!, madeProject.value!)
   transition: background 0.3s ease, border-color 0.3s ease;
 }
 
-.progress .done .dot {
+.progress .done .step-dot {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--on-accent);
@@ -429,7 +429,7 @@ const finish = () => emit('finish', madeTeam.value!, madeProject.value!)
   font-weight: 600;
 }
 
-.progress .now .dot {
+.progress .now .step-dot {
   border-color: var(--accent);
   color: var(--lit);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent);
@@ -650,7 +650,7 @@ button.small {
 @media (prefers-reduced-motion: reduce) {
   .step-enter-active,
   .step-leave-active,
-  .dot {
+  .step-dot {
     transition: none;
   }
 }

@@ -62,8 +62,8 @@ describe('seats', () => {
     )
     expect(people.map((p) => [p.details.name, p.details.organisation, p.details.lenses, p.link])).toEqual([
       ['Alex Example', 'Fake Agency', ['agency'], true],
-      ['Robin Fakeworth', 'Make-Believe Foods', ['cfo'], true],
-      ['Sam Pretend', 'Fake Agency', ['cto'], false],
+      ['Robin Fakeworth', 'Make-Believe Foods', ['procurement'], true],
+      ['Sam Pretend', 'Fake Agency', ['procurement'], false],
     ])
   })
 })
@@ -107,7 +107,7 @@ describe('seats with more detail', () => {
           guest({
             jobTitle: ' Finance Director ',
             organisation: ' Make-Believe Holdings ',
-            lenses: ['cfo', 'procurement'],
+            lenses: ['client', 'procurement'],
             notes: ' Reports to the CEO. Signs off the budget. ',
           }),
         ],
@@ -118,7 +118,7 @@ describe('seats with more detail', () => {
     expect(robin!.details).toMatchObject({
       jobTitle: 'Finance Director',
       organisation: 'Make-Believe Holdings',
-      lenses: ['cfo', 'procurement'],
+      lenses: ['client', 'procurement'],
       notes: 'Reports to the CEO. Signs off the budget.',
     })
   })
@@ -153,7 +153,7 @@ describe('a setup made in chat', () => {
     agency: 'Fake Agency',
     project: 'Orchard Dash',
     client: 'Make-Believe Foods',
-    clientRep: { name: 'Robin Fakeworth', jobTitle: 'Head of Brand', lenses: ['client', 'procurement', 'nonsense'], notes: 'Signs off the brief.' },
+    clientRep: { name: 'Robin Fakeworth', jobTitle: 'Head of Brand', lenses: ['client', 'cfo', 'nonsense'], notes: 'Signs off the brief.' },
     procurementRep: { name: 'Pat Pretend' },
     others: [{ name: 'Sam Pretend', persona: 'delivery_lead', side: 'agency' }, { name: '' }, { name: 'Lee Odd', persona: 'wizard', side: 'moon' }],
   }

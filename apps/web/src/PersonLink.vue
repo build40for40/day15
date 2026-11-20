@@ -80,15 +80,17 @@ async function copy() {
 
 h3 {
   margin: 0;
-  font-size: 1rem;
+  font: 600 13px var(--sans);
+  color: var(--dim);
 }
 
 .message {
   margin: 0;
   padding: 0.6rem 0.75rem;
-  border-left: 3px solid var(--accent);
-  background: var(--paper);
-  font-size: 0.875rem;
+  border-left: 2px solid var(--coral);
+  border-radius: 0 10px 10px 0;
+  background: var(--midnight);
+  font-size: 14px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -99,15 +101,13 @@ h3 {
   gap: 0.5rem;
 }
 
+.link > button {
+  justify-self: start;
+}
+
 .share {
   display: inline-flex;
   align-items: center;
-  min-height: 2.75rem;
-  padding: 0.6rem 0.75rem;
-  border: 1px solid var(--line);
-  border-radius: 0.5rem;
-  color: var(--ink);
-  font-weight: 600;
   text-decoration: none;
 }
 

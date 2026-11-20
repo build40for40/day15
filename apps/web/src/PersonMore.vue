@@ -36,11 +36,11 @@ const emit = defineEmits<{ lensesTouched: [] }>()
       <fieldset>
         <legend class="q">What do they care about most?</legend>
         <p class="hint">
-          The coach has five advisers: money, delivery, agency, client and procurement. Tick whichever speak for what this
-          person cares about. I've started you off from their role.
+          The coach has three advisers: agency, client and procurement (which also covers money and delivery). Tick whichever
+          speak for what this person cares about. I've started you off from their role.
         </p>
         <div class="pills">
-          <label v-for="lens in LENS_IDS" :key="lens" class="pill">
+          <label v-for="lens in LENS_IDS" :key="lens" class="adviser">
             <input v-model="more.lenses" type="checkbox" :value="lens" class="sr-only" @change="emit('lensesTouched')" />
             <span>{{ LENS_NAMES[lens] }}</span>
           </label>
@@ -123,11 +123,11 @@ textarea {
   gap: 0.5rem;
 }
 
-.pill {
+.adviser {
   display: block;
 }
 
-.pill span {
+.adviser span {
   display: inline-block;
   padding: 0.4rem 0.8rem;
   border: 1px solid var(--line);
@@ -136,14 +136,14 @@ textarea {
   transition: background 0.2s ease, border-color 0.2s ease;
 }
 
-.pill input:checked + span {
+.adviser input:checked + span {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--on-accent);
   font-weight: 600;
 }
 
-.pill input:focus-visible + span {
+.adviser input:focus-visible + span {
   outline: 3px solid var(--accent);
   outline-offset: 2px;
 }
@@ -161,7 +161,7 @@ textarea {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pill span {
+  .adviser span {
     transition: none;
   }
 }

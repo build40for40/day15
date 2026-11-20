@@ -1,4 +1,4 @@
-import { LENS_IDS, type LensId } from '@day15/shared/lenses'
+import { currentLenses, type LensId } from '@day15/shared/lenses'
 import {
   MAX_JOB_TITLE_LENGTH,
   MAX_NAME_LENGTH,
@@ -168,7 +168,8 @@ function decode(encoded: string): unknown {
 
 function guestFrom(raw: unknown, key: number, persona: Persona, side: Side): Guest {
   const given = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
-  const lenses = Array.isArray(given.lenses) ? LENS_IDS.filter((lens) => (given.lenses as unknown[]).includes(lens)) : []
+  // Older setup links may name the retired money and delivery advisers, which procurement now speaks for.
+  const lenses = Array.isArray(given.lenses) ? currentLenses(given.lenses.filter((lens): lens is string => typeof lens === 'string')) : []
   return {
     ...newGuest(key, persona, side),
     name: text(given.name, MAX_NAME_LENGTH),

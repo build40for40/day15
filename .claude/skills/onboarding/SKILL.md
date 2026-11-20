@@ -57,7 +57,7 @@ Prefer a form? The setup page has the same questions on one page. Say so if they
 
    - `clientRep` and `procurementRep` are the two named client seats. Leave one out if nobody has been named.
    - Everyone else goes in `others`, on either side. Give each a `side` (`agency` or `client`) and a `persona`: `agency_lead` (leads for the agency), `delivery_lead` (makes it), `marketing_lead` (owns the brief), `procurement` (contracts) or `cfo` (budget).
-   - Every person takes `name` and, optionally, `jobTitle`, `organisation` (only if different from their side's company), `notes`, `lenses` (a list from `agency`, `client`, `procurement`, `cfo`, `cto`, only if the person says what they care about) and `link` (`false` for no link).
+   - Every person takes `name` and, optionally, `jobTitle`, `organisation` (only if different from their side's company), `notes`, `lenses` (a list from `agency`, `client` and `procurement`, only if the person says what they care about; money and delivery both sit under `procurement`) and `link` (`false` for no link).
    - Leave out anything you don't know. If the person already has a team in A-Line, `agency` is ignored.
 
 6. **Hand over.** Give them the link on its own line and say what happens next, in plain words:

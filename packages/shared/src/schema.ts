@@ -27,8 +27,8 @@ export const PERSONA_LENS: Record<Persona, LensId> = {
   agency_lead: 'agency',
   marketing_lead: 'client',
   procurement: 'procurement',
-  cfo: 'cfo',
-  delivery_lead: 'cto',
+  cfo: 'procurement',
+  delivery_lead: 'procurement',
 }
 
 /** Every fact sits under one of these, taken from a client brief template. */

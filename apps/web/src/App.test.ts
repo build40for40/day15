@@ -26,7 +26,45 @@ const person = (overrides: Record<string, unknown>) => ({
   ...overrides,
 })
 const team = { name: 'Fake Agency', ownerId: 'user_fake', createdAt: '2026-11-20T09:00:00Z' }
-const project = (participants: unknown[] = []) => ({ id: PROJECT_ID, name: 'Orchard Dash', createdAt: 'x', participants })
+const project = (participants: unknown[] = [], overrides: Record<string, unknown> = {}) => ({
+  id: PROJECT_ID,
+  name: 'Orchard Dash',
+  createdAt: 'x',
+  participants,
+  ...overrides,
+})
+
+const said = (id: number, side: string, statement: string) => ({
+  id,
+  topic: 'budget',
+  statement,
+  status: 'confirmed',
+  authorKind: 'person',
+  participantId: 1,
+  side,
+  basedOn: [],
+  private: false,
+})
+const ROOM = {
+  facts: [said(1, 'agency', 'The quote is £80k.'), said(2, 'client', 'The budget is £60k.')],
+  openQuestions: [
+    {
+      id: 1,
+      kind: 'conflict',
+      topic: 'budget',
+      area: 'budget',
+      statement: 'The quote is £20k over the budget (f1, f2).',
+      because: '',
+      agencySaid: null,
+      clientSaid: null,
+      askSide: 'both',
+      priority: 1,
+      basedOn: [1, 2],
+      withheld: false,
+    },
+  ],
+  asks: [],
+}
 
 function serve(session: unknown) {
   let nextId = 2
@@ -35,6 +73,7 @@ function serve(session: unknown) {
     const body = init?.body ? JSON.parse(String(init.body)) : undefined
     if (path === '/api/session') return Response.json(session)
     if (path === '/api/team') return Response.json({ team }, { status: 201 })
+    if (path.endsWith('/room')) return Response.json({ room: ROOM })
     if (path === '/api/projects') return Response.json({ project: project() }, { status: 201 })
     if (path.endsWith('/people') && init?.method === 'POST') {
       const { link, ...details } = body
@@ -113,7 +152,7 @@ describe('App', () => {
     await wrapper.get('input[placeholder="Your day-to-day contact"]').setValue('Robin Fakeworth')
     await wrapper.findAll('input[placeholder="Optional"]')[0]!.setValue('Head of Brand')
     // The advisers follow the role: the client rep starts with the client adviser.
-    const repPills = wrapper.findAll('section.seat')[0]!.findAll('.pill input')
+    const repPills = wrapper.findAll('section.seat')[0]!.findAll('.adviser input')
     expect(repPills.filter((pill) => (pill.element as HTMLInputElement).checked).map((pill) => pill.attributes('value'))).toEqual(['client'])
     await repPills.find((pill) => pill.attributes('value') === 'procurement')!.setValue(true)
     await wrapper.findAll('section.seat')[0]!.get('textarea').setValue('Reports to the CEO. Signs off the budget.')
@@ -166,6 +205,9 @@ describe('App', () => {
     expect(messages.every((message) => message.includes(ADDRESS))).toBe(true)
     await button(wrapper, 'Go to my project').trigger('click')
     await flushPromises()
+    // The project opens on its circle, and the people are one tab away.
+    expect(wrapper.find('.center').exists()).toBe(true)
+    await button(wrapper, 'People 3').trigger('click')
     expect(sidebarNames(wrapper)).toEqual(['Alex Example', 'Robin Fakeworth', 'Pat Pretend'])
   })
 
@@ -218,8 +260,8 @@ describe('App', () => {
     expect(people.map((p) => [p.name, p.side, p.persona, p.organisation, p.lenses])).toEqual([
       ['Alex Example', 'agency', 'agency_lead', 'Fake Agency', ['agency']],
       ['Robin Fakeworth', 'client', 'marketing_lead', 'Make-Believe Foods', ['client']],
-      ['Sam Pretend', 'agency', 'delivery_lead', 'Fake Agency', ['cto']],
-      ['Lee Odd', 'client', 'cfo', 'Make-Believe Foods', ['cfo']],
+      ['Sam Pretend', 'agency', 'delivery_lead', 'Fake Agency', ['procurement']],
+      ['Lee Odd', 'client', 'cfo', 'Make-Believe Foods', ['procurement']],
     ])
     // Everyone gets a message from the agency rep, the agency rep's own last.
     expect(wrapper.findAll('.invites .who strong').map((who) => who.text())).toEqual([
@@ -325,6 +367,7 @@ describe('App', () => {
     vi.stubGlobal('navigator', { clipboard: { writeText } })
     const wrapper = mount(App)
     await flushPromises()
+    await button(wrapper, 'People 1').trigger('click')
     expect(sidebarNames(wrapper)).toEqual(['Alex Example'])
 
     await button(wrapper, 'Add person').trigger('click')
@@ -342,7 +385,7 @@ describe('App', () => {
       organisation: '',
       side: 'client',
       persona: 'cfo',
-      lenses: ['cfo'],
+      lenses: ['procurement'],
       notes: '',
       link: true,
     })
@@ -363,5 +406,30 @@ describe('App', () => {
     await flushPromises()
     expect(sidebarNames(wrapper)).toEqual(['Alex Example'])
     expect(fetchMock.mock.calls.every(([, init]) => (init?.headers as Record<string, string>).Authorization === 'Bearer fake-token')).toBe(true)
+  })
+
+  it('opens a project with people on its circle, drawn from the room', async () => {
+    auth.currentUser.mockResolvedValue({ id: 'user_fake' })
+    const fetchMock = serve({ team, projects: [project([person({})])] })
+    const wrapper = mount(App)
+    await flushPromises()
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith(`/api/projects/${PROJECT_ID}/room`))).toBe(true)
+    expect(wrapper.get('.center').text()).toContain('Not started')
+    const budget = wrapper.findAll('.rows .head').find((row) => row.text().includes('Budget'))!
+    expect(budget.text()).toContain('Deal-breaker. The quote is £20k over the budget.')
+    await budget.trigger('click')
+    expect(wrapper.findAll('.rows .fact .txt').map((fact) => fact.text())).toEqual(['The budget is £60k.', 'The quote is £80k.'])
+    expect(wrapper.get('.rows .fact .meta').text()).toContain('Confirmed by')
+  })
+
+  it('switches between projects', async () => {
+    auth.currentUser.mockResolvedValue({ id: 'user_fake' })
+    const other = project([person({ name: 'Morgan Madeup' })], { id: '22222222-2222-4222-8222-222222222222', name: 'Biscuit Bonanza' })
+    serve({ team, projects: [project(), other] })
+    const wrapper = mount(App)
+    await flushPromises()
+    await wrapper.get('select').setValue(other.id)
+    await button(wrapper, 'People 1').trigger('click')
+    expect(sidebarNames(wrapper)).toEqual(['Morgan Madeup'])
   })
 })

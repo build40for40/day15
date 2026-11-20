@@ -41,9 +41,9 @@ export const TOPIC_LENS: Record<Exclude<Topic, 'other'>, LensId> = {
   audience: 'client',
   insight: 'client',
   kpis: 'client',
-  budget: 'cfo',
-  deliverables: 'cto',
-  timeline: 'cto',
+  budget: 'procurement',
+  deliverables: 'procurement',
+  timeline: 'procurement',
   sign_off: 'agency',
   legal_ip: 'procurement',
 }
