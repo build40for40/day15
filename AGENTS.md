@@ -54,6 +54,10 @@ From the "Day 15 - ideation" notes. It was picked from five ideas pitched by the
 - Possible legal ratification.
 - Learn from mediation structure (12 steps, for example) or let the system set its own rules.
 
+## Decided
+
+- **A coach with lenses.** One coach talks to both parties. It works through different lenses, and each lens teases out its own questions. The answers from both sides build the project truth.
+
 ## From the brief and plan
 
 A summary of the team's planning call, from the Superthread "Day 15 - plan & brief" page. That page is the source. Nothing here is decided unless it says so, and there is no MVP yet.
