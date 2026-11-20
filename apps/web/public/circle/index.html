@@ -1,0 +1,566 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>A-Line</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: a tall stage on the left holds the alignment circle (the one bold thing). The twelve decisions are quiet rows on the right that open in place.
+   Palette: Glisten midnight. Agency teal, client orange, A-Line (the coach) coral. Deal-breakers are cream, never red. Single dark look by choice. */
+:root {
+  color-scheme: dark;
+  --midnight: #070b14; --midnight-2: #0d1424; --panel: #0b1220; --raise: #111a2e; --line: #1c2840; --line-2: #2a3a58;
+  --text: #c9d1e0; --dim: #8a96b0; --lit: #f7ecd2; --gold: #f2c86b;
+  --done: #5de0a8; --teal: #46d6c8; --orange: #ffae6b; --coral: #ff9c91; --crack: #fff4e6; --lilac: #c9b6f0;
+  --serif: "Spectral", Georgia, "Times New Roman", serif;
+  --sans: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--midnight); }
+body { margin: 0; color: var(--text); font-family: var(--sans); font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased;
+  background: radial-gradient(120% 70% at 50% -10%, var(--midnight-2), var(--midnight) 62%); background-color: var(--midnight);
+  padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); padding-block: 0 56px; }
+h1, h2, h3, h4, p, ul, ol { margin: 0; padding: 0; }
+button { font: inherit; color: inherit; }
+button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+[hidden] { display: none !important; }
+.wrap { max-width: 1240px; margin: 0 auto; }
+
+header.top { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding-block: 26px 0; flex-wrap: wrap; }
+.mark { font: 400 28px/1 var(--serif); color: var(--lit); letter-spacing: .01em; display: inline-flex; align-items: center; gap: 12px; }
+.mark svg { width: 26px; height: 26px; }
+.sample { font-size: 13px; color: var(--dim); }
+.sample b { color: var(--text); font-weight: 500; }
+
+.hero { padding-block: clamp(26px, 5vw, 54px) 8px; max-width: 46rem; display: grid; gap: 12px; }
+h1 { font: 300 clamp(34px, 5.2vw, 58px)/1.08 var(--serif); color: var(--lit); letter-spacing: -.005em; text-wrap: balance; }
+.lede { font: 300 clamp(17px, 1.7vw, 20px)/1.55 var(--serif); color: var(--text); max-width: 38rem; }
+
+.grid { display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr); gap: clamp(20px, 3.4vw, 52px); align-items: start; margin-top: 20px; }
+.stagecol { position: sticky; top: 14px; display: grid; gap: 14px; min-width: 0; }
+.stage { position: relative; aspect-ratio: 1 / 0.97; width: 100%; max-width: 760px; margin: 0 auto; }
+.stage svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
+.center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 30%; text-align: center; pointer-events: none; display: grid; gap: 4px; z-index: 1; padding: 22px 8px; background: radial-gradient(closest-side, rgba(7,11,20,.92), rgba(7,11,20,.6) 65%, rgba(7,11,20,0)); }
+.center .state { font: italic 300 clamp(15px, 2.2vw, 24px)/1.15 var(--serif); color: var(--lit); text-wrap: balance; }
+.center .pct { font-size: clamp(11px, 1.2vw, 13px); color: var(--dim); }
+.spoke { cursor: pointer; }
+.spoke circle { transition: fill .6s ease, stroke .6s ease; }
+.spoke .lab { font: 500 13px var(--sans); fill: var(--dim); transition: fill .2s; }
+.spoke:hover .lab, .spoke.sel .lab { fill: var(--lit); }
+.spoke.sel .lab { font-weight: 600; }
+.spoke:focus-visible { outline: none; }
+.spoke:focus-visible .lab { fill: var(--gold); text-decoration: underline; }
+
+.glow { position: absolute; left: 0; top: 0; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; z-index: 3; will-change: transform;
+  background: #fff1ec; box-shadow: 0 0 10px 4px rgba(255,228,220,.55), 0 0 34px 14px rgba(255,156,145,.34), 0 0 70px 30px rgba(201,182,240,.14); }
+.glow::before { content: ""; position: absolute; inset: -22px; border-radius: 50%; }
+.glow::after { content: ""; position: absolute; inset: -9px; border-radius: 50%; border: 1px solid rgba(255,156,145,.6); animation: ring 2.6s ease-out infinite; pointer-events: none; }
+.glow.awake { box-shadow: 0 0 14px 6px rgba(255,236,230,.8), 0 0 46px 20px rgba(255,156,145,.46), 0 0 96px 42px rgba(201,182,240,.2); }
+.glow.awake::after { animation: none; opacity: 0; }
+.hint { position: absolute; left: 24px; top: -10px; white-space: nowrap; font: 500 12px var(--sans); color: var(--coral); background: rgba(7,11,20,.8); border: 1px solid rgba(255,156,145,.4); border-radius: 999px; padding: 3px 10px; pointer-events: none; }
+.glow.awake .hint { display: none; }
+@keyframes ring { from { transform: scale(.6); opacity: .9; } to { transform: scale(2.6); opacity: 0; } }
+
+.key { border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; background: rgba(11,18,32,.55); }
+.key h4 { font: italic 300 18px/1.2 var(--serif); color: var(--lit); margin-bottom: 10px; }
+.key ul { list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px 20px; }
+.key li { display: grid; grid-template-columns: 40px 1fr; gap: 12px; align-items: center; font-size: 13px; line-height: 1.4; color: var(--dim); }
+.key li svg { width: 40px; height: 24px; overflow: visible; }
+.key li b { color: var(--lit); font-weight: 500; }
+.ticker { display: flex; gap: 12px; align-items: flex-start; min-height: 52px; padding: 12px 16px; border: 1px solid var(--line); border-radius: 14px; background: rgba(11,18,32,.7); font-size: 14px; line-height: 1.45; }
+.who { flex: none; font: 600 12px/1 var(--sans); color: #08101c; padding: 5px 9px; border-radius: 999px; margin-top: 1px; }
+.ticker .to { color: var(--dim); font-size: 12px; display: block; margin-bottom: 2px; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13px; color: var(--dim); align-items: center; }
+.legend span { display: inline-flex; gap: 8px; align-items: center; }
+.dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+.dot.teal { background: var(--teal); box-shadow: 0 0 8px rgba(70,214,200,.6); } .dot.orange { background: var(--orange); box-shadow: 0 0 8px rgba(255,174,107,.6); }
+.dot.coral { background: #fff1ec; box-shadow: 0 0 8px 2px rgba(255,156,145,.7); }
+.dot.ref { border: 1px dashed var(--dim); background: none; }
+.controls { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn { all: unset; cursor: pointer; font: 500 13px var(--sans); padding: 8px 14px; border: 1px solid var(--line-2); border-radius: 999px; color: var(--text); }
+.btn:hover, .btn:focus-visible { border-color: var(--gold); color: var(--lit); }
+.btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.btn.go { background: var(--lit); color: #1a1408; border-color: var(--lit); font-weight: 600; }
+.btn.go:hover { background: #fff7e2; }
+.btn.go[disabled] { opacity: .45; cursor: default; }
+
+.listcol { min-width: 0; display: grid; gap: 14px; }
+.bar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; }
+.seg { display: inline-flex; border: 1px solid var(--line-2); border-radius: 999px; padding: 3px; gap: 2px; }
+.seg button { all: unset; cursor: pointer; font: 500 13px var(--sans); padding: 6px 12px; border-radius: 999px; color: var(--dim); }
+.seg button:hover { color: var(--lit); }
+.seg button[aria-pressed=true] { background: var(--raise); color: var(--lit); box-shadow: inset 0 0 0 1px var(--line-2); }
+.seg button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+.viewas { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--dim); }
+
+.gaia { border: 1px solid rgba(255,156,145,.45); border-radius: 16px; padding: 16px 18px; display: grid; gap: 10px; background: linear-gradient(180deg, rgba(255,156,145,.08), rgba(11,18,32,.6)); }
+.gaia h3 { font: italic 300 22px/1.2 var(--serif); color: var(--lit); }
+.gaia textarea, .answer textarea { width: 100%; min-height: 62px; resize: vertical; background: var(--midnight); color: var(--text); border: 1px solid var(--line-2); border-radius: 10px; padding: 10px 12px; font: 400 14px/1.5 var(--sans); }
+.gaia .row, .answer .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.muted { color: var(--dim); font-size: 13px; }
+
+ul.rows { list-style: none; display: grid; }
+.item { border-top: 1px solid var(--line); }
+.item:last-child { border-bottom: 1px solid var(--line); }
+.head { all: unset; cursor: pointer; display: grid; grid-template-columns: 54px minmax(0,1fr) auto; gap: 14px; align-items: center; padding: 16px 6px; width: 100%; box-sizing: border-box; }
+.head:hover .name { color: #fff; }
+.head:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; border-radius: 8px; }
+.pair { width: 54px; height: 22px; position: relative; }
+.pair svg { width: 54px; height: 22px; overflow: visible; }
+.name { font: 400 21px/1.2 var(--serif); color: var(--lit); transition: color .2s; }
+.sub { font-size: 13px; color: var(--dim); margin-top: 2px; line-height: 1.4; }
+.badges { display: flex; gap: 6px; align-items: center; }
+.pill { font: 500 12px/1 var(--sans); padding: 5px 9px; border-radius: 999px; border: 1px solid var(--line-2); color: var(--text); white-space: nowrap; }
+.pill.crack { background: var(--crack); color: #2a1a05; border-color: var(--crack); font-weight: 600; }
+.pill.decided { border-color: rgba(93,224,168,.55); color: var(--done); }
+.pill.talked { border-color: rgba(255,174,107,.5); color: var(--orange); }
+.chev { width: 16px; height: 16px; transition: transform .25s; color: var(--dim); }
+.item.open .chev { transform: rotate(90deg); }
+.item.open .head .name { color: #fff; }
+.body { display: grid; gap: 18px; padding: 2px 6px 22px 74px; animation: openIn .28s ease-out; }
+@keyframes openIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.sec h4 { font: 600 13px var(--sans); color: var(--dim); margin-bottom: 8px; }
+.sec ul { list-style: none; display: grid; gap: 10px; }
+.fact, .find, .q { display: grid; gap: 3px; font-size: 14.5px; line-height: 1.5; }
+.fact .txt, .q .txt { font: 400 17px/1.45 var(--serif); color: var(--lit); }
+.fact.replaced .txt { text-decoration: line-through; color: var(--dim); }
+.meta { font-size: 12.5px; color: var(--dim); display: flex; gap: 6px 12px; flex-wrap: wrap; align-items: center; }
+.tag { display: inline-flex; gap: 6px; align-items: center; }
+.tag i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.prio { font: 600 11.5px/1 var(--sans); padding: 4px 8px; border-radius: 999px; }
+.prio.high { background: var(--lit); color: #1a1408; } .prio.medium { border: 1px solid var(--lit); color: var(--lit); } .prio.low { border: 1px solid var(--line-2); color: var(--dim); }
+.feeds { font-size: 13.5px; color: var(--text); border-left: 2px solid var(--coral); padding: 2px 0 2px 12px; }
+.feeds b { color: var(--lit); font-weight: 500; }
+.acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.answer { display: grid; gap: 8px; margin-top: 6px; }
+.empty { color: var(--dim); font-size: 14px; }
+.toast { position: fixed; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 20px); background: var(--lit); color: #1a1408; padding: 10px 16px; border-radius: 999px; font: 500 13px var(--sans); opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; z-index: 20; max-width: calc(100vw - 40px); }
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
+footer { margin-top: 40px; font-size: 12.5px; color: var(--dim); }
+
+@media (max-width: 980px) { .grid { grid-template-columns: 1fr; } .stagecol { position: static; } .body { padding-left: 6px; } }
+@media (max-width: 520px) { .head { grid-template-columns: 44px minmax(0,1fr) auto; gap: 10px; } .pair, .pair svg { width: 44px; } .name { font-size: 19px; } .badges .pill.ct { display: none; } }
+@media (prefers-reduced-motion: reduce) { .glow::after { animation: none; } .body { animation: none; } .toast { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <span class="mark" aria-label="A-Line">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3.2a12.8 12.8 0 1 1-9.6 4.3" fill="none" stroke="#f7ecd2" stroke-width="1.6" stroke-linecap="round"/><circle cx="16" cy="16" r="3" fill="#ff9c91"/><circle cx="6.1" cy="7.9" r="2.2" fill="#46d6c8"/></svg>
+      A-Line
+    </span>
+    <span class="sample">Sample project: <b>Northwind Outfitters</b> and <b>Studio Halcyon</b>, spring trail campaign</span>
+  </header>
+
+  <section class="hero">
+    <h1>The shape of your agreement.</h1>
+    <p class="lede">Every spoke is a decision between the agency and the client. The rounder the circle, the closer you are. It does not need to be perfect to move forward, only free of deal-breakers.</p>
+  </section>
+
+  <div class="grid">
+    <div class="stagecol">
+      <div class="stage" id="stage">
+        <svg id="svg" viewBox="0 0 760 736" role="img" aria-label="Alignment circle: twelve spokes, each joining an agency ball and a client ball"></svg>
+        <canvas id="dust" aria-hidden="true"></canvas>
+        <div class="center" id="center"><span class="state" id="cstate"></span><span class="pct" id="cpct"></span></div>
+        <button type="button" class="glow" id="orb" aria-label="Open A-Line, the coach"><span class="hint" id="hint">Tap to talk</span></button>
+      </div>
+      <div class="ticker" id="ticker" aria-live="polite"></div>
+      <div class="key" aria-label="How to read the circle">
+        <h4>How to read it</h4>
+        <ul>
+          <li><svg viewBox="0 0 40 24" aria-hidden="true"><circle cx="20" cy="12" r="9" fill="#5de0a8"/><circle cx="20" cy="12" r="5.5" fill="#5de0a8" stroke="#07120c" stroke-width="1.2"/></svg><span><b>Dots on top of each other turn green.</b> Agreed and complete. Fully aligned decisions form a perfect circle.</span></li>
+          <li><svg viewBox="0 0 40 24" aria-hidden="true"><circle cx="6" cy="12" r="5" fill="#46d6c8"/><circle cx="34" cy="12" r="6" fill="#ffae6b"/><line x1="11" y1="12" x2="28" y2="12" stroke="#c9d1e0" stroke-width="1.6" stroke-dasharray="5 4"/></svg><span><b>Dashed spoke.</b> Being worked out. The further apart, the less aligned.</span></li>
+          <li><svg viewBox="0 0 40 24" aria-hidden="true"><circle cx="6" cy="12" r="5" fill="#46d6c8"/><circle cx="34" cy="12" r="6" fill="#070b14" stroke="#ffae6b" stroke-width="1.6"/><line x1="11" y1="12" x2="28" y2="12" stroke="#8a96b0" stroke-width="1.8" stroke-dasharray="1.5 5" stroke-linecap="round"/></svg><span><b>Dotted spoke.</b> A decision still to be made.</span></li>
+          <li><svg viewBox="0 0 40 24" aria-hidden="true"><circle cx="5" cy="12" r="4.5" fill="#46d6c8"/><circle cx="35" cy="12" r="5.5" fill="#ffae6b"/><line x1="10" y1="12" x2="16" y2="12" stroke="#fff4e6" stroke-width="1.8"/><line x1="24" y1="12" x2="30" y2="12" stroke="#fff4e6" stroke-width="1.8"/><circle cx="20" cy="12" r="3.5" fill="none" stroke="#fff4e6" stroke-width="1.4"/></svg><span><b>Broken spoke.</b> A deal-breaker. Sort it before moving on.</span></li>
+          <li><svg viewBox="0 0 40 24" aria-hidden="true"><path d="M6 14c3-8 8-9 14-9s13 3 14 11c-4 6-10 6-15 5s-11-2-13-7z" fill="rgba(255,174,107,.14)" stroke="#ffae6b" stroke-width="1.4"/></svg><span><b>A bigger, wonky circle.</b> Less aligned. As you pull together it tightens.</span></li>
+        </ul>
+      </div>
+      <div class="legend">
+        <span><i class="dot teal"></i>Agency</span><span><i class="dot orange"></i>Client</span><span><i class="dot coral"></i>A-Line, the coach</span><span class="controls"><button type="button" class="btn" id="play">Pause</button><button type="button" class="btn" id="replay">Replay</button></span>
+      </div>
+    </div>
+
+    <div class="listcol">
+      <section class="gaia" id="gaia" hidden aria-label="A-Line">
+        <h3 id="gtitle">A-Line is listening</h3>
+        <p class="muted" id="gsub"></p>
+        <div id="gbody"></div>
+      </section>
+      <div class="bar">
+        <div class="seg" id="seg" role="group" aria-label="Filter decisions"></div>
+        <div class="viewas" id="viewas">Viewing as<div class="seg" id="roleseg" role="group" aria-label="Viewing as"></div></div>
+      </div>
+      <ul class="rows" id="rows"></ul>
+    </div>
+  </div>
+  <footer>Preview with sample data. Calling and editing are not connected yet.</footer>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var SVGNS = 'http://www.w3.org/2000/svg';
+  function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  /* ---------- Topics: Ben's brief-template topics plus feedback, twelve in all ---------- */
+  var TOPICS = [
+    { id: 'background',  name: 'Background',            label: 'Background',    feeds: ['Brief, section 1'] },
+    { id: 'objective',   name: 'Objective',             label: 'Objective',     feeds: ['Brief, section 2', 'the client deck'] },
+    { id: 'audience',    name: 'Audience',              label: 'Audience',      feeds: ['Brief, section 3', 'the client deck'] },
+    { id: 'insight',     name: 'Insight',               label: 'Insight',       feeds: ['Brief, section 4'] },
+    { id: 'kpis',        name: 'Success measures',      label: 'Success',       feeds: ['SOW acceptance', 'the client deck'] },
+    { id: 'budget',      name: 'Budget',                label: 'Budget',        feeds: ['the budget sheet', 'contract fees'] },
+    { id: 'deliverables',name: 'Deliverables',          label: 'Deliverables',  feeds: ['SOW scope', 'the delivery plan'] },
+    { id: 'timeline',    name: 'Timeline',              label: 'Timeline',      feeds: ['the delivery plan', 'contract term'] },
+    { id: 'signoff',     name: 'Sign-off',              label: 'Sign-off',      feeds: ['SOW approvals', 'the contract'] },
+    { id: 'legal',       name: 'Legal and IP',          label: 'Legal and IP',  feeds: ['contract ownership clause'] },
+    { id: 'feedback',    name: 'Feedback and check-ins',label: 'Feedback',      feeds: ['SOW feedback rounds'] },
+    { id: 'outside',     name: 'Outside the brief',     label: 'Outside brief', feeds: ['SOW assumptions', 'the delivery plan'] }
+  ];
+  var N = TOPICS.length;
+  var PEOPLE = {
+    maya:  { name: 'Maya',  side: 'client' },  priya: { name: 'Priya', side: 'client' },
+    jonah: { name: 'Jonah', side: 'agency' },  gaia:  { name: 'A-Line',  side: 'coach' }
+  };
+  var SIDE_COLOR = { agency: '#46d6c8', client: '#ffae6b', coach: '#ff9c91' };
+  var SIDE_NAME = { agency: 'Agency', client: 'Client' };
+
+  /* ---------- State, in the shape of Ben's room (facts, asks) and Samira's reports (coverage, conflicts) ---------- */
+  var S, uid;
+  function fresh() {
+    uid = 0; S = {};
+    TOPICS.forEach(function (t) { S[t.id] = { cov: { agency: 'missing', client: 'missing' }, conflict: null, facts: [], asks: [], findings: [] }; });
+  }
+  function fact(t, text, status, by) { S[t].facts.forEach(function (f) { if (status === 'confirmed' && f.status === 'proposed') f.status = 'replaced'; }); S[t].facts.push({ id: ++uid, text: text, status: status, by: by }); }
+  function ask(t, to, text, because, prio) { S[t].asks.push({ id: ++uid, to: to, ask: text, because: because, priority: prio, status: 'open' }); }
+  function ans(t, to) { S[t].asks.forEach(function (a) { if (a.to === to && a.status === 'open') a.status = 'answered'; }); }
+  function cov(t, side, lvl) { S[t].cov[side] = lvl; }
+  function conflict(t, sev, note) { S[t].conflict = sev ? { severity: sev, note: note } : null; }
+  function finding(t, text) { S[t].findings.push({ id: ++uid, text: text }); }
+
+  function score(id) {
+    var s = S[id], a = s.cov.agency, c = s.cov.client, rank = { missing: 0, thin: 1, settled: 2 }, lo = Math.min(rank[a], rank[c]), hi = Math.max(rank[a], rank[c]);
+    var base = lo === 2 ? 1 : lo === 1 ? (hi === 2 ? 0.88 : 0.8) : (hi === 0 ? 0.42 : hi === 1 ? 0.52 : 0.62);
+    if (s.conflict) base = s.conflict.severity === 'fundamental' ? 0.3 : s.conflict.severity === 'workable' ? Math.min(base, 0.78) : Math.min(base, 0.95);
+    return base;
+  }
+  function lit(id) { var c = S[id].cov; return c.agency !== 'missing' || c.client !== 'missing' || S[id].facts.length > 0; }
+  function dist(id) { return lit(id) ? (R - RIN) * Math.min(1, (1 - score(id)) / 0.7) : (R - RIN) * 0.5; }
+  function bucket(id) {
+    var s = S[id];
+    if (s.conflict && s.conflict.severity === 'fundamental') return 'crack';
+    if (s.cov.agency === 'missing' || s.cov.client === 'missing') return 'open';
+    if (s.cov.agency === 'settled' && s.cov.client === 'settled' && (!s.conflict || s.conflict.severity === 'minor')) return 'decided';
+    return 'talked';
+  }
+  function overall() {
+    var d = 0, c = 0, o = 0, sum = 0, answered = 0;
+    TOPICS.forEach(function (t) { var b = bucket(t.id); sum += score(t.id); if (b === 'decided') d++; if (b === 'crack') c++; if (b === 'open') o++; var s = S[t.id]; if (s.cov.agency !== 'missing' || s.cov.client !== 'missing') answered++; });
+    var litN = 0, litSum = 0; TOPICS.forEach(function (t) { if (lit(t.id)) { litN++; litSum += score(t.id); } });
+    var round = litN ? Math.round(litSum / litN * 100) : 0, word;
+    if (litN < 2) word = 'Not started';
+    else if (answered < 5) word = 'Just getting started';
+    else if (c > 0) word = c === 1 ? 'One deal-breaker to sort' : c + ' deal-breakers to sort';
+    else if (o > 3) word = 'Taking shape';
+    else word = 'Ready to move forward';
+    return { decided: d, crack: c, open: o, round: round, word: word, litN: litN };
+  }
+
+  /* ---------- The scripted run ---------- */
+  var STEPS = [
+    [700, 'gaia', 'Maya', 'Picture a year from now, and the campaign worked. What is different for Northwind?', 'objective', function () { ask('objective', 'client', 'What is different for Northwind a year from now?', 'A goal needs to be something you could check.', 'high'); }],
+    [2300, 'maya', 'A-Line', 'More people choosing us over the big names for their first serious pair of trail shoes.', 'objective', function () { ans('objective', 'client'); cov('objective', 'client', 'settled'); fact('objective', 'Make Northwind the first choice for people buying their first serious trail shoes.', 'proposed', ['maya']); }],
+    [2600, 'gaia', 'Jonah', 'In your own words, what is Northwind really trying to achieve?', 'objective', function () { ask('objective', 'agency', 'In your words, what is Northwind trying to achieve?', 'Both sides should be chasing the same outcome.', 'high'); }],
+    [2400, 'jonah', 'A-Line', 'A bold hero film people talk about.', 'objective', function () { ans('objective', 'agency'); cov('objective', 'agency', 'thin'); conflict('objective', 'workable', 'The client wants first-time buyers to choose Northwind. The agency is aiming for a film people talk about.'); finding('objective', 'The two descriptions point at different things: a buying decision and a talked-about film.'); }],
+    [2800, 'gaia', 'Everyone', 'Both can be true. Could the film be how you get there?', 'objective', function () {}],
+    [2400, 'jonah', 'Everyone', 'Yes. A film that makes a beginner feel brave.', 'objective', function () { cov('objective', 'agency', 'settled'); conflict('objective', null); fact('objective', 'Make Northwind the first choice for first-time trail buyers. The film is the way, not the goal.', 'confirmed', ['maya', 'jonah']); }],
+    [2300, 'maya', 'A-Line', 'About 30, signed up for a first 10k, worried about looking like a beginner.', 'audience', function () { cov('audience', 'client', 'settled'); fact('audience', 'First-time 10k runners around 30 who worry about looking like beginners.', 'proposed', ['maya']); cov('audience', 'agency', 'thin'); conflict('audience', 'workable', 'The agency was picturing seasoned ultra runners.'); finding('audience', 'The agency’s imagery assumes experienced runners.'); }],
+    [2500, 'jonah', 'Everyone', 'That changes the footage. Local trails, ordinary shoes, nervous first steps.', 'audience', function () { cov('audience', 'agency', 'settled'); conflict('audience', null); fact('audience', 'First-time 10k runners around 30. Local trails, ordinary shoes, nervous first steps.', 'confirmed', ['maya', 'jonah']); }],
+    [2300, 'priya', 'A-Line', '£180k, everything in. Not a pound more without the board.', 'budget', function () { cov('budget', 'client', 'settled'); fact('budget', '£180,000 all in. More needs board approval.', 'proposed', ['priya']); }],
+    [2400, 'jonah', 'A-Line', 'Our proposal is £240k: the film, six cuts, a microsite and launch events.', 'budget', function () { cov('budget', 'agency', 'settled'); conflict('budget', 'fundamental', 'The client’s budget is £180k and firm. The agency proposes £240k.'); finding('budget', 'A £60k gap. Nobody should sign until it is closed.'); ask('budget', 'client', 'If the money stays at £180k, what would you cut first?', 'The gap needs a decision, and the cut order is yours.', 'high'); ask('budget', 'agency', 'What is the smallest version you would be proud of?', 'It tells us whether £180k can work.', 'high'); }],
+    [3000, 'gaia', 'Everyone', 'A gap of £60k. What if you phase it: the film now, the microsite later?', 'budget', function () { conflict('budget', 'workable', 'Phasing could close the gap: £180k now, the microsite as phase 2.'); finding('budget', 'Phasing would let both numbers be true.'); }],
+    [2400, 'priya', 'Everyone', 'Phase 1 at £180k works for us if the microsite waits.', 'budget', function () { ans('budget', 'client'); }],
+    [2300, 'jonah', 'Everyone', 'Then we keep the film and six cuts.', 'budget', function () { ans('budget', 'agency'); conflict('budget', null); fact('budget', 'Phase 1 is £180,000 all in: the film and six cuts. The microsite is phase 2, priced separately.', 'confirmed', ['priya', 'jonah']); }],
+    [2400, 'maya', 'A-Line', 'I assumed Halcyon would upload the film and run the paid media.', 'outside', function () { cov('outside', 'client', 'thin'); fact('outside', 'The client expects the agency to run paid media after launch.', 'proposed', ['maya']); }],
+    [2500, 'jonah', 'A-Line', 'Media buying is not in our price.', 'outside', function () { cov('outside', 'agency', 'settled'); conflict('outside', 'fundamental', 'The client assumes the agency runs paid media. The agency says it is not in the price.'); finding('outside', 'Two different pictures of what happens after launch, and no money against either.'); ask('outside', 'client', 'Who runs paid media after launch, and who pays for it?', 'It is a cost nobody has budgeted.', 'high'); }],
+    [3000, 'gaia', 'Everyone', 'Then write it down. Media spend sits outside this agreement, and the client publishes the films.', 'outside', function () { ans('outside', 'client'); cov('outside', 'client', 'settled'); conflict('outside', null); fact('outside', 'Media buying and spend sit outside this agreement. The client publishes the final films.', 'confirmed', ['maya', 'jonah']); }],
+    [2400, 'maya', 'A-Line', 'Launch is 14 March, the start of trail season.', 'timeline', function () { cov('timeline', 'client', 'settled'); fact('timeline', 'Launch on 14 March 2027.', 'proposed', ['maya']); cov('timeline', 'agency', 'thin'); conflict('timeline', 'workable', 'The shoot needs talent and locations by 8 December. The client has not confirmed.'); finding('timeline', 'The date holds only if talent and locations arrive by 8 December.'); ask('timeline', 'client', 'Can talent and locations be confirmed by 8 December?', 'The January shoot depends on it.', 'medium'); }],
+    [2300, 'maya', 'Everyone', 'Sam Okafor signs off. The CEO sees two checkpoints.', 'signoff', function () { cov('signoff', 'client', 'settled'); cov('signoff', 'agency', 'settled'); fact('signoff', 'Sam Okafor signs off. The CEO sees two checkpoints. Everyone else advises.', 'confirmed', ['maya', 'jonah']); }],
+    [2200, 'jonah', 'A-Line', 'One film and six cuts, delivered as final files.', 'deliverables', function () { cov('deliverables', 'agency', 'settled'); cov('deliverables', 'client', 'settled'); fact('deliverables', 'One 60-second hero film and six 15-second cuts, as final files.', 'confirmed', ['maya', 'jonah']); }],
+    [2400, 'maya', 'A-Line', 'Sales up 15% on last spring by 30 June.', 'kpis', function () { cov('kpis', 'client', 'settled'); fact('kpis', 'Trail range sales up 15% on last spring by 30 June.', 'proposed', ['maya']); cov('kpis', 'agency', 'thin'); finding('kpis', 'The agency planned to report views, not sales.'); ask('kpis', 'agency', 'Can you track sales from each cut of the film?', 'Views are a signal, sales are the verdict.', 'medium'); }],
+    [2300, 'jonah', 'A-Line', 'Two rounds of feedback, five days each.', 'feedback', function () { cov('feedback', 'agency', 'settled'); fact('feedback', 'Two rounds of consolidated feedback, five working days each.', 'proposed', ['jonah']); cov('feedback', 'client', 'thin'); ask('feedback', 'client', 'Who pulls the feedback into one list before you send it?', 'Eleven voices over three weeks is how last time went wrong.', 'medium'); }],
+    [2400, 'gaia', 'Tomas', 'Who owns the film, the footage and the music licences when we are done?', 'legal', function () { cov('legal', 'agency', 'thin'); ask('legal', 'client', 'Who owns the film, the footage and the music licences at the end?', 'Nobody has said it, and it needs to be in the contract.', 'high'); ask('legal', 'agency', 'Do you need to show the film in your own portfolio?', 'It affects the ownership wording.', 'low'); }],
+    [2400, 'gaia', 'Everyone', 'That is the shape so far. Two topics still need an answer.', null, function () {}]
+  ];
+  var BACKGROUND = function () { cov('background', 'agency', 'settled'); cov('background', 'client', 'settled'); fact('background', 'Northwind is launching its trail range this spring. Studio Halcyon won the pitch.', 'confirmed', ['maya', 'jonah']); };
+
+  var active = null, stepIdx = 0, timer = null, playing = true, viewer = 'client', filter = 'all', selected = null, gaiaOpen = false, tick = {};
+  function begin() {
+    clearTimeout(timer); fresh(); BACKGROUND(); stepIdx = 0; active = null; selected = null; tick = { who: 'gaia', to: 'Everyone', text: 'Starting with what is already known. Watch the circle grow as people answer.' };
+    renderAll(); playing = true; $('play').textContent = 'Pause'; schedule();
+  }
+  function schedule() {
+    if (!playing || stepIdx >= STEPS.length) return;
+    var st = STEPS[stepIdx];
+    timer = setTimeout(function () {
+      stepIdx++; st[5](); active = st[4]; tick = { who: st[1], to: st[2], text: st[3] };
+      renderTicker(); renderList(); renderHeaderState(); schedule();
+    }, (reduce ? Math.min(st[0], 900) : st[0]) / (+new URLSearchParams(location.search).get('speed') || 1));
+  }
+
+  /* ---------- Geometry ---------- */
+  var CX = 380, CY = 368, RIN = 112, R = 236, LABR = R + 26;
+  var cur = [], tgt = [];
+  function ang(i) { return -Math.PI / 2 + i * (Math.PI * 2 / N); }
+  function pt(r, a) { return { x: CX + r * Math.cos(a), y: CY + r * Math.sin(a) }; }
+  var els = [];
+  var svg = $('svg');
+  function mk(tag, attrs, parent) { var e = document.createElementNS(SVGNS, tag); for (var k in attrs) e.setAttribute(k, attrs[k]); (parent || svg).appendChild(e); return e; }
+  var defs = mk('defs', {});
+  (function () {
+    var g = mk('radialGradient', { id: 'blob', cx: '50%', cy: '50%', r: '50%' }, defs);
+    mk('stop', { offset: '0', 'stop-color': '#ffae6b', 'stop-opacity': '0.02' }, g); mk('stop', { offset: '1', 'stop-color': '#ffae6b', 'stop-opacity': '0.2' }, g);
+    var f = mk('filter', { id: 'glow', x: '-30%', y: '-30%', width: '160%', height: '160%' }, defs);
+    mk('feGaussianBlur', { stdDeviation: '4', result: 'b' }, f); var m = mk('feMerge', {}, f); mk('feMergeNode', { in: 'b' }, m); mk('feMergeNode', { in: 'SourceGraphic' }, m);
+    var f2 = mk('filter', { id: 'soft', x: '-50%', y: '-50%', width: '200%', height: '200%' }, defs); mk('feGaussianBlur', { stdDeviation: '9' }, f2);
+  })();
+  mk('circle', { cx: CX, cy: CY, r: R, fill: 'none', stroke: '#1c2840', 'stroke-width': '1' });
+  for (var gi = 0; gi < N; gi++) { var ga = -Math.PI / 2 + gi * (Math.PI * 2 / N), g1 = { x: CX + (RIN + 14) * Math.cos(ga), y: CY + (RIN + 14) * Math.sin(ga) }, g2 = { x: CX + (R + 6) * Math.cos(ga), y: CY + (R + 6) * Math.sin(ga) };
+    mk('line', { x1: g1.x, y1: g1.y, x2: g2.x, y2: g2.y, stroke: '#8a96b0', 'stroke-opacity': '.1', 'stroke-width': '1' }); }
+  mk('circle', { cx: CX, cy: CY, r: RIN, fill: 'none', stroke: '#f7ecd2', 'stroke-opacity': '.34', 'stroke-dasharray': '3 6', 'stroke-width': '1.2' });
+  var blobFill = mk('path', { fill: 'url(#blob)', stroke: 'none' });
+  var blobGlow = mk('path', { fill: 'none', stroke: '#ffae6b', 'stroke-width': '5', 'stroke-opacity': '.35', filter: 'url(#soft)' });
+  var blobLine = mk('path', { fill: 'none', stroke: '#ffae6b', 'stroke-width': '1.8', 'stroke-linejoin': 'round' });
+  TOPICS.forEach(function (t, i) {
+    var g = mk('g', { class: 'spoke', 'data-id': t.id, tabindex: '0', role: 'button', 'aria-label': t.name });
+    var grad = mk('linearGradient', { id: 'g' + i, gradientUnits: 'userSpaceOnUse' }, defs); mk('stop', { offset: '0', 'stop-color': '#46d6c8' }, grad); mk('stop', { offset: '1', 'stop-color': '#ffae6b' }, grad);
+    var hit = mk('line', { stroke: 'transparent', 'stroke-width': '30', 'stroke-linecap': 'round' }, g);
+    var l1 = mk('line', { stroke: 'url(#g' + i + ')', 'stroke-width': '2', 'stroke-linecap': 'round' }, g);
+    var l2 = mk('line', { stroke: 'url(#g' + i + ')', 'stroke-width': '2', 'stroke-linecap': 'round' }, g);
+    var ring = mk('circle', { r: '9', fill: 'none', stroke: '#fff4e6', 'stroke-width': '1.6', filter: 'url(#glow)' }, g);
+    var a = ang(i), lp = pt(LABR, a), anchor = Math.abs(Math.cos(a)) < 0.2 ? 'middle' : (Math.cos(a) > 0 ? 'start' : 'end');
+    var lab = mk('text', { class: 'lab', x: lp.x + (anchor === 'start' ? 6 : anchor === 'end' ? -6 : 0), y: lp.y + (Math.sin(a) > 0.5 ? 12 : Math.sin(a) < -0.5 ? -6 : 4), 'text-anchor': anchor }, g); lab.textContent = t.label;
+    var inner = mk('circle', { r: '8.5', stroke: '#46d6c8', 'stroke-width': '1.8', filter: 'url(#glow)' }, g);
+    var outer = mk('circle', { r: '10.5', stroke: '#ffae6b', 'stroke-width': '1.8', filter: 'url(#glow)' }, g);
+    els.push({ g: g, hit: hit, l1: l1, l2: l2, ring: ring, inner: inner, outer: outer, grad: grad, a: a });
+    cur.push(RIN + (R - RIN) * 0.5); tgt.push(RIN + (R - RIN) * 0.5);
+    g.addEventListener('click', function () { select(t.id, true); });
+    g.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(t.id, true); } });
+  });
+  function fillFor(ball, lvl, color) {
+    if (lvl === 'settled') { ball.setAttribute('fill', color); ball.setAttribute('fill-opacity', '1'); }
+    else if (lvl === 'thin') { ball.setAttribute('fill', color); ball.setAttribute('fill-opacity', '0.38'); }
+    else { ball.setAttribute('fill', '#070b14'); ball.setAttribute('fill-opacity', '1'); }
+  }
+  function spline(pts) {
+    var n = pts.length, d = 'M' + pts[0].x.toFixed(1) + ' ' + pts[0].y.toFixed(1);
+    for (var i = 0; i < n; i++) {
+      var p0 = pts[(i - 1 + n) % n], p1 = pts[i], p2 = pts[(i + 1) % n], p3 = pts[(i + 2) % n];
+      d += 'C' + (p1.x + (p2.x - p0.x) / 6).toFixed(1) + ' ' + (p1.y + (p2.y - p0.y) / 6).toFixed(1) + ',' + (p2.x - (p3.x - p1.x) / 6).toFixed(1) + ' ' + (p2.y - (p3.y - p1.y) / 6).toFixed(1) + ',' + p2.x.toFixed(1) + ' ' + p2.y.toFixed(1);
+    }
+    return d + 'Z';
+  }
+  var orbPos = { x: CX, y: CY - 60 }, t0 = performance.now();
+  function frame(now) {
+    var pts = [];
+    for (var i = 0; i < N; i++) {
+      var id = TOPICS[i].id, e = els[i], sc = S[id], b = bucket(id), isLit = lit(id);
+      tgt[i] = RIN + dist(id); cur[i] += (tgt[i] - cur[i]) * 0.07;
+      var a = e.a, p = pt(RIN, a), q = pt(cur[i], a), d = cur[i] - RIN; if (isLit) pts.push(q);
+      e.hit.setAttribute('x1', p.x); e.hit.setAttribute('y1', p.y); e.hit.setAttribute('x2', q.x); e.hit.setAttribute('y2', q.y);
+      e.grad.setAttribute('x1', p.x); e.grad.setAttribute('y1', p.y); e.grad.setAttribute('x2', q.x + 0.01); e.grad.setAttribute('y2', q.y + 0.01);
+      var sel = selected === id || active === id, w = sel ? 3 : 2;
+      e.g.setAttribute('class', 'spoke' + (selected === id ? ' sel' : ''));
+      if (b === 'crack') {
+        var m1 = { x: p.x + (q.x - p.x) * 0.5, y: p.y + (q.y - p.y) * 0.5 }, m2 = { x: p.x + (q.x - p.x) * 0.64, y: p.y + (q.y - p.y) * 0.64 };
+        e.l1.setAttribute('x1', p.x); e.l1.setAttribute('y1', p.y); e.l1.setAttribute('x2', m1.x); e.l1.setAttribute('y2', m1.y);
+        e.l2.setAttribute('x1', m2.x); e.l2.setAttribute('y1', m2.y); e.l2.setAttribute('x2', q.x); e.l2.setAttribute('y2', q.y); e.l2.style.display = '';
+        e.ring.setAttribute('cx', (m1.x + m2.x) / 2); e.ring.setAttribute('cy', (m1.y + m2.y) / 2); e.ring.setAttribute('r', 8 + 3 * Math.sin(now / 280)); e.ring.style.display = '';
+        e.l1.setAttribute('stroke-dasharray', ''); e.l2.setAttribute('stroke-dasharray', '');
+      } else {
+        e.l1.setAttribute('x1', p.x); e.l1.setAttribute('y1', p.y); e.l1.setAttribute('x2', q.x); e.l1.setAttribute('y2', q.y);
+        e.l2.style.display = 'none'; e.ring.style.display = 'none';
+        e.l1.setAttribute('stroke-dasharray', !isLit || b === 'open' ? '1.5 8' : b === 'talked' ? '6 6' : '');
+      }
+      e.l1.style.display = d < 3 ? 'none' : '';
+      e.l1.setAttribute('stroke-width', w); e.l2.setAttribute('stroke-width', w);
+      e.l1.setAttribute('stroke-opacity', !isLit ? '.28' : b === 'decided' ? '.95' : b === 'talked' ? '.85' : b === 'crack' ? '1' : '.55'); e.l2.setAttribute('stroke-opacity', '1');
+      var t1 = Math.min(1, d / 22);
+      e.inner.setAttribute('cx', p.x); e.inner.setAttribute('cy', p.y); e.outer.setAttribute('cx', q.x); e.outer.setAttribute('cy', q.y);
+      var merged = b === 'decided' && d < 6, ci = merged ? '#5de0a8' : '#46d6c8', co = merged ? '#5de0a8' : '#ffae6b';
+      fillFor(e.inner, sc.cov.agency, ci); fillFor(e.outer, sc.cov.client, co); e.inner.setAttribute('stroke', ci); e.outer.setAttribute('stroke', co);
+      e.inner.setAttribute('r', (11 - 2.5 * t1) + (sel ? 1.5 : 0)); e.outer.setAttribute('r', (6.8 + 3.7 * t1) + (sel ? 1.5 : 0));
+      e.outer.setAttribute('stroke-opacity', isLit ? '1' : '.4'); e.outer.setAttribute('stroke-dasharray', isLit ? '' : '2 3');
+    }
+    if (pts.length >= 3) { var dd = spline(pts); blobFill.setAttribute('d', dd); blobGlow.setAttribute('d', dd); blobLine.setAttribute('d', dd); blobFill.style.display = blobGlow.style.display = blobLine.style.display = ''; }
+    else { blobFill.style.display = blobGlow.style.display = blobLine.style.display = 'none'; }
+    orbStep(now); dustStep(now);
+    requestAnimationFrame(frame);
+  }
+
+  /* ---------- A-Line's orb and dust (the Glisten glow, in coral) ---------- */
+  var orb = $('orb'), stage = $('stage'), canvas = $('dust'), cx2 = canvas.getContext('2d'), motes = [], lastMote = 0, W = 0, H = 0, dpr = 1;
+  function sprite(rgb) { var c = document.createElement('canvas'); c.width = c.height = 32; var g = c.getContext('2d'), gr = g.createRadialGradient(16, 16, 0, 16, 16, 16); gr.addColorStop(0, 'rgba(' + rgb + ',1)'); gr.addColorStop(.25, 'rgba(' + rgb + ',.55)'); gr.addColorStop(1, 'rgba(' + rgb + ',0)'); g.fillStyle = gr; g.fillRect(0, 0, 32, 32); return c; }
+  var sprites = [sprite('255,241,236'), sprite('255,156,145'), sprite('214,198,245')];
+  function size() { dpr = Math.min(2, window.devicePixelRatio || 1); var r = canvas.getBoundingClientRect(); W = r.width; H = r.height; canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr); }
+  size(); window.addEventListener('resize', size);
+  if (window.ResizeObserver) new ResizeObserver(size).observe(canvas);
+  var ox = CX, oy = CY - 70;
+  function orbStep(now) {
+    var k = W / 760, tx, ty, t = now / 1000;
+    var idx = active ? TOPICS.findIndex(function (x) { return x.id === active; }) : -1;
+    if (idx >= 0) { var m = pt(Math.max(cur[idx], RIN + 30) * 0.5 + RIN * 0.5 + Math.sin(t * 1.4) * 10, els[idx].a + Math.sin(t * 0.9) * 0.05); tx = m.x; ty = m.y; }
+    else { tx = CX + Math.cos(t * 0.35) * 70; ty = CY + Math.sin(t * 0.35) * 56; }
+    if (t > 14 && $('hint') && !$('hint').dataset.gone) { $('hint').dataset.gone = '1'; $('hint').style.transition = 'opacity 1s'; $('hint').style.opacity = '0'; }
+    ox += (tx - ox) * 0.05; oy += (ty - oy) * 0.05; orbPos.x = ox; orbPos.y = oy;
+    orb.style.transform = 'translate(' + (ox * k).toFixed(1) + 'px,' + (oy * (H / 736)).toFixed(1) + 'px)';
+    if (!reduce && now - lastMote > 80 && motes.length < 50) { lastMote = now; motes.push({ x: ox * k + (Math.random() - .5) * 12, y: oy * (H / 736) + (Math.random() - .5) * 12, vx: (Math.random() - .5) * .25, vy: -.18 - Math.random() * .3, life: 0, max: 70 + Math.random() * 70, size: 7 + Math.random() * 10, img: sprites[(Math.random() * 3) | 0], ph: Math.random() * 6.28 }); }
+  }
+  function dustStep() {
+    cx2.setTransform(dpr, 0, 0, dpr, 0, 0); cx2.clearRect(0, 0, W, H); cx2.globalCompositeOperation = 'lighter';
+    for (var i = motes.length - 1; i >= 0; i--) { var m = motes[i]; m.life++; m.x += m.vx + Math.sin((m.life + m.ph * 20) / 18) * .15; m.y += m.vy; if (m.life > m.max) { motes.splice(i, 1); continue; } cx2.globalAlpha = Math.sin(m.life / m.max * Math.PI) * .85; cx2.drawImage(m.img, m.x - m.size / 2, m.y - m.size / 2, m.size, m.size); }
+    cx2.globalAlpha = 1; cx2.globalCompositeOperation = 'source-over';
+  }
+
+  /* ---------- Rendering the list, cards, ticker ---------- */
+  function who(key) { return PEOPLE[key] || { name: key, side: 'coach' }; }
+  function chip(key) { var p = who(key); return '<span class="who" style="background:' + SIDE_COLOR[p.side] + '">' + esc(p.name) + '</span>'; }
+  function names(keys) { var n = keys.map(function (k) { return who(k).name; }); return n.length > 1 ? n.slice(0, -1).join(', ') + ' and ' + n[n.length - 1] : n[0] || ''; }
+  function renderTicker() {
+    var t = tick; if (!t || !t.text) return;
+    $('ticker').innerHTML = chip(t.who) + '<span><span class="to">to ' + esc(t.to) + '</span>' + esc(t.text) + '</span>';
+  }
+  function renderHeaderState() {
+    var o = overall(); $('cstate').textContent = o.word; $('cpct').textContent = o.litN < 5 ? (o.litN < 2 ? 'A-Line is about to ask' : 'No score yet') : o.round + '% round';
+    var seg = $('seg'), f = [['all', 'All ' + N], ['decided', 'Decided ' + o.decided], ['talked', 'Talked about ' + (N - o.decided - o.open - o.crack)], ['open', 'Still open ' + (o.open + o.crack)]];
+    seg.innerHTML = f.map(function (x) { return '<button type="button" data-f="' + x[0] + '" aria-pressed="' + (filter === x[0]) + '">' + x[1] + '</button>'; }).join('');
+    var rs = $('roleseg'); rs.innerHTML = ['agency', 'client'].map(function (s) { return '<button type="button" data-r="' + s + '" aria-pressed="' + (viewer === s) + '">' + (s === 'agency' ? 'Agency (Jonah)' : 'Client (Maya)') + '</button>'; }).join('');
+  }
+  function statusLine(id) {
+    var s = S[id], b = bucket(id);
+    if (b === 'decided') { var cf = s.facts.filter(function (f) { return f.status === 'confirmed'; }).pop(); return 'Decided' + (cf ? '. Confirmed by ' + names(cf.by) + '.' : '.'); }
+    if (b === 'crack') return 'Deal-breaker. ' + s.conflict.note;
+    if (b === 'open') { var miss = []; if (s.cov.agency === 'missing') miss.push('the agency'); if (s.cov.client === 'missing') miss.push('the client'); return 'Still open. Waiting on ' + miss.join(' and ') + '.'; }
+    if (s.conflict) return 'Talked about. ' + s.conflict.note;
+    return 'Talked about. One side is still vague.';
+  }
+  function pairSvg(id) {
+    var s = S[id], b = bucket(id), isLit = lit(id), gap = isLit ? Math.round(34 * Math.min(1, (1 - score(id)) / 0.7)) : 18, ax = 27 - gap / 2, cx = 27 + gap / 2;
+    function ball(x, lvl, col, r, ghost) { var f = lvl === 'settled' ? 1 : lvl === 'thin' ? .38 : 0; return '<circle cx="' + x + '" cy="11" r="' + r + '" fill="' + (lvl === 'missing' ? '#070b14' : col) + '" fill-opacity="' + (lvl === 'missing' ? 1 : f) + '" stroke="' + col + '" stroke-width="1.5"' + (ghost ? ' stroke-opacity=".45" stroke-dasharray="2 2"' : '') + '/>'; }
+    var line = gap < 4 ? '' : b === 'crack' ? '<line x1="' + ax + '" y1="11" x2="' + (ax + gap * 0.4) + '" y2="11" stroke="#fff4e6" stroke-width="1.6"/><line x1="' + (ax + gap * 0.62) + '" y1="11" x2="' + cx + '" y2="11" stroke="#fff4e6" stroke-width="1.6"/>' : '<line x1="' + ax + '" y1="11" x2="' + cx + '" y2="11" stroke="#8a96b0" stroke-width="1.6" stroke-dasharray="' + (!isLit || b === 'open' ? '1 4' : b === 'talked' ? '3 3' : '') + '"/>';
+    var merged = gap < 4;
+    var done = merged && b === 'decided';
+    return '<svg viewBox="0 0 54 22" aria-hidden="true">' + line + ball(ax, s.cov.agency, done ? '#5de0a8' : '#46d6c8', merged ? 9 : 6.5, false) + ball(cx, s.cov.client, done ? '#5de0a8' : '#ffae6b', merged ? 5.5 : 6.5, !isLit) + '</svg>';
+  }
+  function detail(id) {
+    var t = TOPICS.filter(function (x) { return x.id === id; })[0], s = S[id], other = viewer === 'agency' ? 'client' : 'agency', otherName = other === 'client' ? 'Maya' : 'Jonah';
+    var facts = s.facts.length ? s.facts.slice().reverse().map(function (f) {
+      var by = f.by.map(function (k) { var p = who(k); return '<span class="tag"><i style="background:' + SIDE_COLOR[p.side] + '"></i>' + esc(p.name) + '</span>'; }).join('');
+      return '<li class="fact ' + (f.status === 'replaced' ? 'replaced' : '') + '"><span class="txt">' + esc(f.text) + '</span><span class="meta"><span>' + (f.status === 'confirmed' ? 'Confirmed by' : f.status === 'replaced' ? 'Replaced, from' : 'Proposed by') + '</span>' + by + '</span></li>';
+    }).join('') : '<li class="empty">Nothing stated yet.</li>';
+    var finds = s.findings.length ? s.findings.map(function (f) { return '<li class="find"><span>' + esc(f.text) + '</span></li>'; }).join('') : '<li class="empty">Nothing flagged.</li>';
+    if (s.conflict) finds = '<li class="find"><span class="meta"><span class="pill ' + (s.conflict.severity === 'fundamental' ? 'crack' : '') + '">' + (s.conflict.severity === 'fundamental' ? 'Deal-breaker' : s.conflict.severity === 'workable' ? 'Worth watching' : 'Minor') + '</span></span><span>' + esc(s.conflict.note) + '</span></li>' + finds;
+    var open = s.asks.filter(function (a) { return a.status === 'open'; }).sort(function (a, b) { return { high: 0, medium: 1, low: 2 }[a.priority] - { high: 0, medium: 1, low: 2 }[b.priority]; });
+    var openHtml = open.length ? open.map(function (a) {
+      var mine = a.to === viewer, p = a.to === 'client' ? 'Maya' : 'Jonah';
+      return '<li class="q"><span class="meta"><span class="prio ' + a.priority + '">' + a.priority[0].toUpperCase() + a.priority.slice(1) + '</span><span class="tag"><i style="background:' + SIDE_COLOR[a.to] + '"></i>For ' + SIDE_NAME[a.to].toLowerCase() + '</span></span><span class="txt">' + esc(a.ask) + '</span><span class="meta">' + esc(a.because) + '</span>' +
+        (mine ? '<div class="answer"><textarea id="ans-' + a.id + '" aria-label="Your answer" placeholder="Say it the way you would say it out loud."></textarea><div class="row"><button type="button" class="btn go" data-answer="' + a.id + '" data-t="' + id + '">Send answer</button></div></div>' : '<div class="row acts"><span class="muted">Waiting on ' + p + '.</span><button type="button" class="btn" data-call="' + p + '">Call ' + p + '</button></div>') + '</li>';
+    }).join('') : '<li class="empty">No open questions.</li>';
+    var done = s.asks.filter(function (a) { return a.status === 'answered'; });
+    var doneHtml = done.length ? done.map(function (a) { return '<li class="q"><span class="txt" style="color:var(--dim)">' + esc(a.ask) + '</span><span class="meta">Answered by the ' + a.to + '</span></li>'; }).join('') : '';
+    var unlock = open.length ? '<p class="feeds">Answering this fills in <b>' + t.feeds.join('</b> and <b>') + '</b>.</p>' : '<p class="feeds">This feeds <b>' + t.feeds.join('</b> and <b>') + '</b>.</p>';
+    return '<div class="body"><div class="sec"><h4>Facts</h4><ul>' + facts + '</ul></div><div class="sec"><h4>Findings</h4><ul>' + finds + '</ul></div><div class="sec"><h4>Open questions</h4><ul>' + openHtml + '</ul></div>' +
+      (doneHtml ? '<div class="sec"><h4>Answered questions</h4><ul>' + doneHtml + '</ul></div>' : '') + unlock +
+      '<div class="acts"><button type="button" class="btn" data-update="' + id + '">Update a fact</button><button type="button" class="btn" data-gaia="' + id + '">Talk to A-Line</button><button type="button" class="btn" data-call="' + otherName + '">Call ' + otherName + '</button></div><div id="upd-' + id + '"></div></div>';
+  }
+  function renderList() {
+    var html = '';
+    TOPICS.forEach(function (t) {
+      var b = bucket(t.id), s = S[t.id], openN = s.asks.filter(function (a) { return a.status === 'open'; }).length;
+      var show = filter === 'all' || (filter === 'decided' && b === 'decided') || (filter === 'talked' && b === 'talked') || (filter === 'open' && (b === 'open' || b === 'crack'));
+      if (!show) return;
+      var isOpen = selected === t.id;
+      html += '<li class="item ' + (isOpen ? 'open' : '') + '" id="row-' + t.id + '"><button type="button" class="head" data-row="' + t.id + '" aria-expanded="' + isOpen + '"><span class="pair">' + pairSvg(t.id) + '</span><span><span class="name">' + t.name + '</span><span class="sub" style="display:block">' + esc(statusLine(t.id)) + '</span></span><span class="badges">' +
+        (b === 'crack' ? '<span class="pill crack">Deal-breaker</span>' : b === 'decided' ? '<span class="pill decided">Decided</span>' : '') + (openN ? '<span class="pill ct">' + openN + ' open</span>' : '') +
+        '<svg class="chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>' + (isOpen ? detail(t.id) : '') + '</li>';
+    });
+    $('rows').innerHTML = html || '<li class="empty" style="padding:16px 6px">Nothing here yet.</li>';
+  }
+  function renderAll() { renderTicker(); renderHeaderState(); renderList(); renderGaia(); }
+
+  function select(id, scroll) {
+    selected = selected === id && !scroll ? null : id; active = id; if (scroll && playing) { /* keep playing */ }
+    renderList();
+    if (scroll) { var r = $('row-' + id); if (r) r.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'nearest' }); }
+  }
+  function toast(msg) { var t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast.h); toast.h = setTimeout(function () { t.classList.remove('on'); }, 2600); }
+
+  /* ---------- A-Line panel: the top question for whoever is viewing ---------- */
+  function topAsk() {
+    var best = null, ord = { high: 0, medium: 1, low: 2 };
+    TOPICS.forEach(function (t) { S[t.id].asks.forEach(function (a) { if (a.status === 'open' && a.to === viewer && (!best || ord[a.priority] < ord[best.a.priority])) best = { a: a, t: t.id }; }); });
+    return best;
+  }
+  function renderGaia() {
+    var box = $('gaia'); box.hidden = !gaiaOpen; orb.classList.toggle('awake', gaiaOpen); if ($('hint')) $('hint').hidden = gaiaOpen;
+    if (!gaiaOpen) return;
+    var ta = topAsk(), who2 = viewer === 'agency' ? 'Jonah' : 'Maya';
+    $('gtitle').textContent = ta ? 'A-Line has one question for you' : 'Nothing is waiting on you';
+    $('gsub').textContent = ta ? 'Hi ' + who2 + '. It is the most important open question for the ' + viewer + ', and it fills in ' + TOPICS.filter(function (x) { return x.id === ta.t; })[0].feeds[0] + '.' : 'A-Line will ask again as soon as something changes.';
+    $('gbody').innerHTML = ta ? '<p style="font:400 19px/1.45 var(--serif);color:var(--lit);margin-bottom:8px">' + esc(ta.a.ask) + '</p><div class="answer"><textarea id="gans" aria-label="Your answer" placeholder="Say it the way you would say it out loud."></textarea><div class="row"><button type="button" class="btn go" id="gsend" data-answer="' + ta.a.id + '" data-t="' + ta.t + '" data-g="1">Send to A-Line</button><button type="button" class="btn" id="gclose">Close</button></div></div>' : '<div class="row"><button type="button" class="btn" id="gclose">Close</button></div>';
+  }
+  orb.addEventListener('click', function () { gaiaOpen = !gaiaOpen; renderGaia(); if (gaiaOpen) $('gaia').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'nearest' }); });
+
+  function answer(askId, t, text) {
+    var a = S[t].asks.filter(function (x) { return x.id === +askId; })[0]; if (!a || a.status !== 'open') return;
+    var side = a.to, me = side === 'agency' ? 'jonah' : 'maya', otherSide = side === 'agency' ? 'client' : 'agency';
+    a.status = 'answered'; cov(t, side, text.length > 14 ? 'settled' : 'thin');
+    if (text) fact(t, text, 'proposed', [me]);
+    if (S[t].cov[side] === 'settled' && S[t].cov[otherSide] === 'settled' && (!S[t].conflict || S[t].conflict.severity !== 'fundamental')) {
+      S[t].conflict = null; var last = S[t].facts[S[t].facts.length - 1]; if (last) { last.status = 'confirmed'; last.by = ['maya', 'jonah']; S[t].facts.forEach(function (f) { if (f !== last && f.status === 'proposed') f.status = 'replaced'; }); }
+    }
+    active = t; tick = { who: me, to: 'A-Line', text: text || 'Answered.' }; renderAll(); renderTicker();
+    toast('A-Line has it. ' + TOPICS.filter(function (x) { return x.id === t; })[0].name + ' just moved.');
+  }
+
+  /* ---------- Events ---------- */
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest('button'); if (!el) return;
+    if (el.dataset.row) { select(el.dataset.row, false); return; }
+    if (el.dataset.f) { filter = el.dataset.f; renderHeaderState(); renderList(); return; }
+    if (el.dataset.r) { viewer = el.dataset.r; renderHeaderState(); renderList(); renderGaia(); return; }
+    if (el.dataset.answer) { var ta = el.dataset.g ? $('gans') : $('ans-' + el.dataset.answer); var v = (ta && ta.value || '').trim(); if (!v) { toast('Type an answer first.'); return; } answer(el.dataset.answer, el.dataset.t, v); return; }
+    if (el.dataset.call) { toast('Preview only: calling ' + el.dataset.call + ' is not connected yet.'); return; }
+    if (el.dataset.gaia) { gaiaOpen = true; renderGaia(); $('gaia').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'nearest' }); return; }
+    if (el.dataset.update) {
+      var id = el.dataset.update, last = S[id].facts.filter(function (f) { return f.status !== 'replaced'; }).pop(), host = $('upd-' + id);
+      host.innerHTML = '<div class="answer"><textarea id="updt" aria-label="New wording">' + esc(last ? last.text : '') + '</textarea><div class="row"><button type="button" class="btn go" data-save="' + id + '">Save change</button></div></div>'; return;
+    }
+    if (el.dataset.save) {
+      var id2 = el.dataset.save, txt = ($('updt').value || '').trim(); if (!txt) return;
+      var me = viewer === 'agency' ? 'jonah' : 'maya', other = viewer === 'agency' ? 'client' : 'agency', prev = S[id2].facts.filter(function (f) { return f.status === 'confirmed'; }).pop();
+      S[id2].facts.forEach(function (f) { if (f.status !== 'replaced') f.status = 'replaced'; }); fact(id2, txt, 'proposed', [me]); cov(id2, viewer, 'settled');
+      if (prev && prev.by.length > 1) { cov(id2, other, 'thin'); conflict(id2, 'workable', (viewer === 'agency' ? 'Jonah' : 'Maya') + ' changed this after it was confirmed. The ' + other + ' has not seen the change.'); ask(id2, other, 'Does this change work for you?', 'It was agreed before, and now it reads differently.', 'medium'); }
+      active = id2; tick = { who: me, to: 'A-Line', text: 'I would like to change this one.' }; renderAll(); toast('Saved. The other side is asked to confirm.'); return;
+    }
+    if (el.id === 'gclose') { gaiaOpen = false; renderGaia(); return; }
+  });
+  $('play').addEventListener('click', function () { playing = !playing; this.textContent = playing ? 'Pause' : 'Play'; if (playing) schedule(); else clearTimeout(timer); });
+  $('replay').addEventListener('click', begin);
+  window.addEventListener('keydown', function (e) { if (e.key === 'Escape' && gaiaOpen) { gaiaOpen = false; renderGaia(); } });
+
+  fresh(); BACKGROUND(); renderAll();
+  requestAnimationFrame(frame);
+  setTimeout(begin, 300);
+})();
+</script>
+</html>
