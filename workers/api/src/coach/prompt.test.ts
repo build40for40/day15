@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 
 import { renderRoom } from '../room/render'
 import { fixtureRoom } from '../testing'
-import { coachInstructions, openingPrompt, renderCoverage, renderReports, turnPrompt } from './prompt'
+import { coachInstructions, openingPrompt, renderAssessment, renderCoverage, renderReports, turnPrompt } from './prompt'
 import { askCandidates } from './select'
 
 describe('coachInstructions', () => {
@@ -14,7 +14,14 @@ describe('coachInstructions', () => {
     expect(first!.content).toBe(renderRoom(snapshot))
     expect(first!.providerOptions).toEqual({ anthropic: { cacheControl: { type: 'ephemeral' } } })
     expect(second!.content).toBe(renderReports(snapshot))
-    expect(third!.content).toMatch(/^# Coach harness/)
+    expect(third!.content).toMatch(/^# Your two harnesses/)
+    // The mother agent comes first and decides what to ask; the coach harness keeps the room.
+    const text = String(third!.content)
+    expect(text.indexOf('# Mother agent')).toBeGreaterThan(0)
+    expect(text.indexOf('# Coach harness')).toBeGreaterThan(text.indexOf('# Mother agent'))
+    for (const part of ['### Signals to listen for', '### Your priority matrix', '### Educating, discreetly']) {
+      expect(text).toContain(part)
+    }
     expect(third!.content).toContain('<reference>')
     expect(third!.content).toContain('# Coach reference pack')
   })
@@ -75,5 +82,29 @@ describe('turnPrompt', () => {
     const text = openingPrompt((await room.read())!, people.alex.participant, [])
     expect(text).toContain('None for this person: the advisers are done, or what they need is for someone else.')
     expect(text).toContain('They have just opened the room.')
+  })
+})
+
+describe('renderAssessment', () => {
+  it('lists the areas when the project has not been rated yet', () => {
+    const text = renderAssessment(null)
+    expect(text).toContain('You have not rated this project yet.')
+    expect(text).toContain('goal_and_success, scope, dependencies_and_ownership')
+  })
+
+  it("gives the mother agent its own last matrix and reading back, and says nobody else sees it", () => {
+    const text = renderAssessment({
+      itemId: 4,
+      areas: [{ area: 'scope', rating: 'high', misalignment: 'Different lists of what is included.' }],
+      health: { score: 37, band: 'red' },
+    })
+    expect(text).toContain('as you left it after i4')
+    expect(text).toContain('- Scope (scope): high. Different lists of what is included.')
+    expect(text).toContain('Health was 37 out of 100, red.')
+    expect(text).toContain('Nobody on either side sees any of this.')
+  })
+
+  it('says so when there was no reading yet', () => {
+    expect(renderAssessment({ itemId: 1, areas: [], health: null })).toContain('There was no health reading yet')
   })
 })

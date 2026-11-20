@@ -1,5 +1,6 @@
 import type { SystemModelMessage } from 'ai'
 
+import { ALIGNMENT_AREAS, type Assessment } from '@day15/shared/alignment'
 import { LENS_IDS, LENS_NAMES, type LensId } from '@day15/shared/lenses'
 import { ref } from '@day15/shared/refs'
 import {
@@ -13,6 +14,7 @@ import {
 } from '@day15/shared/schema'
 import coachHarness from '../../../../persona-harnesses/coach.md'
 import coachReference from '../../../../persona-harnesses/coach-reference.md'
+import motherAgent from '../../../../persona-harnesses/mother-agent.md'
 import { renderRoom } from '../room/render'
 import { heardFrom, lensGaps, speakersFor, type AskCandidate } from './select'
 
@@ -75,9 +77,44 @@ export function renderReports(room: RoomSnapshot): string {
   ].join('\n\n')
 }
 
-/** The coach's harness and reference pack, the same for every call. */
+/** How the two harness files fit together. They were written separately and overlap. */
+const HOW_THEY_FIT = [
+  '# Your two harnesses',
+  'Two documents follow. Together they are you.',
+  '- **The mother agent** is how you think and speak: who you are, the signals you listen for, what matters most, ' +
+    'your priority matrix and ratings, how you choose and word the next ask, and when to explain something first. ' +
+    'What it calls your persona agents are the advisers whose reports are above.',
+  '- **The coach harness** is how you keep the room: taking facts from what a person says, corrections, ' +
+    'confirmations and closing asks.',
+  'Where they differ on what to ask next, how to word it, or how to treat what the other side said, follow the ' +
+    "mother agent. That includes keeping each side's confidence: do not quote or hint at what the other side said, " +
+    'even though facts are kept in one room. Where they differ on how facts are recorded, follow the coach harness.',
+].join('\n\n')
+
+/** The mother agent, the coach's harness and the reference pack, the same for every call. */
 export function renderHarness(): string {
-  return [coachHarness.trim(), '<reference>', coachReference.trim(), '</reference>'].join('\n\n')
+  return [HOW_THEY_FIT, motherAgent.trim(), coachHarness.trim(), '<reference>', coachReference.trim(), '</reference>'].join(
+    '\n\n',
+  )
+}
+
+const AREA_NAMES = new Map<string, string>(ALIGNMENT_AREAS.map((area) => [area.id, area.name]))
+
+/** The mother agent's own matrix from last time, so its view carries from turn to turn. */
+export function renderAssessment(previous: Assessment | null | undefined): string {
+  const areas = `The seven areas, in priority order: ${ALIGNMENT_AREAS.map((area) => area.id).join(', ')}.`
+  if (!previous) return `## Your priority matrix\nYou have not rated this project yet. ${areas}`
+  const reading = previous.health
+    ? `Health was ${previous.health.score} out of 100, ${previous.health.band}.`
+    : 'There was no health reading yet, because both sides had not spoken.'
+  return [
+    `## Your priority matrix, as you left it after ${ref('item', previous.itemId)}`,
+    ...previous.areas.map(
+      (row) =>
+        `- ${AREA_NAMES.get(row.area) ?? row.area} (${row.area}): ${row.rating}${row.misalignment ? `. ${oneLine(row.misalignment)}` : ''}`,
+    ),
+    `${reading} The health reading is worked out for you from your ratings. Nobody on either side sees any of this.`,
+  ].join('\n')
 }
 
 /** Room first, then the lens reports, then the coach's own harness. */
@@ -173,14 +210,24 @@ function renderPerson(room: RoomSnapshot, participant: Participant, candidates: 
 }
 
 /** What this person just said, and what to do with it. */
-export function turnPrompt(room: RoomSnapshot, participant: Participant, item: Item, candidates: AskCandidate[]): string {
+export function turnPrompt(
+  room: RoomSnapshot,
+  participant: Participant,
+  item: Item,
+  candidates: AskCandidate[],
+  previous?: Assessment | null,
+): string {
   return [
     renderPerson(room, participant, candidates),
+    renderAssessment(previous),
     `## What they just said (${ref('item', item.id)})\n<message>\n${item.text}\n</message>`,
     'Take facts only from this message, quoting its exact words. Use ids exactly as they appear in the room ' +
       '(f12, a4). If it names someone involved in the project who is not in the people list, add them to ' +
-      'people_mentioned. Then say what you noted and ask the one next thing, following your harness: take the ' +
-      'first candidate that still fits after this message, and skip any it has just answered.',
+      'people_mentioned. Rate all seven areas again in alignment, changing only what this message or the ' +
+      'reports give you reason to. Then say what you noted and ask the one next thing, following your harness: ' +
+      'take the first candidate that still fits after this message, and skip any it has just answered, unless a ' +
+      'signal in what they just said or a higher ranked area outranks it. If you are educating, put the ' +
+      'explanation in explain and keep ask to the one question.',
   ].join('\n\n')
 }
 
