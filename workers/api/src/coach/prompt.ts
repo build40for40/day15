@@ -1,6 +1,5 @@
 import type { SystemModelMessage } from 'ai'
 
-import { ALIGNMENT_AREAS, type Assessment } from '@day15/shared/alignment'
 import { areaName } from '@day15/shared/areas'
 import { LENS_IDS, LENS_NAMES, type LensId } from '@day15/shared/lenses'
 import { PRIORITY_MEANINGS, priorityLabel } from '@day15/shared/priorities'
@@ -11,6 +10,7 @@ import {
   type Ask,
   type Item,
   type LensRun,
+  type OpenQuestion,
   type Participant,
   type RoomSnapshot,
 } from '@day15/shared/schema'
@@ -20,6 +20,7 @@ import milestones from '../../../../persona-harnesses/milestones-reference.md'
 import motherAgent from '../../../../persona-harnesses/mother-agent.md'
 import aboutALine from '../../../../persona-harnesses/about-a-line.md'
 import { renderRoom } from '../room/render'
+import { rollup, type AreaStanding } from './rollup'
 import { heardFrom, lensGaps, speakersFor, type AskCandidate } from './select'
 
 const MAX_CANDIDATES = 8
@@ -71,6 +72,12 @@ const HOW_THEY_FIT = [
     'confirmations and closing asks.',
   'Where they differ on what to ask next, how to word it, or how open to be about what the other side said, ' +
     'follow the mother agent. Where they differ on how facts are recorded, follow the coach harness.',
+  '**Your matrix is worked out for you.** Where the mother agent tells you to rate each area and work out the ' +
+    'overall health, you do not: the area ratings and the health reading are worked out from the open questions ' +
+    'and shown to you each turn under "Where each area stands". There is one scale, priority: high (1), medium (2) ' +
+    'and low (3), with the meanings the mother agent gives her ratings. You change the matrix only through the ' +
+    'open questions: re-rank one with reprioritise, resolve one with resolved_questions, or raise one of your own ' +
+    'with raise_questions when you hear a signal no adviser has raised.',
 ].join('\n\n')
 
 /** The mother agent, the coach's harness and the two reference packs, the same for every call. */
@@ -86,25 +93,32 @@ export function renderHarness(): string {
   ].join('\n\n')
 }
 
-const CAUSES = { knowledge_gap: 'a gap in knowledge', different_expectations: 'a genuine difference in expectation' } as const
+const STANDING_NOTES: Record<AreaStanding, string> = {
+  high: '',
+  medium: '',
+  low: '',
+  aligned: 'nothing open, and both sides have said something here',
+  unknown: 'nothing open, but one side or both has said nothing here yet',
+}
 
-const AREA_NAMES = new Map<string, string>(ALIGNMENT_AREAS.map((area) => [area.id, area.name]))
+function questionTag(question: OpenQuestion): string {
+  return `${ref('question', question.id)} ${priorityLabel(question.priority)} ${question.kind}`
+}
 
-/** The mother agent's own matrix from last time, so its view carries from turn to turn. */
-export function renderAssessment(previous: Assessment | null | undefined): string {
-  const areas = `The seven areas, in priority order: ${ALIGNMENT_AREAS.map((area) => area.id).join(', ')}.`
-  if (!previous) return `## Your priority matrix\nYou have not rated this project yet. ${areas}`
-  const reading = previous.health
-    ? `Health was ${previous.health.score} out of 100, ${previous.health.band}.`
-    : 'There was no health reading yet, because both sides had not spoken.'
+/** The matrix and health reading, worked out from the open questions. Nobody on either side sees it. */
+export function renderRollup(room: RoomSnapshot): string {
+  const { areas, health } = rollup(room)
+  const reading = health
+    ? `Health: ${health.score} out of 100, ${health.band}.`
+    : 'No health reading yet: both sides have not said anything.'
   return [
-    `## Your priority matrix, as you left it after ${ref('item', previous.itemId)}`,
-    ...previous.areas.map(
-      (row) =>
-        `- ${AREA_NAMES.get(row.area) ?? row.area} (${row.area}): ${row.rating}` +
-        `${row.misalignment ? `. ${oneLine(row.misalignment)}` : ''}${row.cause ? ` Cause: ${CAUSES[row.cause]}.` : ''}`,
-    ),
-    `${reading} The health reading is worked out for you from your ratings. Nobody on either side sees any of this.`,
+    '## Where each area stands',
+    `Worked out from the open questions, most important area first. ${PRIORITY_MEANINGS}`,
+    ...areas.map(({ area, standing, questions }) => {
+      const detail = questions.length ? `: ${questions.map(questionTag).join('; ')}` : `: ${STANDING_NOTES[standing]}`
+      return `- ${areaName(area)} (${area}), ${standing}${detail}`
+    }),
+    `${reading} Nobody on either side sees any of this.`,
   ].join('\n')
 }
 
@@ -164,7 +178,7 @@ function renderAsk(ask: Ask): string {
 
 function candidateLabel(candidate: AskCandidate): string {
   const kind =
-    candidate.kind === 'conflict' ? `${candidate.severity} conflict` : candidate.kind === 'gap' ? 'gap' : 'nothing said yet'
+    candidate.kind === 'missing_topic' ? 'nothing said yet' : candidate.kind
   return [
     candidate.questionId ? ref('question', candidate.questionId) : null,
     candidate.priority ? `${priorityLabel(candidate.priority)} priority` : null,
@@ -207,43 +221,21 @@ function renderPerson(room: RoomSnapshot, participant: Participant, candidates: 
   ].join('\n\n')
 }
 
-/** The advisers' open questions under each area of the matrix: evidence for the coach's ratings, not the ratings. */
-export function renderQuestionsByArea(room: RoomSnapshot): string {
-  const lines = ALIGNMENT_AREAS.map((area) => {
-    const open = room.openQuestions.filter((question) => question.area === area.id)
-    const listed = open.map(
-      (question) =>
-        `${ref('question', question.id)} ${priorityLabel(question.priority)} ` +
-        `${question.kind === 'conflict' ? `${question.severity} conflict` : 'gap'}`,
-    )
-    return `- ${area.name}: ${listed.length ? listed.join('; ') : 'none open'}`
-  })
-  return [
-    '## Open questions by area',
-    'What the advisers still have open, under each area of your matrix, from the room above. It is evidence for ' +
-      'your ratings, not the rating: that is your judgement.',
-    ...lines,
-  ].join('\n')
-}
-
 /** What this person just said, and what to do with it. */
 export function turnPrompt(
   room: RoomSnapshot,
   participant: Participant,
   item: Item,
   candidates: AskCandidate[],
-  previous?: Assessment | null,
 ): string {
   return [
     renderPerson(room, participant, candidates),
-    renderAssessment(previous),
-    renderQuestionsByArea(room),
+    renderRollup(room),
     `## What they just said (${ref('item', item.id)})\n<message>\n${item.text}\n</message>`,
     'Take facts only from this message, quoting its exact words. Use ids exactly as they appear in the room ' +
       '(f12, a4, q7). If it names someone involved in the project who is not in the people list, add them to ' +
-      'people_mentioned. If it settles an open question, list it in resolved_questions. Rate all seven areas again ' +
-      'in alignment, changing only what this message or the reports give you reason to. Then say what you noted ' +
-      'and ask the one next thing, following your harness: take the first candidate that still fits after this ' +
+      'people_mentioned. If it settles an open question, list it in resolved_questions. If they ask to keep ' +
+      'something private, mark those facts private. Then say what you noted and ask the one next thing, following your harness: take the first candidate that still fits after this ' +
       'message, and skip any it has just answered, unless a signal in what they just said or a higher ranked area ' +
       'outranks it. Give the open question it chases as question. If you are educating, put the explanation in ' +
       'explain and keep ask to the one question.',

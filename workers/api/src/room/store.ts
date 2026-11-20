@@ -1,4 +1,3 @@
-import type { Assessment } from '@day15/shared/alignment'
 import type { LensId } from '@day15/shared/lenses'
 import type {
   Ask,
@@ -16,6 +15,7 @@ import type {
   ParticipantUpdate,
   Project,
   RoomSnapshot,
+  Side,
 } from '@day15/shared/schema'
 import { hashSecret, newSecret } from './keys'
 import * as questions from './questions'
@@ -128,14 +128,6 @@ export class RoomStore {
   }
 
   /** The mother agent's internal view. Only the coach reads it: it is not part of `read()`. */
-  async assessment(): Promise<Assessment | null> {
-    return this.migrated ? room.readAssessment(this.sql) : null
-  }
-
-  async saveAssessment(assessment: Assessment): Promise<void> {
-    this.exists()
-    room.writeAssessment(this.sql, assessment)
-  }
 
   async saveLensRun(run: NewLensRun): Promise<LensRun> {
     this.exists()
@@ -166,6 +158,17 @@ export class RoomStore {
   async setQuestionPriorities(changes: { id: number; priority: number }[]): Promise<OpenQuestion[]> {
     this.exists()
     return this.transaction(() => questions.setQuestionPriorities(this.sql, changes, this.now()))
+  }
+
+  async raiseQuestions(raised: questions.CoachQuestion[], itemId: number): Promise<OpenQuestion[]> {
+    this.exists()
+    return this.transaction(() => questions.raiseQuestions(this.sql, raised, itemId, this.now()))
+  }
+
+  /** Only facts from the speaker's own side change. */
+  async setFactPrivacy(factIds: number[], isPrivate: boolean, side: Side): Promise<Fact[]> {
+    this.exists()
+    return this.transaction(() => room.setFactPrivacy(this.sql, factIds, isPrivate, side))
   }
 
   async resolveQuestions(ids: number[], itemId: number): Promise<OpenQuestion[]> {

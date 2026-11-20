@@ -26,7 +26,7 @@ function room() {
   return { sql, item, fact: fact!, report }
 }
 
-const price = { topic: 'Price', agency_said: 'build only (f1)', client_said: 'everything (f1)', severity: 'workable' as const, note: 'Two projects.' }
+const price = { topic: 'Price', agency_said: 'build only (f1)', client_said: 'everything (f1)', priority: 2, note: 'Two projects.' }
 const gap = { ask: 'client' as const, find_out: 'who holds the contingency', because: 'Nobody does.', priority: 2 }
 
 const summary = (sql: ReturnType<typeof room>['sql']) =>
@@ -44,11 +44,11 @@ describe('open questions', () => {
     ])
   })
 
-  it('turns a report into rows, with the priority its severity or question gives and the facts it cites', () => {
+  it('turns a report into rows, with the priority the lens gives and the facts it cites', () => {
     const { sql, report, fact } = room()
-    const run = report('cfo', { conflicts: [{ ...price, severity: 'fundamental' }], questions: [{ ...gap, topic: 'Contingency' }] })
+    const run = report('cfo', { conflicts: [{ ...price, priority: 1 }], questions: [{ ...gap, topic: 'Contingency' }] })
     expect(listOpenQuestions(sql)).toMatchObject([
-      { id: 1, kind: 'conflict', lens: 'cfo', askSide: 'both', priority: 1, severity: 'fundamental', basedOn: [fact.id], raisedByRun: run.id },
+      { id: 1, kind: 'conflict', lens: 'cfo', askSide: 'both', priority: 1, basedOn: [fact.id], raisedByRun: run.id },
       { id: 2, kind: 'gap', lens: 'cfo', askSide: 'client', priority: 2, statement: 'who holds the contingency', topic: 'Contingency' },
     ])
   })
@@ -56,7 +56,7 @@ describe('open questions', () => {
   it('updates the row a lens names or repeats instead of adding it twice, and never makes it less urgent', () => {
     const { sql, report } = room()
     report('cfo', { conflicts: [price], questions: [gap] })
-    report('cfo', { conflicts: [{ ...price, severity: 'fundamental', note: 'Worse now.' }], questions: [{ ...gap, priority: 3 }] })
+    report('cfo', { conflicts: [{ ...price, priority: 1, note: 'Worse now.' }], questions: [{ ...gap, priority: 3 }] })
     report('cfo', { questions: [{ ...gap, find_out: 'who holds the cushion', same_as: 'q2' }] })
     report('procurement', { conflicts: [price] })
     expect(summary(sql)).toEqual([

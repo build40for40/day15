@@ -4,8 +4,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CoachError } from '../coach'
 import type { Env } from '../contracts'
 import { ModelUnavailableError } from '../model'
+import { TOPICS } from '@day15/shared/schema'
 import { FIXTURE_PROJECT } from '../room/fixture'
-import { asStub, fixtureRoom, memoryRoom } from '../testing'
+import { AGENCY_PRIVATE, asStub, fixtureRoom, memoryRoom, privateAgencyRoom } from '../testing'
 import { COACH_FAILED, NO_OPEN_QUESTIONS, NO_PROJECT, NOT_CHECKED, OPEN_QUESTIONS_HEADING, OPEN_ROOM_GUIDE } from './text'
 import { openRoom, readRoom, tellCoach, type McpDeps } from './tools'
 
@@ -37,7 +38,7 @@ describe('open_room', () => {
     expect(result.text).toContain(OPEN_ROOM_GUIDE)
     expect(result.text).toContain('The coach says:\n\nWelcome, Casey. One thing first: what does "voice" mean to you?\n\n')
     const open = result.text.slice(result.text.indexOf(OPEN_QUESTIONS_HEADING))
-    expect(open).toContain('high (1) for "ask this next"')
+    expect(open).toContain('high (1) when the two sides want different things')
     expect(open.split('\n').filter((line) => line.startsWith('- ')).map((line) => line.slice(0, line.indexOf(':')))).toEqual([
       '- q2, high (1) priority',
       '- q1, low (3) priority',
@@ -94,7 +95,7 @@ describe('read_room', () => {
     expect(text).not.toContain('meets once a month')
     expect(text).toContain(`f${facts.budgetGap!.id} Proposed, not confirmed yet: The two sides read the £60k differently`)
     expect(text).toContain(`worked out by the coach from f${facts.quoteCovers!.id} and f${facts.wholeBudget!.id}`)
-    expect(text).toContain('- q1, high (1) priority: What the price covers (fundamental). The agency side said: "Hosting and app store fees sit outside that."')
+    expect(text).toContain('- q1, high (1) priority: What the price covers. The agency side said: "Hosting and app store fees sit outside that."')
     expect(text).toContain('- q2, high (1) priority: Still to hear from the client side: what happens if hosting pushes the total past £60k')
     expect(text.indexOf('- q1')).toBeLessThan(text.indexOf('- q2'))
     expect(text).not.toMatch(/lens|CFO/i)
@@ -139,5 +140,29 @@ describe('read_room', () => {
     const { context } = await setup()
     const result = await readRoom({ ...context, identity: { ...context.identity, room: asStub(memoryRoom()) } })
     expect(result).toEqual({ text: NO_PROJECT, isError: true })
+  })
+})
+
+describe('privacy through every tool', () => {
+  it("never gives a client caller the agency's private fact, a lens fact on it or a question's words resting on it", async () => {
+    const fixture = await privateAgencyRoom()
+    const room = Object.assign(fixture.stub, { scheduleLensRounds: vi.fn(async () => true) })
+    const deps: McpDeps = {
+      coachTurn: vi.fn(async () => COACH_REPLY),
+      openingBrief: vi.fn(async () => ({ reply: 'Hello.', ask: null })),
+    }
+    const context = { env: {} as Env, deps, identity: { projectId: FIXTURE_PROJECT.id, room, participant: fixture.people.casey.participant } }
+    const outputs = [
+      (await openRoom(context)).text,
+      (await readRoom(context)).text,
+      (await readRoom(context, { onlyOpenQuestions: true })).text,
+      ...(await Promise.all(TOPICS.map(async (topic) => (await readRoom(context, { topic })).text))),
+    ]
+    for (const text of outputs) for (const secret of AGENCY_PRIVATE) expect(text).not.toContain(secret)
+    expect(outputs[1]).toContain('Delivery is 12 weeks from sign off.')
+    expect(outputs[1]).toContain('- q1, high (1) priority: Budget. This one rests on something the other side asked to keep private')
+
+    const agency = { ...context, identity: { ...context.identity, participant: fixture.people.alex.participant } }
+    expect((await readRoom(agency)).text).toContain('Hosting and app store fees are extra.')
   })
 })

@@ -1,7 +1,7 @@
-import { assessmentSchema, type Assessment } from '@day15/shared/alignment'
 import { LENS_IDS, type LensId } from '@day15/shared/lenses'
 import {
   lensReportSchema,
+  upgradeStoredReport,
   newAskSchema,
   newFactSchema,
   newLensRunSchema,
@@ -68,6 +68,7 @@ type FactRow = {
   supersedes: number | null
   superseded_by: number | null
   created_at: string
+  private: number
 }
 type LensRunRow = {
   id: number
@@ -139,6 +140,7 @@ const toFact = (row: FactRow): Fact => ({
   basedOn: JSON.parse(row.based_on) as number[],
   supersedes: row.supersedes,
   supersededBy: row.superseded_by,
+  private: row.private === 1,
   createdAt: row.created_at,
 })
 
@@ -147,7 +149,7 @@ const toLensRun = (row: LensRunRow): LensRun => ({
   lens: row.lens as LensId,
   round: row.round,
   watermark: row.watermark,
-  report: row.report ? lensReportSchema.parse(JSON.parse(row.report)) : null,
+  report: row.report ? lensReportSchema.parse(upgradeStoredReport(JSON.parse(row.report))) : null,
   status: row.status as LensRun['status'],
   createdAt: row.created_at,
 })
@@ -351,8 +353,8 @@ export function addFacts(sql: Sql, input: NewFact[], now: Date): Fact[] {
       row = first<{ id: number }>(
         sql,
         `INSERT INTO facts (topic, statement, status, author_kind, participant_id, side, source_item_id, source_quote,
-           based_on, supersedes, created_at)
-         VALUES (?, ?, ?, 'person', ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+           based_on, supersedes, private, created_at)
+         VALUES (?, ?, ?, 'person', ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
         fact.topic,
         fact.statement,
         fact.status,
@@ -362,6 +364,7 @@ export function addFacts(sql: Sql, input: NewFact[], now: Date): Fact[] {
         fact.sourceQuote,
         JSON.stringify(basedOn),
         fact.supersedes ?? null,
+        fact.private ? 1 : 0,
         now.toISOString(),
       )
     } else {
@@ -481,19 +484,15 @@ export function readRoom(sql: Sql): RoomSnapshot | null {
   }
 }
 
-const ASSESSMENT_KEY = 'assessment'
-
-/** The mother agent's latest matrix and health reading. Kept apart from the snapshot so no view of the room shows it. */
-export function readAssessment(sql: Sql): Assessment | null {
-  const row = first<{ value: string }>(sql, 'SELECT value FROM meta WHERE key = ?', ASSESSMENT_KEY)
-  const parsed = row ? assessmentSchema.safeParse(JSON.parse(row.value)) : null
-  return parsed?.success ? parsed.data : null
-}
-
-export function writeAssessment(sql: Sql, assessment: Assessment): void {
-  sql.exec(
-    'INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value',
-    ASSESSMENT_KEY,
-    JSON.stringify(assessment),
-  )
+/**
+ * Makes facts private or releases them, in place: privacy is a setting, not part of the statement. Only person
+ * facts from the speaker's own side change. Returns the facts it changed.
+ */
+export function setFactPrivacy(sql: Sql, factIds: number[], isPrivate: boolean, side: Side): Fact[] {
+  return factIds.flatMap((id) => {
+    const fact = factById(sql, id)
+    if (!fact || fact.authorKind !== 'person' || fact.side !== side || fact.private === isPrivate) return []
+    sql.exec('UPDATE facts SET private = ? WHERE id = ?', isPrivate ? 1 : 0, id)
+    return [factById(sql, id)!]
+  })
 }

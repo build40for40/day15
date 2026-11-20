@@ -54,6 +54,7 @@ const STATEMENTS = [
     based_on TEXT NOT NULL DEFAULT '[]',
     supersedes INTEGER UNIQUE REFERENCES facts(id),
     created_at TEXT NOT NULL,
+    private INTEGER NOT NULL DEFAULT 0,
     CHECK (
       (author_kind = 'person' AND participant_id IS NOT NULL AND source_item_id IS NOT NULL
         AND source_quote IS NOT NULL AND lens_run_id IS NULL)
@@ -82,12 +83,13 @@ const STATEMENTS = [
     because TEXT NOT NULL DEFAULT '',
     agency_said TEXT,
     client_said TEXT,
-    severity TEXT CHECK (severity IN ('fundamental', 'workable', 'minor')),
     ask_side TEXT NOT NULL CHECK (ask_side IN ('agency', 'client', 'both')),
     priority INTEGER NOT NULL CHECK (priority BETWEEN 1 AND 3),
     based_on TEXT NOT NULL DEFAULT '[]',
+    rests_on_private INTEGER NOT NULL DEFAULT 0,
     status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'resolved', 'dropped')),
-    raised_by_run INTEGER NOT NULL REFERENCES lens_runs(id),
+    raised_by_run INTEGER REFERENCES lens_runs(id),
+    raised_by_item INTEGER REFERENCES items(id),
     resolved_by_run INTEGER REFERENCES lens_runs(id),
     resolved_by_item INTEGER REFERENCES items(id),
     created_at TEXT NOT NULL,
@@ -116,7 +118,12 @@ const ADDED_COLUMNS: Record<string, [name: string, definition: string][]> = {
   ['removed_at', 'TEXT'],
   ],
   asks: [['question_id', 'INTEGER REFERENCES open_questions(id)']],
-  open_questions: [['area', `TEXT NOT NULL DEFAULT 'scope'`]],
+  open_questions: [
+    ['area', `TEXT NOT NULL DEFAULT 'scope'`],
+    ['rests_on_private', 'INTEGER NOT NULL DEFAULT 0'],
+    ['raised_by_item', 'INTEGER REFERENCES items(id)'],
+  ],
+  facts: [['private', 'INTEGER NOT NULL DEFAULT 0']],
 }
 
 function addColumns(sql: Sql, table: string) {

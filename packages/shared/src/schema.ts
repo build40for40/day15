@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { alignmentAreaSchema } from './areas'
 import { LENS_IDS, type LensId } from './lenses'
+import { toPriority } from './priorities'
 
 export const SIDES = ['agency', 'client'] as const
 export type Side = (typeof SIDES)[number]
@@ -141,6 +142,8 @@ export const newPersonFactSchema = z.object({
   sourceQuote: z.string().trim().min(1).max(MAX_QUOTE_LENGTH),
   status: z.enum(['proposed', 'confirmed']),
   basedOn: z.array(id).optional(),
+  /** Seen only by the speaker's side, the coach and the lenses. */
+  private: z.boolean().optional(),
   ...factBody,
 })
 
@@ -172,16 +175,18 @@ export const factSchema = z.object({
   basedOn: z.array(id),
   supersedes: id.nullable(),
   supersededBy: id.nullable(),
+  /** Seen only by the side of the person who said it, the coach and the lenses. A setting, changed in place. */
+  private: z.boolean(),
   createdAt: timestamp,
 })
 
 const coverageLevel = z.enum(['settled', 'thin', 'missing'])
 
-export const SEVERITIES = ['fundamental', 'workable', 'minor'] as const
-export type Severity = (typeof SEVERITIES)[number]
-
 /** The id (like q7) of one of this lens's own open questions that this item is, when it is not new. */
 const sameAs = z.string().nullable().optional()
+
+/** True when what it rests on includes a private fact, so its wording leaves the private content out. */
+const restsOnPrivate = z.boolean().optional()
 
 /** What one lens reports. The field names match persona-harnesses/README.md. */
 export const personaReportSchema = z.object({
@@ -191,10 +196,12 @@ export const personaReportSchema = z.object({
       topic: z.string(),
       agency_said: z.string(),
       client_said: z.string(),
-      severity: z.enum(SEVERITIES),
+      /** 1 high, 2 medium, 3 low: see `priorities`. */
+      priority: z.number(),
       note: z.string(),
       area: alignmentAreaSchema.optional(),
       same_as: sameAs,
+      rests_on_private: restsOnPrivate,
     }),
   ),
   questions: z.array(
@@ -206,6 +213,7 @@ export const personaReportSchema = z.object({
       topic: z.string().optional(),
       area: alignmentAreaSchema.optional(),
       same_as: sameAs,
+      rests_on_private: restsOnPrivate,
     }),
   ),
   /** Ids (like q7) of this lens's own open questions that the room now settles. */
@@ -225,6 +233,20 @@ export const lensReportSchema = personaReportSchema.extend({
   proposed_facts: z.array(proposedFactSchema).optional(),
 })
 
+/** A report as it was stored, from before conflicts carried a priority: their old severity word becomes it. */
+export function upgradeStoredReport(stored: unknown): unknown {
+  if (!stored || typeof stored !== 'object' || !Array.isArray((stored as { conflicts?: unknown }).conflicts)) return stored
+  const report = stored as { conflicts: Record<string, unknown>[] }
+  return {
+    ...report,
+    conflicts: report.conflicts.map(({ severity, ...conflict }) =>
+      conflict.priority === undefined && typeof severity === 'string'
+        ? { ...conflict, priority: toPriority(severity) }
+        : conflict,
+    ),
+  }
+}
+
 export const LENS_RUN_STATUSES = ['done', 'failed'] as const
 
 export const newLensRunSchema = z.object({
@@ -242,11 +264,12 @@ export const QUESTION_KINDS = ['conflict', 'gap'] as const
 export const QUESTION_STATUSES = ['open', 'resolved', 'dropped'] as const
 export const ASK_SIDES = ['agency', 'client', 'both'] as const
 
-/** One unresolved thing a lens raised: a conflict between the sides, or a gap one side needs to fill. */
+/** One unresolved thing a lens or the coach raised: a conflict between the sides, or a gap one side needs to fill. */
 export const openQuestionSchema = z.object({
   id,
   kind: z.enum(QUESTION_KINDS),
-  lens: lensSchema,
+  /** Null when the coach raised it. */
+  lens: lensSchema.nullable(),
   topic: z.string(),
   /** The alignment area from the mother agent's matrix it belongs to. */
   area: alignmentAreaSchema,
@@ -256,14 +279,18 @@ export const openQuestionSchema = z.object({
   because: z.string(),
   agencySaid: z.string().nullable(),
   clientSaid: z.string().nullable(),
-  severity: z.enum(SEVERITIES).nullable(),
   /** Which side needs to answer. A conflict needs both. */
   askSide: z.enum(ASK_SIDES),
   /** 1 high, 2 medium, 3 low: see `priorities`. */
   priority: z.number().int().min(1).max(3),
   basedOn: z.array(id),
+  /** The lens said it rests on private material, so its wording leaves that out. */
+  restsOnPrivate: z.boolean(),
   status: z.enum(QUESTION_STATUSES),
-  raisedByRun: id,
+  /** The lens run that raised it, or null when the coach did. */
+  raisedByRun: id.nullable(),
+  /** What a person said that made the coach raise it. */
+  raisedByItem: id.nullable(),
   resolvedByRun: id.nullable(),
   /** The item whose answer the coach judged settles it. */
   resolvedByItem: id.nullable(),

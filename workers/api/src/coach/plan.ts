@@ -16,6 +16,7 @@ import {
   type Participant,
   type RoomSnapshot,
 } from '@day15/shared/schema'
+import type { CoachQuestion } from '../room/questions'
 import type { CoachTurnOutput, NextAskOutput } from './schema'
 import type { AskCandidate } from './select'
 
@@ -43,6 +44,10 @@ export interface TurnPlan extends NextAskPlan {
   resolvedQuestions: number[]
   /** Open questions the coach moved to a new priority. */
   priorities: { id: number; priority: number }[]
+  /** Open questions the coach raises itself. */
+  raised: CoachQuestion[]
+  /** Earlier facts from the speaker's side to make private or release. */
+  privacy: { private: number[]; released: number[] }
   /** People named in the message, to add with no link. The room skips anyone already listed. */
   people: NewParticipant[]
   noted: string
@@ -104,6 +109,7 @@ export function planFacts(output: CoachTurnOutput, context: PlanContext & { item
       statement,
       sourceQuote: sourceQuote(note.quote, item.text),
       status: note.tentative ? 'proposed' : 'confirmed',
+      ...((note.private ?? target?.private) ? { private: true } : {}),
       ...(supersedes ? { supersedes } : {}),
     })
   }
@@ -171,6 +177,37 @@ export function planPriorities(output: CoachTurnOutput, room: RoomSnapshot, reso
   return [...changes].map(([id, priority]) => ({ id, priority }))
 }
 
+export const MAX_RAISED_QUESTIONS = 2
+
+/** The coach's own open questions, cleaned up, at most two a turn. */
+export function planRaisedQuestions(output: CoachTurnOutput): CoachQuestion[] {
+  return (output.raise_questions ?? []).flatMap((question) => {
+    const statement = clip(question.statement, MAX_STATEMENT_LENGTH)
+    if (!statement) return []
+    return [{ area: question.area, statement, askSide: question.ask_side, priority: toPriority(question.priority) }]
+  }).slice(0, MAX_RAISED_QUESTIONS)
+}
+
+/** Privacy changes the speaker may make: only current person facts from their own side, the last word winning. */
+export function planPrivacy(
+  output: CoachTurnOutput,
+  room: RoomSnapshot,
+  participant: Participant,
+): { private: number[]; released: number[] } {
+  const ours = new Set(
+    room.facts
+      .filter((fact) => fact.authorKind === 'person' && fact.side === participant.side && fact.status !== 'superseded')
+      .map((fact) => fact.id),
+  )
+  const wanted = new Map<number, boolean>()
+  for (const change of output.privacy ?? []) {
+    const id = parseRef('fact', change.fact)
+    if (id !== null && ours.has(id)) wanted.set(id, change.private)
+  }
+  const ids = (value: boolean) => [...wanted].filter(([, flag]) => flag === value).map(([id]) => id)
+  return { private: ids(true), released: ids(false) }
+}
+
 /**
  * Leaves this person exactly one open ask: the one the model chose, or one of theirs it asked again. When the model
  * asks nothing, their oldest open ask stays, and failing that the best candidate becomes the ask.
@@ -233,6 +270,8 @@ export function planTurn(output: CoachTurnOutput, context: PlanContext & { item:
     answered,
     resolvedQuestions,
     priorities: planPriorities(output, context.room, resolvedQuestions),
+    raised: planRaisedQuestions(output),
+    privacy: planPrivacy(output, context.room, context.participant),
     people: planPeople(output, context.participant),
     noted: output.noted.trim(),
     ...planNextAsk(output.next_ask, { ...context, answered }),

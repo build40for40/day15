@@ -3,8 +3,11 @@ import { areaRank, LENS_AREA, TOPIC_AREA } from '@day15/shared/areas'
 import type { LensId } from '@day15/shared/lenses'
 import { toPriority } from '@day15/shared/priorities'
 import { parseRef } from '@day15/shared/refs'
-import { type LensReport, type LensRun, type OpenQuestion, type Severity, type Topic } from '@day15/shared/schema'
+import { ASK_SIDES, type LensReport, type LensRun, type OpenQuestion, type Topic } from '@day15/shared/schema'
 import { all, first, type Sql } from './sql'
+
+/** What the `lens` column holds for a question the coach raised itself. */
+const COACH = 'coach'
 
 type QuestionRow = {
   id: number
@@ -16,12 +19,13 @@ type QuestionRow = {
   because: string
   agency_said: string | null
   client_said: string | null
-  severity: string | null
   ask_side: string
   priority: number
   based_on: string
+  rests_on_private: number
   status: string
-  raised_by_run: number
+  raised_by_run: number | null
+  raised_by_item: number | null
   resolved_by_run: number | null
   resolved_by_item: number | null
   created_at: string
@@ -32,19 +36,20 @@ type QuestionRow = {
 const toQuestion = (row: QuestionRow): OpenQuestion => ({
   id: row.id,
   kind: row.kind as OpenQuestion['kind'],
-  lens: row.lens as LensId,
+  lens: row.lens === COACH ? null : (row.lens as LensId),
   topic: row.topic,
   area: row.area as AlignmentAreaId,
   statement: row.statement,
   because: row.because,
   agencySaid: row.agency_said,
   clientSaid: row.client_said,
-  severity: row.severity as Severity | null,
   askSide: row.ask_side as OpenQuestion['askSide'],
   priority: row.priority,
   basedOn: JSON.parse(row.based_on) as number[],
+  restsOnPrivate: row.rests_on_private === 1,
   status: row.status as OpenQuestion['status'],
   raisedByRun: row.raised_by_run,
+  raisedByItem: row.raised_by_item,
   resolvedByRun: row.resolved_by_run,
   resolvedByItem: row.resolved_by_item,
   createdAt: row.created_at,
@@ -68,13 +73,20 @@ export function getQuestion(sql: Sql, id: number): OpenQuestion | null {
   return row ? toQuestion(row) : null
 }
 
-const SEVERITY_PRIORITY: Record<Severity, number> = { fundamental: 1, workable: 2, minor: 3 }
-
 const normalise = (text: string) => text.replace(/\s+/g, ' ').trim().toLowerCase()
 
 type Raised = Omit<
   OpenQuestion,
-  'id' | 'lens' | 'status' | 'raisedByRun' | 'resolvedByRun' | 'resolvedByItem' | 'createdAt' | 'updatedAt' | 'closedAt'
+  | 'id'
+  | 'lens'
+  | 'status'
+  | 'raisedByRun'
+  | 'raisedByItem'
+  | 'resolvedByRun'
+  | 'resolvedByItem'
+  | 'createdAt'
+  | 'updatedAt'
+  | 'closedAt'
 > & {
   sameAs: number | null
 }
@@ -126,10 +138,10 @@ function raisedBy(report: LensReport, facts: Map<number, Topic>, lens: LensId): 
           because: '',
           agencySaid: conflict.agency_said.trim(),
           clientSaid: conflict.client_said.trim(),
-          severity: conflict.severity,
           askSide: 'both' as const,
-          priority: SEVERITY_PRIORITY[conflict.severity],
+          priority: toPriority(conflict.priority),
           basedOn: citedFacts([conflict.agency_said, conflict.client_said, conflict.note], facts),
+          restsOnPrivate: !!conflict.rests_on_private,
           sameAs: sameAs(conflict.same_as),
         },
         conflict.area,
@@ -144,10 +156,10 @@ function raisedBy(report: LensReport, facts: Map<number, Topic>, lens: LensId): 
           because: question.because.trim(),
           agencySaid: null,
           clientSaid: null,
-          severity: null,
           askSide: question.ask,
           priority: toPriority(question.priority),
           basedOn: citedFacts([question.find_out, question.because], facts),
+          restsOnPrivate: !!question.rests_on_private,
           sameAs: sameAs(question.same_as),
         },
         question.area,
@@ -186,15 +198,15 @@ export function recordLensReport(sql: Sql, run: LensRun, now: Date): void {
       raised.because,
       raised.agencySaid,
       raised.clientSaid,
-      raised.severity,
       raised.askSide,
       raised.priority,
       JSON.stringify(raised.basedOn),
+      raised.restsOnPrivate ? 1 : 0,
     ]
     if (existing) {
       sql.exec(
-        `UPDATE open_questions SET topic = ?, area = ?, statement = ?, because = ?, agency_said = ?, client_said = ?, severity = ?,
-           ask_side = ?, priority = MIN(priority, ?), based_on = ?, updated_at = ? WHERE id = ?`,
+        `UPDATE open_questions SET topic = ?, area = ?, statement = ?, because = ?, agency_said = ?, client_said = ?,
+           ask_side = ?, priority = MIN(priority, ?), based_on = ?, rests_on_private = ?, updated_at = ? WHERE id = ?`,
         ...values,
         at,
         existing.id,
@@ -202,8 +214,8 @@ export function recordLensReport(sql: Sql, run: LensRun, now: Date): void {
       touched.add(existing.id)
     } else {
       sql.exec(
-        `INSERT INTO open_questions (topic, area, statement, because, agency_said, client_said, severity, ask_side,
-           priority, based_on, kind, lens, raised_by_run, created_at, updated_at)
+        `INSERT INTO open_questions (topic, area, statement, because, agency_said, client_said, ask_side, priority,
+           based_on, rests_on_private, kind, lens, raised_by_run, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         ...values,
         raised.kind,
@@ -261,5 +273,35 @@ export function resolveQuestions(sql: Sql, ids: number[], itemId: number, now: D
       id,
     )
     return [getQuestion(sql, id)!]
+  })
+}
+
+/** An open question the coach raises itself, from a signal no lens has raised. */
+export interface CoachQuestion {
+  area: AlignmentAreaId
+  statement: string
+  askSide: (typeof ASK_SIDES)[number]
+  priority: number
+}
+
+/** Adds the coach's own open questions, as gaps with no lens, raised by what a person said. */
+export function raiseQuestions(sql: Sql, questions: CoachQuestion[], itemId: number, now: Date): OpenQuestion[] {
+  const at = now.toISOString()
+  return questions.map((question) => {
+    const row = first<{ id: number }>(
+      sql,
+      `INSERT INTO open_questions (kind, lens, topic, area, statement, ask_side, priority, raised_by_item, created_at,
+         updated_at)
+       VALUES ('gap', ?, '', ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+      COACH,
+      question.area,
+      question.statement,
+      question.askSide,
+      toPriority(question.priority),
+      itemId,
+      at,
+      at,
+    )!
+    return getQuestion(sql, row.id)!
   })
 }

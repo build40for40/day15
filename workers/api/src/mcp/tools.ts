@@ -1,17 +1,11 @@
+import { areaName, TOPIC_AREA } from '@day15/shared/areas'
 import { PRIORITY_MEANINGS, priorityLabel } from '@day15/shared/priorities'
 import { ref } from '@day15/shared/refs'
-import {
-  PERSONA_NAMES,
-  TOPICS,
-  type Fact,
-  type OpenQuestion,
-  type Participant,
-  type RoomSnapshot,
-  type Topic,
-} from '@day15/shared/schema'
+import { PERSONA_NAMES, TOPICS, type Fact, type Participant, type Topic } from '@day15/shared/schema'
 
 import type { CoachTurn, Env, Identity, OpeningBriefFn } from '../contracts'
 import { logModelError } from '../model'
+import { sideView, type SideQuestion, type SideView } from '../room/side-view'
 import {
   CHECKED_UP_TO,
   COACH_FAILED,
@@ -23,6 +17,7 @@ import {
   OPEN_ROOM_GUIDE,
   PROPOSED,
   TOPIC_LABELS,
+  WITHHELD,
 } from './text'
 
 export interface McpDeps {
@@ -54,8 +49,9 @@ export async function openRoom({ env, identity, deps }: ToolContext): Promise<To
     const project = await identity.room.project()
     if (!project) return { text: NO_PROJECT, isError: true }
     const brief = await deps.openingBrief(env, identity.room, identity.participant)
-    const questions = await identity.room.openQuestions()
-    return { text: openRoomText(identity.participant, project.name, brief.reply, questions) }
+    const snapshot = await identity.room.read()
+    if (!snapshot) return { text: NO_PROJECT, isError: true }
+    return { text: openRoomText(identity.participant, sideView(snapshot, identity.participant.side), brief.reply) }
   } catch (error) {
     return failure('open_room', error)
   }
@@ -83,12 +79,14 @@ export interface ReadRoomFilter {
 
 export async function readRoom({ identity }: ToolContext, filter: ReadRoomFilter = {}): Promise<ToolResult> {
   const snapshot = await identity.room.read()
-  return snapshot ? { text: renderRoomView(snapshot, filter) } : { text: NO_PROJECT, isError: true }
+  if (!snapshot) return { text: NO_PROJECT, isError: true }
+  return { text: renderRoomView(sideView(snapshot, identity.participant.side), filter) }
 }
 
-export function openRoomText(participant: Participant, projectName: string, reply: string, questions: OpenQuestion[]): string {
+export function openRoomText(participant: Participant, view: SideView, reply: string): string {
+  const questions = view.openQuestions
   return [
-    `You're connected as ${participant.name}, ${PERSONA_NAMES[participant.persona]} on the ${participant.side} side of "${projectName}".`,
+    `You're connected as ${participant.name}, ${PERSONA_NAMES[participant.persona]} on the ${participant.side} side of "${view.project.name}".`,
     OPEN_ROOM_GUIDE,
     `The coach says:\n\n${reply}`,
     ...(questions.length
@@ -115,33 +113,14 @@ function factLine(fact: Fact, people: Map<number, Participant>): string {
   return `- ${ref('fact', fact.id)} ${proposed}${oneLine(fact.statement)}${replaces} (${source})`
 }
 
-const words = (text: string) => text.toLowerCase().replace(/[^a-z0-9£$€]+/g, ' ').trim()
-
-const MIN_OVERLAP = 12
-
-function overlaps(a: string, b: string): boolean {
-  const [x, y] = [words(a), words(b)]
-  return x.length >= MIN_OVERLAP && y.length >= MIN_OVERLAP && (x.includes(y) || y.includes(x))
-}
-
-/** Open questions carry free-text topics, so one belongs to a topic when it names it or quotes one of its facts. */
-function questionOnTopic(question: OpenQuestion, topic: Topic, facts: Fact[]): boolean {
-  const named = words(question.topic)
-  if (named.includes(words(TOPIC_LABELS[topic])) || named.includes(words(topic))) return true
-  if (facts.some((fact) => fact.topic === topic && question.basedOn.includes(fact.id))) return true
-  const said = [question.agencySaid, question.clientSaid, question.statement].filter((text): text is string => !!text)
-  return facts.some(
-    (fact) => fact.topic === topic && said.some((text) => [fact.sourceQuote ?? '', fact.statement].some((other) => overlaps(text, other))),
-  )
-}
-
 /** Lens names stay out: people never learn which lens raised a question. */
-export function questionLine(question: OpenQuestion): string {
+export function questionLine(question: SideQuestion): string {
   const head = `- ${ref('question', question.id)}, ${priorityLabel(question.priority)} priority: `
+  if (question.withheld) return `${head}${areaName(question.area)}. ${WITHHELD}`
   const topic = oneLine(question.topic)
   if (question.kind === 'conflict') {
     return (
-      `${head}${topic || 'A disagreement'} (${question.severity}). The agency side said: "${oneLine(question.agencySaid ?? '')}" ` +
+      `${head}${topic || 'A disagreement'}. The agency side said: "${oneLine(question.agencySaid ?? '')}" ` +
       `The client side said: "${oneLine(question.clientSaid ?? '')}" ${oneLine(question.statement)}`.trimEnd()
     )
   }
@@ -150,12 +129,13 @@ export function questionLine(question: OpenQuestion): string {
 }
 
 /**
- * What read_room shows: current facts by topic, proposed ones marked, then every open question, most urgent first.
- * With `onlyOpenQuestions`, just the open questions.
+ * What read_room shows one side: the current facts it can see by topic, proposed ones marked, then every open
+ * question, most urgent first. With `onlyOpenQuestions`, just the open questions. With a topic, the open questions
+ * in that topic's area.
  */
-export function renderRoomView(snapshot: RoomSnapshot, { topic, onlyOpenQuestions }: ReadRoomFilter = {}): string {
-  const people = new Map(snapshot.participants.map((participant) => [participant.id, participant]))
-  const current = snapshot.facts.filter((fact) => fact.status !== 'superseded')
+export function renderRoomView(view: SideView, { topic, onlyOpenQuestions }: ReadRoomFilter = {}): string {
+  const people = new Map(view.participants.map((participant) => [participant.id, participant]))
+  const current = view.facts.filter((fact) => fact.status !== 'superseded')
   const topics = topic ? [topic] : TOPICS.filter((t) => current.some((fact) => fact.topic === t))
 
   const sections = topics.map((t) => {
@@ -164,20 +144,19 @@ export function renderRoomView(snapshot: RoomSnapshot, { topic, onlyOpenQuestion
   })
   if (!sections.length) sections.push(NO_FACTS)
 
-  const questions = snapshot.openQuestions.filter((question) => !topic || questionOnTopic(question, topic, snapshot.facts))
-  const watermarks = Object.values(snapshot.latestRuns).map((run) => run?.watermark ?? 0)
-  const checkedUpTo = watermarks.length ? Math.min(...watermarks) : 0
+  const questions = view.openQuestions.filter((question) => !topic || question.area === TOPIC_AREA[topic])
+  const newest = current.at(-1)?.id ?? 0
   const stale =
-    checkedUpTo >= snapshot.watermark
+    view.checkedUpTo >= newest
       ? ''
-      : checkedUpTo
-        ? `\n\n${CHECKED_UP_TO(ref('fact', checkedUpTo))}`
+      : view.checkedUpTo
+        ? `\n\n${CHECKED_UP_TO(ref('fact', view.checkedUpTo))}`
         : `\n\n${NOT_CHECKED}`
   const list = questions.length ? `${PRIORITY_MEANINGS}\n\n${questions.map(questionLine).join('\n')}` : NO_OPEN_QUESTIONS
   const open = `## ${OPEN_QUESTIONS_HEADING}\n\n${list}${stale}`
 
   return [
-    `# "${oneLine(snapshot.project.name)}"${topic ? `: ${TOPIC_LABELS[topic]}` : ''}`,
+    `# "${oneLine(view.project.name)}"${topic ? `: ${TOPIC_LABELS[topic]}` : ''}`,
     ...(onlyOpenQuestions ? [] : sections),
     open,
   ].join('\n\n')

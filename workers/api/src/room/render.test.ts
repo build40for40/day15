@@ -45,7 +45,7 @@ describe('renderRoom', () => {
       },
     ])
     const after = renderRoom((await room.read())!)
-    const factsEnd = before.indexOf('\n\n## People')
+    const factsEnd = before.indexOf('\n\n## Private facts')
     expect(after.startsWith(before.slice(0, factsEnd))).toBe(true)
     expect(after).toContain('proposed, to be confirmed by p4 (client side) in i4: The budget includes VAT.')
     expect(after).toContain('to p4 Robin Fakeworth, for the CFO lens: Is VAT in that?')
@@ -106,6 +106,17 @@ describe('renderRoom', () => {
     const open = text.slice(text.indexOf('## Open questions'), text.indexOf('## Open asks'))
     expect(text.indexOf('## Open questions')).toBeGreaterThan(text.indexOf('## People'))
     expect(open.indexOf('q2 [high (1) priority] gap in Budget, for the client side, raised by the CFO lens in r1')).toBeGreaterThan(0)
-    expect(open.indexOf('q2 ')).toBeLessThan(open.indexOf('q1 [medium (2) priority] fundamental conflict on "What the price covers"'))
+    expect(open.indexOf('q2 ')).toBeLessThan(open.indexOf('q1 [medium (2) priority] conflict on "What the price covers"'))
+  })
+
+  it('lists private facts apart, so making one private never rewrites a fact line', async () => {
+    const { room, facts } = await fixtureRoom()
+    const before = renderRoom((await room.read())!)
+    await room.setFactPrivacy([facts.wholeBudget!.id], true, 'client')
+    const after = renderRoom((await room.read())!)
+    const factsEnd = before.indexOf('\n\n## Private facts')
+    expect(after.slice(0, factsEnd)).toBe(before.slice(0, factsEnd))
+    expect(after).toContain(`## Private facts\n\nSeen only by the side of the person who said them`)
+    expect(after).toMatch(new RegExp(`hint at one to the other side\\.\\n\\nf${facts.wholeBudget!.id}\\n`))
   })
 })

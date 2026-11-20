@@ -50,20 +50,18 @@ describe('runCoachTurn', () => {
     expect(calls[0]!.prompt).toContain('We mean the tone.')
   })
 
-  it("keeps the mother agent's matrix and health reading, away from every view of the room", async () => {
+  it('explains before the ask, and raises its own open question for a signal no adviser raised', async () => {
     const { room, stub, people } = await fixtureRoom()
-    const casey = people.casey.participant
-    const { generate, calls } = fake({
+    const { generate } = fake({
       facts: [],
       answered_asks: [],
       confirmed: [],
-      alignment: [
-        { area: 'scope', rating: 'high', misalignment: 'The two sides list different things as included.' },
-        { area: 'budget', rating: 'medium', misalignment: 'Whether VAT is in the figure.' },
+      raise_questions: [
+        { area: 'dependencies_and_ownership', statement: 'Who runs the app day to day after launch.', ask_side: 'client', priority: 1 },
       ],
       noted: 'Thanks.',
       next_ask: {
-        explain: 'On projects like this, running costs often sit in nobody\'s budget.',
+        explain: "On projects like this, running costs often sit in nobody's budget.",
         ask: 'Who pays for hosting after launch?',
         because: 'Running cost with no owner.',
         lens: 'cfo',
@@ -71,26 +69,42 @@ describe('runCoachTurn', () => {
       },
     })
 
-    const reply = await runCoachTurn(generate, stub, casey, 'Nothing new from me.')
+    const reply = await runCoachTurn(generate, stub, people.robin.participant, 'Nothing new from me.')
 
     expect(reply.reply).toBe(
       "Thanks.\n\nOn projects like this, running costs often sit in nobody's budget.\n\nWho pays for hosting after launch?",
     )
-    expect(reply.ask!.ask).toBe('Who pays for hosting after launch?')
+    const raised = (await room.openQuestions()).find((question) => question.lens === null)
+    expect(raised).toMatchObject({
+      kind: 'gap',
+      area: 'dependencies_and_ownership',
+      askSide: 'client',
+      priority: 1,
+      raisedByRun: null,
+      raisedByItem: reply.itemId,
+    })
+  })
 
-    const kept = await room.assessment()
-    expect(kept!.itemId).toBe(reply.itemId)
-    expect(kept!.areas).toHaveLength(7)
-    expect(kept!.areas[1]).toMatchObject({ area: 'scope', rating: 'high' })
-    expect(kept!.areas[0]).toMatchObject({ area: 'goal_and_success', rating: 'low' })
-    expect(kept!.health!.band).toBe('red')
-    expect(JSON.stringify(await room.read())).not.toContain('The two sides list different things as included.')
+  it('keeps a fact private when asked, lets its side release it, and ignores the other side changing it', async () => {
+    const { room, stub, people } = await fixtureRoom()
+    const note = { topic: 'budget' as const, quote: 'we could stretch to 70k', tentative: false, replaces: null }
+    const turn = (privacy: { fact: string; private: boolean }[], facts = [] as (typeof note & { statement: string; private?: boolean })[]) =>
+      fake({ facts, answered_asks: [], confirmed: [], privacy, noted: 'Noted.', next_ask: null }).generate
 
-    expect(calls[0]!.prompt).toContain('You have not rated this project yet.')
-    const again = fake({ facts: [], answered_asks: [], confirmed: [], noted: 'Ok.', next_ask: null })
-    await runCoachTurn(again.generate, stub, casey, 'Still nothing.')
-    expect(again.calls[0]!.prompt).toContain('- Scope (scope): high. The two sides list different things as included.')
-    expect((await room.assessment())!.itemId).toBe(reply.itemId)
+    const first = await runCoachTurn(
+      turn([], [{ ...note, statement: 'The client could stretch the budget to £70k.', private: true }]),
+      stub,
+      people.robin.participant,
+      'Between us, we could stretch to 70k.',
+    )
+    const id = first.noted[0]!.id
+    expect(first.noted[0]!.private).toBe(true)
+
+    await runCoachTurn(turn([{ fact: `f${id}`, private: false }]), stub, people.alex.participant, 'Make that public.')
+    expect((await room.read())!.facts.find((fact) => fact.id === id)!.private).toBe(true)
+
+    await runCoachTurn(turn([{ fact: `f${id}`, private: false }]), stub, people.robin.participant, 'Fine, share the 70k.')
+    expect((await room.read())!.facts.find((fact) => fact.id === id)!.private).toBe(false)
   })
 
   it('adds people the message named with no link, without duplicating anyone already listed', async () => {

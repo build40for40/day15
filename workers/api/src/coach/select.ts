@@ -20,7 +20,6 @@ export interface AskCandidate {
   /** The open question it comes from, or null for a brief topic nobody has covered. */
   questionId: number | null
   priority: number | null
-  severity: OpenQuestion['severity']
   area: AlignmentAreaId
   lens: LensId | null
   topic: string
@@ -104,7 +103,6 @@ function fromQuestion(question: OpenQuestion): Found {
   const base = {
     questionId: question.id,
     priority: question.priority,
-    severity: question.severity,
     area: question.area,
     lens: question.lens,
     topic: question.topic,
@@ -123,15 +121,15 @@ function fromQuestion(question: OpenQuestion): Found {
 }
 
 /**
- * Open questions for this person's side from lenses routed to them, in the room's order: priority, then the area's
- * rank in the matrix, then conflicts before gaps, then oldest.
+ * Open questions for this person's side, from lenses routed to them or from the coach, in the room's order:
+ * priority, then the area's rank in the matrix, then conflicts before gaps, then oldest.
  */
 function openQuestionsFor(room: RoomSnapshot, participant: Participant): Found[] {
   return room.openQuestions
     .filter(
       (question) =>
         (question.askSide === 'both' || question.askSide === participant.side) &&
-        routedTo(room, participant, question.lens),
+        (!question.lens || routedTo(room, participant, question.lens)),
     )
     .map(fromQuestion)
 }
@@ -149,7 +147,6 @@ function missingTopics(room: RoomSnapshot, participant: Participant): Found[] {
       kind: 'missing_topic' as const,
       questionId: null,
       priority: null,
-      severity: null,
       area: TOPIC_AREA[topic],
       lens: TOPIC_LENS[topic],
       topic,

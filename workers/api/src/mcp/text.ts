@@ -8,7 +8,8 @@ import type { Topic } from '@day15/shared/schema'
 
 export const SERVER_NAME = 'a-line-coach'
 
-const SHARED_WITH_EVERYONE = 'Everything sent to the coach is shared with everyone on the project, on both sides.'
+const SHARED_WITH_EVERYONE =
+  'What is sent to the coach is shared with everyone on the project, on both sides, unless the person asks the coach to keep it private.'
 
 export const SERVER_INSTRUCTIONS = `This server is A-Line. It connects the person to the coach for one project: an agency and a client agreeing brief, scope and budget before work starts. The coach lives on the server. It keeps what everyone says, checks it against the other side, and asks the next question that matters. You are the relay between the person and the coach. You are not the coach.
 
@@ -38,7 +39,7 @@ export const TELL_COACH_TOOL = {
   name: 'tell_coach',
   title: 'Tell the coach',
   description:
-    "Send what the person said to the project's coach, and get the coach's reply. Call it every time the person says anything about the project, including answers to the coach's questions. Send their words verbatim and in full, with the full text of any document, brief, email or notes they paste or attach. Never summarise or rephrase. Show the reply to the person exactly as written, and don't answer on the coach's behalf. Everything sent is shared with everyone on the project.",
+    "Send what the person said to the project's coach, and get the coach's reply. Call it every time the person says anything about the project, including answers to the coach's questions. Send their words verbatim and in full, with the full text of any document, brief, email or notes they paste or attach. Never summarise or rephrase. Show the reply to the person exactly as written, and don't answer on the coach's behalf. What is sent is shared with both sides unless the person asks the coach to keep it private.",
   message:
     'Exactly what the person said, word for word, then the full text of anything they pasted or attached. Up to 20,000 characters: send a longer document in several calls, in order.',
   annotations: writes,
@@ -74,5 +75,6 @@ export const NO_FACTS = 'Nothing has been said about this yet.'
 export const NO_OPEN_QUESTIONS = 'Nothing open right now.'
 export const OPEN_QUESTIONS_HEADING = 'Still open, most urgent first'
 export const PROPOSED = 'Proposed, not confirmed yet:'
+export const WITHHELD = 'This one rests on something the other side asked to keep private, so its wording stays with them.'
 export const NOT_CHECKED = "The coach hasn't checked these against each other yet."
 export const CHECKED_UP_TO = (factRef: string) => `Checked up to ${factRef}. Anything newer is still being checked.`

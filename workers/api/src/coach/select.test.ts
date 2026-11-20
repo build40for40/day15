@@ -29,7 +29,7 @@ describe('askCandidates', () => {
       room.saveLensRun({ lens, round: 1, watermark: 1, status: 'done', report: report(overrides) })
     await lensRun('agency', {
       questions: [gap('agency', 'how many feedback rounds the team can absorb', 2)],
-      conflicts: [{ topic: 'Feedback rounds', agency_said: 'a', client_said: 'b', severity: 'workable', note: 'n' }],
+      conflicts: [{ topic: 'Feedback rounds', agency_said: 'a', client_said: 'b', priority: 2, note: 'n' }],
     })
     await lensRun('procurement', { questions: [gap('agency', 'the engine licence terms', 1)] })
     await lensRun('client', { questions: [gap('client', 'the launch date', 1)] })

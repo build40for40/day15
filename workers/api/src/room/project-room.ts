@@ -70,12 +70,6 @@ export class ProjectRoom extends DurableObject<Env> {
   read() {
     return this.store.read()
   }
-  assessment() {
-    return this.store.assessment()
-  }
-  saveAssessment(...args: Args<'saveAssessment'>) {
-    return this.store.saveAssessment(...args)
-  }
   saveLensRun(...args: Args<'saveLensRun'>) {
     return this.store.saveLensRun(...args)
   }
@@ -96,6 +90,12 @@ export class ProjectRoom extends DurableObject<Env> {
   }
   setQuestionPriorities(...args: Args<'setQuestionPriorities'>) {
     return this.store.setQuestionPriorities(...args)
+  }
+  raiseQuestions(...args: Args<'raiseQuestions'>) {
+    return this.store.raiseQuestions(...args)
+  }
+  setFactPrivacy(...args: Args<'setFactPrivacy'>) {
+    return this.store.setFactPrivacy(...args)
   }
   resolveQuestions(...args: Args<'resolveQuestions'>) {
     return this.store.resolveQuestions(...args)

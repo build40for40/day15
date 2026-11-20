@@ -1,103 +1,66 @@
-import type { AlignmentAreaId } from '@day15/shared/alignment'
-import { areaRank } from '@day15/shared/areas'
-import { QUESTION_PRIORITIES, type QuestionPriority } from '@day15/shared/priorities'
-import type { Ask, Fact, Participant, Project, RoomSnapshot, Side } from '@day15/shared/schema'
+import type { Fact, OpenQuestion, Participant, Project, RoomSnapshot, Side } from '@day15/shared/schema'
 
-/** An open ask to someone on this side, with how urgent the open question it chases is. */
-export interface SideAsk {
-  ask: Ask
-  to: Participant
-  priority: QuestionPriority | null
-  area: AlignmentAreaId | null
-}
+/** An open question as one side sees it. When `withheld`, its wording rests on the other side's private words. */
+export type SideQuestion = OpenQuestion & { withheld: boolean }
 
-/** Everything one side may see of a room, under `canSee`. Not wired into the MCP tools yet. */
+/** Everything one side may see of a room. Every MCP tool reads the room through this and nothing else. */
 export interface SideView {
   project: Project
   side: Side
-  /** Everyone, with notes and lenses only for people `canSee` allows. */
   participants: Participant[]
-  /** Facts from people `canSee` allows, and lens facts that rest only on those. */
+  /** Every fact except the other side's private ones and lens facts that rest on them. */
   facts: Fact[]
-  /** The coach's open asks to people `canSee` allows, most urgent first. */
-  asks: SideAsk[]
-  /** How many open questions the whole project has at each priority. */
-  questionCounts: Record<QuestionPriority, number>
-  /** The newest of this side's facts that every lens has read, or 0 when none has. */
+  /** Every open question, most urgent first, with the wording withheld where it rests on the other side's privacy. */
+  openQuestions: SideQuestion[]
+  /** The newest fact this side can see that every lens has read, or 0 when none has. */
   checkedUpTo: number
 }
 
-/**
- * The one rule for who sees whose words: what someone on `origin` said, as a viewer on `viewer`. Swap it to change
- * what every side sees.
- */
-export const canSee = (origin: Side, viewer: Side) => origin === viewer
+/** The one rule for who sees a person's fact: everyone, unless it is private and the viewer is on the other side. */
+export const canSee = (fact: Pick<Fact, 'private' | 'side'>, viewer: Side) => !fact.private || fact.side === viewer
 
-/** A person fact is visible when its side is. A lens fact is visible when everything it rests on is. */
-function visibleFacts(facts: Fact[], side: Side): Fact[] {
+/** The facts a viewer can't see: the other side's private facts, and every lens fact that rests on one. */
+function hiddenFacts(facts: Fact[], viewer: Side): Set<number> {
   const byId = new Map(facts.map((fact) => [fact.id, fact]))
   const memo = new Map<number, boolean>()
-  const visible = (id: number): boolean => {
+  const hidden = (id: number): boolean => {
     const known = memo.get(id)
     if (known !== undefined) return known
     memo.set(id, false)
     const fact = byId.get(id)
-    const result =
-      fact?.authorKind === 'person'
-        ? !!fact.side && canSee(fact.side, side)
-        : !!fact && fact.basedOn.length > 0 && fact.basedOn.every(visible)
+    const result = !fact
+      ? false
+      : fact.authorKind === 'person'
+        ? !canSee(fact, viewer)
+        : fact.basedOn.some(hidden)
     memo.set(id, result)
     return result
   }
-  return facts.filter((fact) => visible(fact.id))
+  return new Set(facts.filter((fact) => hidden(fact.id)).map((fact) => fact.id))
 }
 
-const urgency = (entry: SideAsk) => [
-  entry.priority ?? QUESTION_PRIORITIES.length + 1,
-  entry.area ? areaRank(entry.area) : 99,
-  entry.ask.id,
-]
-
-function byUrgency(a: SideAsk, b: SideAsk): number {
-  const [x, y] = [urgency(a), urgency(b)]
-  return x[0]! - y[0]! || x[1]! - y[1]! || x[2]! - y[2]!
-}
+const WITHHELD = { topic: '', statement: '', because: '', agencySaid: null, clientSaid: null }
 
 /**
- * One side's view of the room. The coach and the lenses read the full snapshot. Under the current rule the other
- * side's quotes, facts, notes, lenses and asks, and the lenses' own wording, are all left out.
+ * One side's view of the room. The coach and the lenses read the full snapshot. A person sees everything except
+ * the other side's private facts (with their quotes), lens facts resting on them, and the wording of any open
+ * question resting on them. A question a lens flagged as resting on private material is withheld whenever the other
+ * side has a private fact, since the lens may not cite it.
  */
 export function sideView(room: RoomSnapshot, side: Side): SideView {
-  const participants = room.participants.map((person) =>
-    canSee(person.side, side) ? person : { ...person, notes: '', lenses: [] },
+  const hidden = hiddenFacts(room.facts, side)
+  const facts = room.facts.filter((fact) => !hidden.has(fact.id))
+  const otherSideIsPrivate = room.facts.some(
+    (fact) => fact.authorKind === 'person' && fact.status !== 'superseded' && !canSee(fact, side),
   )
-  const ours = new Map(
-    room.participants.filter((person) => canSee(person.side, side)).map((person) => [person.id, person]),
-  )
-  const questions = new Map(room.openQuestions.map((question) => [question.id, question]))
-  const asks = room.asks
-    .filter((ask) => ask.status === 'open' && ours.has(ask.addressedTo))
-    .map((ask) => {
-      const question = ask.questionId ? questions.get(ask.questionId) : undefined
-      return {
-        ask,
-        to: ours.get(ask.addressedTo)!,
-        priority: (question?.priority as QuestionPriority | undefined) ?? null,
-        area: question?.area ?? null,
-      }
-    })
-    .sort(byUrgency)
+  const openQuestions = room.openQuestions.map((question) => {
+    const withheld = question.basedOn.some((id) => hidden.has(id)) || (question.restsOnPrivate && otherSideIsPrivate)
+    return withheld ? { ...question, ...WITHHELD, withheld } : { ...question, withheld }
+  })
 
-  const questionCounts = Object.fromEntries(QUESTION_PRIORITIES.map((priority) => [priority, 0])) as Record<
-    QuestionPriority,
-    number
-  >
-  for (const question of room.openQuestions) questionCounts[question.priority as QuestionPriority] += 1
-
-  const facts = visibleFacts(room.facts, side)
   const watermarks = Object.values(room.latestRuns).map((run) => run?.watermark ?? 0)
   const read = watermarks.length ? Math.min(...watermarks) : 0
   const checkedUpTo = facts.filter((fact) => fact.id <= read).at(-1)?.id ?? 0
 
-  return { project: room.project, side, participants, facts, asks, questionCounts, checkedUpTo }
+  return { project: room.project, side, participants: room.participants, facts, openQuestions, checkedUpTo }
 }
