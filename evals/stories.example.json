@@ -1,0 +1,15 @@
+[
+  {
+    "id": 1,
+    "title": "A made-up story: the biscuit shop",
+    "failure_type": "Vocabulary gap",
+    "expect": "gap",
+    "context": "A made-up biscuit brand hires an agency to build a website and online shop.",
+    "agreed": "A new website and shop for a fixed fee of 60k, in twelve weeks.",
+    "client_private": "Everything is included: site, shop, photography and copywriting. There is no more money.",
+    "agency_private": "The fee covers design and build. Photography and copywriting are extra.",
+    "unknowns": "Who supplies the photos and the words, and who pays for them.",
+    "intervention_question": "When you say everything, what do you picture being handed over on launch day?",
+    "signal": "One side says everything and the other lists what the fee covers."
+  }
+]

@@ -59,6 +59,14 @@ All from the repo root.
 
 `persona-harnesses/` holds the three persona harnesses (client, agency, and delivery, procurement and finance as one) as plain markdown, with the shared wrapper and report format in its `README.md`. Each is written as AIM: Actor, Instructions, Mission. Samira owns the three persona files and `mother-agent.md`. Ben owns the shared wrapper, the report format and how they are wired in, so don't change those when asked to edit a persona. Each one reads what both sides have said and reports to the main brain. They are wired in: the Worker bundles these files as they are, so editing a persona file changes what that harness does on the next deploy, with no code change. The `##` headings (Actor, Instructions, Mission) are checked by a test.
 
+## Evals
+
+`evals/run.mjs` tests the three persona agents and the mother agent against project stories. For each story Claude plays the agency and the client, each knowing only its own private expectation, and both talk to the real coach on the local dev server. A judge then says whether the persona agents spotted the story's hidden gap, whether the mother agent asked a question that would surface it, and counts double questions and leaks from one side to the other.
+
+- Run `pnpm dev`, then `node --env-file=workers/api/.dev.vars evals/run.mjs` (add story numbers to run only some).
+- The stories come from the Superthread "Day 15 - project stories" page and live in `evals/stories.json`, which git ignores along with `evals/results/`: some stories are real. `evals/stories.example.json` shows the shape with a made-up one.
+- A full run of ten stories is about 310 Claude calls.
+
 ## The problem
 
 Expectation Manager
