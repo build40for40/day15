@@ -21,6 +21,17 @@
   --orange: #ffae6b;
   --coral: #ff9c91;
   --crack: #fff4e6;
+  /* Names the onboarding uses, mapped onto the palette above. */
+  --paper: var(--midnight);
+  --card: var(--midnight-2);
+  --ink: var(--text);
+  --muted: var(--dim);
+  --accent: var(--gold);
+  --on-accent: var(--midnight);
+  --danger: var(--coral);
+  --agency: var(--teal);
+  --client: var(--orange);
+  --coach: var(--coral);
   --serif: 'Spectral', Georgia, 'Times New Roman', serif;
   --sans: 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }

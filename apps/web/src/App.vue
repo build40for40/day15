@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 
-import { createTeam, getSession, type Project, type Team } from './api'
+import { getSession, type Project, type Team } from './api'
 import { currentUser, signIn, signOut } from './auth'
-import NameForm from './NameForm.vue'
+import OnboardingFlow from './OnboardingFlow.vue'
 import ProjectWorkspace from './ProjectWorkspace.vue'
 import SignInScreen from './SignInScreen.vue'
 
@@ -11,7 +11,6 @@ const loading = ref(true)
 const signedIn = ref(false)
 const team = ref<Team | null>(null)
 const projects = ref<Project[]>([])
-const busy = ref(false)
 const error = ref('')
 
 const message = (caught: unknown) => (caught instanceof Error ? caught.message : 'Something went wrong.')
@@ -31,16 +30,9 @@ onMounted(async () => {
   }
 })
 
-async function makeTeam(name: string) {
-  busy.value = true
-  error.value = ''
-  try {
-    team.value = (await createTeam(name)).team
-  } catch (caught) {
-    error.value = message(caught)
-  } finally {
-    busy.value = false
-  }
+function finishOnboarding(madeTeam: Team, project: Project) {
+  team.value = madeTeam
+  projects.value = [project]
 }
 </script>
 
@@ -64,17 +56,10 @@ async function makeTeam(name: string) {
     <SignInScreen v-else-if="!signedIn" @sign-in="signIn()" />
 
     <template v-else>
-      <NameForm
-        v-if="!team"
-        heading="First, name your team"
-        label="Team name"
-        placeholder="Your agency"
-        submit-label="Create team"
-        :busy="busy"
-        @submit="makeTeam"
-      />
+      <OnboardingFlow v-if="!team || !projects.length" :team="team" @finish="finishOnboarding" />
 
       <ProjectWorkspace v-else :initial-projects="projects" />
+
 
       <p class="warning">
         Heads up: what people tell the coach is shared with both sides by default. Tell the coach "keep this
