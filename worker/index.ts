@@ -1,7 +1,7 @@
 import { createAnthropic } from '@ai-sdk/anthropic'
-import { createTextStreamResponse, Output, streamText, toTextStream } from 'ai'
+import { generateText, Output } from 'ai'
 
-import { coachReplySchema, coachRequestSchema, partySchema } from '../src/coach/schema'
+import { brainReplySchema, coachRequestSchema, partySchema, type CoachReply } from '../src/coach/schema'
 import type { ProjectRoom } from './project-room'
 import { instructions, messages } from './prompt'
 import { mySide } from './room'
@@ -34,6 +34,10 @@ export default {
 
     const room = env.ROOMS.getByName(id)
     if (request.method === 'POST' && action === 'coach') return coach(request, env, room)
+    if (request.method === 'GET' && action === 'brain') {
+      const state = await room.read()
+      return state ? Response.json(state.sides) : noProject()
+    }
     if (request.method === 'GET') {
       const party = partySchema.safeParse(action)
       const state = party.success ? await room.read() : null
@@ -61,15 +65,21 @@ async function coach(request: Request, env: Env, room: DurableObjectStub<Project
     apiKey: env.ANTHROPIC_API_KEY,
     headers: env.ANTHROPIC_WORKSPACE_ID ? { 'anthropic-workspace-id': env.ANTHROPIC_WORKSPACE_ID } : undefined,
   })
-  const result = streamText({
-    model: anthropic(MODEL),
-    instructions: instructions(party, state),
-    messages: messages(side),
-    output: Output.object({ schema: coachReplySchema, name: 'question' }),
-    providerOptions: { anthropic: { effort: 'low', fallbacks: 'default' } },
-    // The default handler logs the whole request, which holds what people typed.
-    onError: ({ error }) => console.error('Coach failed:', error instanceof Error ? error.name : 'Unknown error'),
-  })
-
-  return createTextStreamResponse({ stream: toTextStream({ stream: result.stream }) })
+  try {
+    // Not streamed: the brain's reasoning can mention the other side, so it never leaves the Worker.
+    const { output } = await generateText({
+      model: anthropic(MODEL),
+      instructions: instructions(party, state),
+      messages: messages(side),
+      output: Output.object({ schema: brainReplySchema, name: 'question' }),
+      providerOptions: { anthropic: { effort: 'low', fallbacks: 'default' } },
+    })
+    const { lens, question, why, rationale } = output
+    await room.pend(party, { lens, question, rationale })
+    return Response.json({ lens, question, why } satisfies CoachReply)
+  } catch (error) {
+    // Only the name: the full error holds the request, which holds what people typed.
+    console.error('Coach failed:', error instanceof Error ? error.name : 'Unknown error')
+    return new Response('The coach lost its thread. Try that again.', { status: 502 })
+  }
 }

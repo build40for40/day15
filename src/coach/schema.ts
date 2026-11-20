@@ -27,11 +27,28 @@ export const coachRequestSchema = z.object({
   turn: turnSchema.optional(),
 })
 
-/** What the coach streams back. `lens` is the hat the brain chose, and is never shown. */
+/** What the page gets back. `lens` is the hat the brain chose, and is never shown. */
 export const coachReplySchema = z.object({
   lens,
   question: z.string(),
   why: z.string(),
+})
+
+/** What the brain writes. `rationale` stays on the server: it can mention what the other side said. */
+export const brainReplySchema = z.object({
+  rationale: z.string(),
+  ...coachReplySchema.shape,
+})
+
+/** The behind-the-scenes view: both sides, with the hat and the reasoning behind every question. */
+const brainSideSchema = z.object({
+  project: z.string(),
+  turns: z.array(turnSchema.extend({ rationale: z.string().optional() })),
+  pending: z.object({ lens, question: z.string(), rationale: z.string() }).optional(),
+})
+export const brainViewSchema = z.object({
+  agency: brainSideSchema.optional(),
+  client: brainSideSchema.optional(),
 })
 
 /** One side's half of a project. */
@@ -50,3 +67,5 @@ export type CoachRequest = z.infer<typeof coachRequestSchema>
 export type CoachReply = z.infer<typeof coachReplySchema>
 export type Side = z.infer<typeof sideSchema>
 export type MySide = z.infer<typeof mySideSchema>
+export type BrainReply = z.infer<typeof brainReplySchema>
+export type BrainView = z.infer<typeof brainViewSchema>

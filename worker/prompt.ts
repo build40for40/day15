@@ -1,7 +1,7 @@
 import { LENS_IDS } from '../src/coach/lenses'
-import { OTHER_SIDE, type Party, type Side } from '../src/coach/schema'
+import { OTHER_SIDE, type Party } from '../src/coach/schema'
 import { PERSONAS } from './personas'
-import type { Room } from './room'
+import type { Room, RoomSide } from './room'
 
 function hats(party: Party) {
   return LENS_IDS.map((id) => {
@@ -16,13 +16,13 @@ function hats(party: Party) {
   }).join('\n\n')
 }
 
-function captured(side: Side | undefined) {
+function captured(side: RoomSide | undefined) {
   if (!side) return 'They have not spoken to you yet.'
   const turns = side.turns.map((turn) => `- [${turn.lens}] You asked: ${turn.question}\n  They said: ${turn.answer}`)
   return [`Their description of the project: ${side.project}`, ...turns].join('\n')
 }
 
-function hatsWorn(side: Side | undefined) {
+function hatsWorn(side: RoomSide | undefined) {
   if (!side?.turns.length) return 'none yet'
   return side.turns.map((turn) => turn.lens).join(', ')
 }
@@ -61,13 +61,16 @@ export function instructions(party: Party, room: Room) {
       `or a stretch, and what happens if things go wrong. Be soft, friendly and a little funny, like a good mediator. ` +
       `Plain UK English, no corporate language, no dashes mid-sentence.`,
 
-    `Reply with "lens" set to the hat you chose, "question" of one or two short sentences, and "why" as one short ` +
-      `sentence on why it is worth asking, which must not mention hats or the ${other} side's answers.`,
+    `Reply with "rationale" first: two or three plain sentences for the team running this, never shown to either ` +
+      `side. Say what you noticed in what the two sides have told you, which of the four choosing rules applied, ` +
+      `and why this hat and this question. Here you may refer to what the ${other} side said. ` +
+      `Then "lens" set to the hat you chose, "question" of one or two short sentences, and "why" as one short ` +
+      `sentence for the person on why it is worth asking, which must not mention hats or the ${other} side's answers.`,
   ].join('\n\n')
 }
 
 /** This side's own conversation as chat messages. It always ends on something the person said. */
-export function messages(side: Side) {
+export function messages(side: RoomSide) {
   return [
     { role: 'user' as const, content: `Here is the project, in my words:\n\n${side.project}` },
     ...side.turns.flatMap((turn) => [

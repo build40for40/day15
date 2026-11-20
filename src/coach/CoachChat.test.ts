@@ -6,24 +6,13 @@ import type { MySide } from './schema'
 
 afterEach(() => vi.unstubAllGlobals())
 
-function streamed(value: unknown) {
-  const body = new ReadableStream({
-    start(controller) {
-      const encoder = new TextEncoder()
-      for (const piece of JSON.stringify(value).match(/.{1,8}/g) ?? []) controller.enqueue(encoder.encode(piece))
-      controller.close()
-    },
-  })
-  return new Response(body, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } })
-}
-
 /** A fetch that answers the first GET with `mine` and each coach POST with the next reply. */
 function api(mine: MySide, replies: unknown[]) {
   const posts: unknown[] = []
   const fetch = vi.fn((_url: string, init?: RequestInit) => {
     if (init?.method !== 'POST') return Promise.resolve(Response.json(mine))
     posts.push(JSON.parse(init.body as string))
-    return Promise.resolve(streamed(replies[posts.length - 1]))
+    return Promise.resolve(Response.json(replies[posts.length - 1]))
   })
   vi.stubGlobal('fetch', fetch)
   return { fetch, posts }

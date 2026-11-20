@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import type { IncomingMessage, ServerResponse } from 'node:http'
+import type { IncomingMessage } from 'node:http'
 
 import type { Plugin } from 'vite'
 
@@ -9,7 +9,8 @@ const API = '/day15/api'
 
 interface FakeSide {
   project: string
-  turns: unknown[]
+  turns: Record<string, unknown>[]
+  pending?: { lens: string; question: string; rationale: string }
 }
 
 /** Projects live in memory and vanish when Vite restarts. */
@@ -46,16 +47,6 @@ async function readBody(req: IncomingMessage) {
   return Buffer.concat(chunks).toString('utf8')
 }
 
-async function streamJson(res: ServerResponse, value: unknown) {
-  res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' })
-  const text = JSON.stringify(value)
-  for (let index = 0; index < text.length; index += 12) {
-    res.write(text.slice(index, index + 12))
-    await wait(30)
-  }
-  res.end()
-}
-
 /** `npm run fake`: stands in for the Worker so the page clicks through with no key and no wrangler. */
 export function fakeApi(): Plugin {
   return {
@@ -79,25 +70,34 @@ export function fakeApi(): Plugin {
         }
 
         const room = id ? rooms.get(id) : undefined
+        if (room && req.method === 'GET' && action === 'brain') return json(room)
+
         if (room && req.method === 'GET' && (action === 'agency' || action === 'client')) {
           const other = action === 'agency' ? 'client' : 'agency'
-          return json({ ...(room[action] ?? { project: '', turns: [] }), otherSideStarted: Boolean(room[other]) })
+          const side = room[action]
+          return json({
+            project: side?.project ?? '',
+            turns: (side?.turns ?? []).map(({ lens, question, answer }) => ({ lens, question, answer })),
+            otherSideStarted: Boolean(room[other]),
+          })
         }
 
         if (room && req.method === 'POST' && action === 'coach') {
-          const body = JSON.parse(await readBody(req)) as { party: 'agency' | 'client'; project: string; turn?: unknown }
+          const body = JSON.parse(await readBody(req)) as {
+            party: 'agency' | 'client'
+            project: string
+            turn?: Record<string, unknown>
+          }
           const side = (room[body.party] ??= { project: body.project, turns: [] })
-          if (body.turn) side.turns.push(body.turn)
+          if (body.turn) side.turns.push({ ...body.turn, rationale: side.pending?.rationale })
           // The fake brain just takes the hats in turn, counting both sides' answers.
           const asked = (room.agency?.turns.length ?? 0) + (room.client?.turns.length ?? 0)
           const lens = LENS_IDS[asked % LENS_IDS.length]!
           const questions = QUESTIONS[lens]!
+          const question = `[fake] ${questions[side.turns.length % questions.length]}`
+          side.pending = { lens, question, rationale: `[fake] It was the ${lens} hat's turn. A real brain would explain itself here.` }
           await wait(400)
-          return streamJson(res, {
-            lens,
-            question: `[fake] ${questions[side.turns.length % questions.length]}`,
-            why: 'This is the fake coach, so the reason is canned too.',
-          })
+          return json({ lens, question, why: 'This is the fake coach, so the reason is canned too.' })
         }
 
         res.writeHead(404)

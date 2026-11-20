@@ -1,7 +1,7 @@
 import { DurableObject } from 'cloudflare:workers'
 
 import type { Party, Turn } from '../src/coach/schema'
-import { emptyRoom, record, type Room } from './room'
+import { emptyRoom, pend, record, type Pending, type Room } from './room'
 
 /** One per project. Holds what both sides have told the coach. */
 export class ProjectRoom extends DurableObject {
@@ -20,5 +20,10 @@ export class ProjectRoom extends DurableObject {
     const next = record(room, party, project, turn)
     await this.ctx.storage.put('room', next)
     return next
+  }
+
+  async pend(party: Party, pending: Pending): Promise<void> {
+    const room = await this.read()
+    if (room) await this.ctx.storage.put('room', pend(room, party, pending))
   }
 }

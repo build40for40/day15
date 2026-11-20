@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { instructions, messages } from './prompt'
-import { emptyRoom, mySide, record } from './room'
+import { emptyRoom, mySide, pend, record } from './room'
 
 const turn = { lens: 'cto' as const, question: 'What does done look like?', answer: 'It is live by March.' }
 
@@ -25,6 +25,7 @@ describe('coach prompt', () => {
     expect(text).toContain('Hats worn so far with the agency side: cto.')
     expect(text).toContain('Hats worn so far with the client side, in order: none yet.')
     expect(text).toContain('Never quote it')
+    expect(text).toContain('Reply with "rationale" first')
   })
 
   it("sends only this side's own conversation as messages, ending on their last answer", () => {
@@ -40,12 +41,29 @@ describe('room', () => {
   it("keeps a side's first description and adds its turns", () => {
     let room = record(emptyRoom(), 'client', 'First words.')
     room = record(room, 'client', 'Different words.', turn)
-    expect(room.sides.client).toEqual({ project: 'First words.', turns: [turn] })
+    expect(room.sides.client).toEqual({ project: 'First words.', turns: [{ ...turn, rationale: undefined }] })
   })
 
   it("never hands one side the other's words", () => {
     const room = record(emptyRoom(), 'agency', 'Agency secrets.', turn)
     expect(mySide(room, 'client')).toEqual({ project: '', turns: [], otherSideStarted: true })
     expect(mySide(room, 'agency').otherSideStarted).toBe(false)
+  })
+
+  it("files the brain's reasoning with the answer and keeps it away from both sides", () => {
+    let room = record(emptyRoom(), 'agency', 'A fictional biscuit site.')
+    room = pend(room, 'agency', { lens: 'cto', question: turn.question, rationale: 'The client expects more.' })
+    expect(room.sides.agency!.pending!.rationale).toBe('The client expects more.')
+
+    room = record(room, 'agency', 'A fictional biscuit site.', turn)
+    expect(room.sides.agency!.pending).toBeUndefined()
+    expect(room.sides.agency!.turns[0]!.rationale).toBe('The client expects more.')
+    expect(JSON.stringify(mySide(room, 'agency'))).not.toContain('The client expects more.')
+  })
+
+  it('keeps the waiting question when a side only reloads', () => {
+    let room = record(emptyRoom(), 'client', 'A fictional app.')
+    room = pend(room, 'client', { lens: 'cfo', question: 'Who pays?', rationale: 'Nobody said.' })
+    expect(record(room, 'client', 'A fictional app.').sides.client!.pending!.question).toBe('Who pays?')
   })
 })

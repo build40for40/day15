@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 
+import BrainView from './coach/BrainView.vue'
 import CoachChat from './coach/CoachChat.vue'
 import { OTHER_SIDE, PARTIES, type Party } from './coach/schema'
 
 const params = new URLSearchParams(window.location.search)
 const projectId = ref(params.get('p') ?? '')
 const party = ref(PARTIES.find((option) => option === params.get('as')))
+// The team's behind-the-scenes view. Nothing on the page links to it.
+const brain = params.get('as') === 'brain'
 const failed = ref(false)
 const copied = ref(false)
 
@@ -38,10 +41,17 @@ async function copyLink() {
 </script>
 
 <template>
-  <main>
+  <main :class="{ wide: brain }">
     <h1>Expectation Manager</h1>
 
-    <template v-if="projectId && party && otherSide">
+    <template v-if="projectId && brain">
+      <p class="lede">
+        Behind the scenes: which hat the coach had on for each question, and why. Neither side ever sees this.
+      </p>
+      <BrainView :project-id="projectId" />
+    </template>
+
+    <template v-else-if="projectId && party && otherSide">
       <p class="lede">
         You're here for the <strong>{{ party }}</strong> side. The coach asks you things worth settling now, before
         anyone spends the budget finding out the hard way.
@@ -82,6 +92,10 @@ main {
   max-width: 40rem;
   margin: 0 auto;
   padding: 1.5rem 1rem 3rem;
+}
+
+main.wide {
+  max-width: 70rem;
 }
 
 h1 {
