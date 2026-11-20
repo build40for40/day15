@@ -66,7 +66,7 @@ const details = (): PersonDetails => ({
 
 header h2 {
   margin: 0;
-  font-size: 1.25rem;
+  font: 300 30px/1.15 var(--serif);
   overflow-wrap: anywhere;
 }
 
@@ -76,7 +76,8 @@ header p {
 
 h3 {
   margin: 0 0 0.5rem;
-  font-size: 1rem;
+  font: 600 13px var(--sans);
+  color: var(--dim);
 }
 
 .remove {

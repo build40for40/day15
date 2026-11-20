@@ -11,6 +11,7 @@ import {
   type PersonDetails,
   type Project,
 } from './api'
+import CircleView from './CircleView.vue'
 import NameForm from './NameForm.vue'
 import PeopleSidebar from './PeopleSidebar.vue'
 import PersonForm from './PersonForm.vue'
@@ -21,6 +22,7 @@ const props = defineProps<{ initialProjects: Project[] }>()
 const projects = ref<Project[]>(props.initialProjects)
 const currentId = ref<string | null>(projects.value[0]?.id ?? null)
 const selected = ref<number | 'add' | 'project' | null>(null)
+const view = ref<'circle' | 'people'>(projects.value[0]?.participants.length ? 'circle' : 'people')
 const addresses = reactive<Record<string, string>>({})
 const giveLink = ref(true)
 const busy = ref(false)
@@ -58,6 +60,7 @@ function choose(next: typeof selected.value) {
   error.value = ''
   giveLink.value = true
   selected.value = next
+  if (next !== null && next !== 'project') view.value = 'people'
 }
 
 function replace(updated: Participant) {
@@ -122,80 +125,125 @@ const remove = () =>
     <p v-if="error" class="error" role="alert">{{ error }}</p>
   </div>
 
-  <div v-else class="workspace">
-    <PeopleSidebar
-      :projects="projects"
-      :project="project"
-      :selected="selected"
-      @select="choose"
-      @add="choose('add')"
-      @switch-project="switchProject"
-      @new-project="choose('project')"
-    />
+  <div v-else class="project">
+    <div class="bar">
+      <label v-if="projects.length > 1" class="switch">
+        <span class="hint">Project</span>
+        <select :value="project.id" @change="switchProject(($event.target as HTMLSelectElement).value)">
+          <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
+        </select>
+      </label>
+      <h2 v-else>{{ project.name }}</h2>
+      <button type="button" class="quiet" @click="choose('project')">New project</button>
+      <div class="seg" role="group" aria-label="View">
+        <button type="button" :aria-pressed="view === 'circle'" @click="view = 'circle'">Circle</button>
+        <button type="button" :aria-pressed="view === 'people'" @click="view = 'people'">People {{ project.participants.length }}</button>
+      </div>
+    </div>
 
-    <section class="pane">
-      <section v-if="selected === 'add'" aria-labelledby="add-heading">
-        <h2 id="add-heading">Add a person</h2>
-        <p class="hint">Anyone involved counts, even if they'll never chat to the coach themselves.</p>
-        <PersonForm :initial="BLANK" submit-label="Add them" :busy="busy" lenses-follow-persona @submit="add">
-          <label class="check">
-            <input v-model="giveLink" type="checkbox" name="giveLink" />
-            Give them a link to the coach now
-          </label>
-        </PersonForm>
+    <CircleView v-if="view === 'circle'" :project-id="project.id" :people="project.participants" />
+
+    <div v-else class="workspace">
+      <PeopleSidebar :people="project.participants" :selected="selected" @select="choose" @add="choose('add')" />
+
+      <section class="pane">
+        <section v-if="selected === 'add'" aria-labelledby="add-heading">
+          <h3 id="add-heading">Add a person</h3>
+          <p class="hint">Anyone involved counts, even if they'll never chat to the coach themselves.</p>
+          <PersonForm :initial="BLANK" submit-label="Add them" :busy="busy" lenses-follow-persona @submit="add">
+            <label class="check">
+              <input v-model="giveLink" type="checkbox" name="giveLink" />
+              Give them a link to the coach now
+            </label>
+          </PersonForm>
+        </section>
+
+        <PersonPanel
+          v-else-if="person"
+          :key="person.id"
+          :person="person"
+          :project-name="project.name"
+          :address="addresses[addressKey(person.id)] ?? null"
+          :busy="busy"
+          @save="save"
+          @issue="issue"
+          @remove="remove"
+        />
+
+        <p v-else class="hint">Pick someone from the list to see their details, or add a person.</p>
+
+        <p v-if="error" class="error" role="alert">{{ error }}</p>
       </section>
-
-      <PersonPanel
-        v-else-if="person"
-        :key="person.id"
-        :person="person"
-        :project-name="project!.name"
-        :address="addresses[addressKey(person.id)] ?? null"
-        :busy="busy"
-        @save="save"
-        @issue="issue"
-        @remove="remove"
-      />
-
-      <p v-else class="hint">Pick someone from the list to see their details, or add a person.</p>
-
-      <p v-if="error" class="error" role="alert">{{ error }}</p>
-    </section>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .solo {
   display: grid;
-  gap: 0.75rem;
+  gap: 12px;
+  justify-items: start;
   max-width: 32rem;
+}
+
+.project {
+  display: grid;
+  gap: 20px;
+}
+
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+}
+
+.bar h2 {
+  margin: 0;
+  font: 300 clamp(26px, 3.6vw, 38px) / 1.1 var(--serif);
+  overflow-wrap: anywhere;
+}
+
+.switch {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.switch select {
+  font: 400 20px/1.2 var(--serif);
+  color: var(--lit);
+}
+
+.bar .seg {
+  margin-left: auto;
 }
 
 .workspace {
   display: grid;
-  gap: 1.5rem;
+  gap: 20px;
 }
 
 @media (min-width: 48rem) {
   .workspace {
-    grid-template-columns: 16rem minmax(0, 1fr);
+    grid-template-columns: 17rem minmax(0, 1fr);
     align-items: start;
   }
 }
 
 .pane {
   display: grid;
-  gap: 1rem;
+  gap: 16px;
   min-width: 0;
-  background: var(--card);
+  background: rgba(11, 18, 32, 0.7);
   border: 1px solid var(--line);
-  border-radius: 0.75rem;
-  padding: 1rem;
+  border-radius: 16px;
+  padding: 20px;
 }
 
-.pane h2 {
-  margin: 0;
-  font-size: 1.25rem;
+.pane h3 {
+  margin: 0 0 4px;
+  font: italic 300 24px/1.2 var(--serif);
 }
 
 .check {
