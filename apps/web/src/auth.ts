@@ -3,7 +3,7 @@ import { createClient } from '@workos-inc/authkit-js'
 type AuthClient = Awaited<ReturnType<typeof createClient>>
 export type AuthUser = NonNullable<ReturnType<AuthClient['getUser']>>
 
-const PRODUCTION_HOST = 'day15.build40for40.com'
+const PRODUCTION_HOST = 'a-line.build40for40.com'
 
 const CLIENT_IDS = {
   production: 'client_01M6E5ZDQ9XBYYE28XYN7H3XTJ',

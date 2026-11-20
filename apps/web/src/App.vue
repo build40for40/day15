@@ -47,7 +47,7 @@ async function makeTeam(name: string) {
 <template>
   <main>
     <header>
-      <h1>Expectation Manager</h1>
+      <h1>A-Line</h1>
       <p v-if="team" class="team muted">{{ team.name }}</p>
       <button v-if="signedIn" type="button" class="quiet" @click="signOut()">Sign out</button>
     </header>

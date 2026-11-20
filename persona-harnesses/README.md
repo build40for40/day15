@@ -12,6 +12,15 @@ Neither the agency nor the client ever sees a persona, its name or its report. T
 | `personas/procurement.md` | Procurement | The agreement, and the bad day |
 | `personas/delivery.md` | Delivery | The promise being buildable |
 
+## Drafts that are not wired in yet
+
+Two of Samira's files sit here for review. Nothing loads them, so they change nothing about how the app behaves.
+
+- [`mother-agent.md`](mother-agent.md): her AIM for the one voice people talk to, which is the role `coach.md` plays today. It adds the signals from the project stories, a priority matrix with High, Medium and Low ratings and an overall health reading, and a way to explain an issue to one side discreetly. It assumes each side's conversation is private, which the shared room does not do today.
+- [`personas/delivery-procurement-finance.md`](personas/delivery-procurement-finance.md): one persona covering what `cfo.md`, `delivery.md` and `procurement.md` cover between them, for a version with three lenses and not five.
+
+Whether to move to three lenses, and how much of the mother agent goes into `coach.md`, is still to be decided between Samira and Ben.
+
 ## Who owns what
 
 - **The five files in `personas/`** are Samira's. Each is one persona's Actor, Instructions and Mission, and nothing else. Changes to who a persona is, what it covers or what it asks go there.

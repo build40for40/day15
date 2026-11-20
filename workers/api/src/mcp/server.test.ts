@@ -18,7 +18,7 @@ async function setup() {
     runLensRounds: vi.fn(async () => {}),
   }
   const ctx = { waitUntil: vi.fn(), passThroughOnException: vi.fn(), props: {} } as unknown as ExecutionContext
-  const url = `https://day15.build40for40.com/mcp/${formatKey(FIXTURE_PROJECT.id, fixture.people.casey.secret)}`
+  const url = `https://a-line.build40for40.com/mcp/${formatKey(FIXTURE_PROJECT.id, fixture.people.casey.secret)}`
   const handleMcp = createHandleMcp(deps)
   let id = 0
   const rpc = async (method: string, params: Record<string, unknown> = {}) => {
@@ -47,7 +47,7 @@ describe('handleMcp', () => {
     const { env, ctx, handleMcp, people } = await setup()
     const wrongSecret = people.casey.secret.replace(/^./, (c) => (c === 'A' ? 'B' : 'A'))
     for (const path of [`/mcp/${formatKey(FIXTURE_PROJECT.id, wrongSecret)}`, '/mcp/not-a-key', '/mcp']) {
-      const response = await handleMcp(new Request(`https://day15.build40for40.com${path}`, { method: 'POST' }), env, ctx)
+      const response = await handleMcp(new Request(`https://a-line.build40for40.com${path}`, { method: 'POST' }), env, ctx)
       expect(response.status).toBe(404)
       expect(await response.text()).toBe('Not found')
     }

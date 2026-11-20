@@ -1,0 +1,18 @@
+[
+  {
+    "story": {
+      "id": 9,
+      "title": "The dashboard that was caught before signing",
+      "failure_type": "Vocabulary gap",
+      "expect": "gap",
+      "context": "A software firm and a client are about to sign a contract for a reporting tool.",
+      "agreed": "Reporting.",
+      "client_private": "Reporting means a live dashboard.",
+      "agency_private": "Reporting means monthly PDF reports.",
+      "unknowns": "A live dashboard would need data feeds that have to be identified and costed.",
+      "intervention_question": "Ask each side the same question separately about what reporting will include on delivery day, and compare the answers.",
+      "signal": "Different nouns for the same deliverable."
+    },
+    "error": "SyntaxError: Unexpected end of JSON input"
+  }
+]

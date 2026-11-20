@@ -1,0 +1,520 @@
+[
+  {
+    "story": {
+      "id": 6,
+      "title": "The project that looked quiet in the middle",
+      "failure_type": "New territory",
+      "expect": "gap",
+      "context": "A heritage luxury brand re-platforms its website with an agency that won the pitch on an unconventional argument.",
+      "agreed": "A new proposition, architecture and experience for the site, with a meaningful share of budget and attention going to checkout, delivery and aftercare, not only photography and layout.",
+      "client_private": "You expect the visible rhythm of a normal website project: steady design output you can see and react to.",
+      "agency_private": "The client will understand that the service work is slow and invisible until late.",
+      "unknowns": "There is no precedent in the category for treating checkout and service as brand work, and no benchmark for what good progress looks like along the way.",
+      "intervention_question": "What about this project has no precedent, and what will we both do when it feels uncomfortable?",
+      "signal": "A client who bought a different shape of work but still expects the usual rhythm of visible output."
+    },
+    "projectId": "ebba8d7d-59b2-46e4-8877-916f990d266a",
+    "room": {
+      "agency": {
+        "project": "We're rebuilding a heritage luxury brand's website from the ground up: the proposition, how the site is structured, and what it feels like to use. A good chunk of the budget and focus is going into checkout, delivery and aftercare, not just the photography and layout, because we argued that's where the brand really gets experienced.",
+        "turns": [
+          {
+            "lens": "agency",
+            "question": "For checkout, delivery and aftercare to feel the way you've argued they should, what has to be true on the client's side, outside the website itself, and who there has agreed to own it?",
+            "answer": "The client's operations have to be willing to change: logistics and carrier partners, the customer care team, returns and repair policy, and whoever controls stock and order systems. Honestly, I can't name one person on their side who has agreed to own that. We've agreed the scope and budget on paper, but I've been assuming the right people will engage as the work gets going.",
+            "rationale": "Took the question from the agency persona agent (priority 1). No fundamental conflict is reported, so the next rule is an unfollowed signal, and the strongest is something the project depends on with no owner or budget. The agency says delivery and aftercare are where the brand is experienced, which almost certainly relies on client operations outside the contract, and nobody has said who owns that."
+          },
+          {
+            "lens": "ops",
+            "question": "If the client's operations do not change, what exactly would you still deliver for checkout, delivery and aftercare, and would that count as done under what you have agreed on paper?",
+            "answer": "We'd still deliver the designed checkout flow, the delivery and aftercare screens, the order and returns communications, and the content and service principles behind them. On paper I think that counts as done, since the scope is the site experience, but I haven't checked the wording closely enough to be sure it doesn't promise anything operational. If operations don't change, what we ship would look right and not feel the way we argued in the pitch.",
+            "rationale": "Took the question from ops, as the agency persona has already been used and the strongest signal is a dependency with no owner or budget: the agency admitted client operations must change, nobody is named, and engagement is only assumed. Ops asks what the agency delivers if operations do not change, which is the sharpest way to test that assumption and the fallback. The client lens's question on measurable outcomes can wait."
+          },
+          {
+            "lens": "client",
+            "question": "Once the new site has been live for a few months, what will be different on an ordinary day for the client's business that tells you it worked?",
+            "answer": "I'd expect fewer \"where is my order\" contacts to customer care, fewer people dropping out at checkout, and returns and repairs being handled without staff improvising. I'd also hope customers start mentioning the delivery and aftercare experience unprompted. Honestly, we haven't agreed specific measures or targets for any of that, so right now it's my expectation rather than something we could point to.",
+            "rationale": "Questions from agency and ops have already been put, so the next is the client persona's priority 3 question. The client persona reports a fundamental conflict (client expects fewer service queries, which depends on operations nobody owns), and that comes first, but the agency side has only given the real goal and audience thinly. I am asking about the real aim in outcome terms, without revealing the client's service query hope, and it also tests the outcomes versus outputs signal."
+          }
+        ],
+        "pending": {
+          "lens": "client",
+          "question": "Have you read the signed scope and budget wording closely enough to say whether it describes only the designed site experience, or whether it could be read as promising changes to how the client's operations work?",
+          "rationale": "Took the question from the client persona (priority 1), though the ops persona asked something near-identical. Rule 1 applies: the fundamental conflict on whether operations will change, which the agency has already touched but not resolved. The agency has not checked what the paperwork says, and that decides what done means and whether the client could read it as promising more."
+        }
+      },
+      "client": {
+        "project": "We're re-platforming our website with an agency that won the pitch, and the job is a new proposition, structure and experience for the site. A meaningful part of the budget and attention is going to checkout, delivery and aftercare, not just the photography and layout.",
+        "turns": [
+          {
+            "lens": "client",
+            "question": "Once the new site has been live for a few months, what will be different on an ordinary day for your business that isn't true today?",
+            "answer": "Honestly, the site would look and feel like us, which it doesn't today, and customers would spend more time on it and buy more. I'd also hope for fewer queries about orders and deliveries reaching our customer service team, since that's part of why we're putting money into checkout and aftercare.",
+            "rationale": "Took the question from the client agent. No conflicts are fundamental, and the only workable conflict (rebuild vs re-platform) is not yet shown to be real. No dependency signals have been raised yet, but the client has described only outputs (new proposition, structure, experience), which is the outcomes versus outputs signal. So I used the client agent's priority 1 question, which also covers the missing real goal."
+          },
+          {
+            "lens": "ops",
+            "question": "Who in your business has the authority to change how deliveries, returns and customer care work, and have they seen this brief?",
+            "answer": "Delivery and returns sit with our operations director, and customer care reports into them, so they would have that authority. I don't think they've seen the brief beyond a summary, and I hadn't considered that they would need to commit to anything before the agency starts. I assumed the agency would work within how we operate today.",
+            "note": "Fewer order and delivery queries usually come from what happens after the click, such as carrier handling, stock accuracy and returns rules, and a new site mostly just shows those. In projects like this, a better checkout in front of an unchanged back end tends to move the problem rather than remove it. If you want to argue for this internally, you could say that the fewer-queries result needs someone with authority over those areas to commit before work starts, and the figure to go and find is how many order and delivery queries your customer service team handles today.",
+            "rationale": "Took the question from the ops agent's priority 1 (the client agent has already been used once, so this avoids a third in a row), which matches the client agent's own priority 1 and the agency's. The fundamental conflict comes first: the agency says no one on the client side owns operational change, and the client linked fewer queries to checkout spend without mentioning operations. I will educate briefly as general knowledge, without saying the agency raised it, then ask who could make those changes."
+          },
+          {
+            "lens": "ops",
+            "question": "If you showed your operations director the full brief and asked them to help shape delivery, returns and customer care, how do you think they would respond, and by when could they give you an answer?",
+            "answer": "I honestly don't know how they'd respond. I'd guess they'd be wary of an agency touching how their operation runs, but open if it meant fewer queries reaching their team. If I got it to them this week, I'd expect an answer within a couple of weeks, though their diary is tight and I haven't asked them.",
+            "rationale": "Took the question from the ops persona agent (priority 1). The fundamental conflict on operational change is now out in the open: the client assumed the agency works within current operations, while the agency assumes operations will change and has no named owner. Rule 1 applies, so I'm asking what would bring the operations director's real position out. I am not educating again, since I already covered it last turn."
+          }
+        ],
+        "pending": {
+          "lens": "client",
+          "question": "Which one number would your boss need to see move, from what figure today and by roughly when, to say this project had worked?",
+          "rationale": "Taking the client persona's priority 1 question. The operations dependency questions (ops, ops) are now covered, and the client has a plan for the operations director. Next is success measures: the client persona's priority 1, a thin signal where 'buy more' and 'spend more time' have no baseline or date, which also feeds a workable conflict with the agency, who have no agreed targets either. The client persona has not been asked for two turns, so it is also the least heard from."
+        }
+      },
+      "reports": {
+        "client": {
+          "requirements": [
+            {
+              "requirement": "Checkout, delivery and aftercare must feel the way the pitch argued, which depends on client operations (logistics and carriers, customer care, returns and repair policy, stock and order systems) changing, not only on site design.",
+              "from": "agency"
+            },
+            {
+              "requirement": "Someone on the client side with authority over operations must agree to own the operational change before the work depends on it.",
+              "from": "agency"
+            },
+            {
+              "requirement": "Fewer 'where is my order' and delivery/order queries reaching customer care.",
+              "from": "both"
+            },
+            {
+              "requirement": "The site must look and feel like the brand, which it does not today.",
+              "from": "client"
+            },
+            {
+              "requirement": "Customers should spend more time on the site and buy more.",
+              "from": "client"
+            },
+            {
+              "requirement": "Fewer drop-outs at checkout, and returns and repairs handled without staff improvising.",
+              "from": "agency"
+            },
+            {
+              "requirement": "The operations director, who owns delivery, returns and customer care, must see the full brief and respond; the client expects an answer in about two weeks if it is sent this week.",
+              "from": "client"
+            },
+            {
+              "requirement": "The agency must work within how the client operates today, with no operational change needed.",
+              "from": "client"
+            }
+          ],
+          "coverage": [
+            {
+              "topic": "The real goal",
+              "agency": "thin",
+              "client": "thin"
+            },
+            {
+              "topic": "Who it is for",
+              "agency": "missing",
+              "client": "missing"
+            },
+            {
+              "topic": "Success you can point at",
+              "agency": "thin",
+              "client": "thin"
+            },
+            {
+              "topic": "Failure",
+              "agency": "thin",
+              "client": "missing"
+            },
+            {
+              "topic": "Must-have, nice-to-have, stretch",
+              "agency": "missing",
+              "client": "missing"
+            },
+            {
+              "topic": "Who has to be happy",
+              "agency": "thin",
+              "client": "thin"
+            },
+            {
+              "topic": "The personal stake",
+              "agency": "missing",
+              "client": "missing"
+            },
+            {
+              "topic": "The fixed points",
+              "agency": "missing",
+              "client": "missing"
+            }
+          ],
+          "conflicts": [
+            {
+              "topic": "Whether operations must change",
+              "agency_said": "The client's operations have to be willing to change: logistics and carrier partners, the customer care team, returns and repair policy, and whoever controls stock and order systems.",
+              "client_said": "I assumed the agency would work within how we operate today.",
+              "severity": "fundamental",
+              "note": "The agency's pitch promise depends on operational change. The client has not asked the operations director, who has not seen the full brief. Without that change, the agency says the result would 'look right and not feel the way we argued in the pitch'."
+            },
+            {
+              "topic": "What the project is for",
+              "agency_said": "Rebuild proposition, structure and experience, with a heavy focus on checkout, delivery and aftercare as where the brand is really experienced.",
+              "client_said": "The site would look and feel like us... customers would spend more time on it and buy more.",
+              "severity": "workable",
+              "note": "The agency frames the goal as an experience across operations. The client frames it as brand look and feel plus sales. Both mention fewer order queries, but the client's lead outcome is commercial and visual."
+            },
+            {
+              "topic": "Success measures",
+              "agency_said": "We haven't agreed specific measures or targets... it's my expectation rather than something we could point to.",
+              "client_said": "customers would spend more time on it and buy more",
+              "severity": "workable",
+              "note": "Neither side has a baseline, a number or a date. The client's 'buy more' and 'more time' are not checkable, and the agency lists different signals (checkout drop-out, unprompted mentions)."
+            }
+          ],
+          "questions": [
+            {
+              "ask": "client",
+              "find_out": "What specific number the client's boss needs to see move, from what current figure, and by what date, to call this project a success.",
+              "because": "The client's success measures are 'buy more' and 'spend more time' with no baseline or date, and the agency has no agreed targets either, so nobody could check whether it worked.",
+              "priority": 1
+            },
+            {
+              "ask": "client",
+              "find_out": "Who else besides the operations director and the client's boss can approve, veto or sink this project, and whether they have seen the brief.",
+              "because": "Only the operations director has surfaced, and only by accident. No one has named the full list of people who must be happy.",
+              "priority": 2
+            },
+            {
+              "ask": "agency",
+              "find_out": "Who the agency believes the site is for, and what that is based on.",
+              "because": "Neither side has described the customer, so there is no way to tell whether they picture the same people or whether the claims rest on evidence or hunch.",
+              "priority": 2
+            }
+          ],
+          "education": [
+            {
+              "for": "client",
+              "topic": "Why the operations director must commit before the work starts",
+              "why_it_matters": "The client wants fewer order and delivery queries and a brand-true experience. Those outcomes depend on delivery, returns and customer care, which the operations director controls.",
+              "arguments": [
+                "A new checkout and aftercare design cannot reduce 'where is my order' contacts if carriers, stock and order systems stay as they are.",
+                "Raising it now costs a conversation; finding out after the budget is spent costs the outcome the client is paying for.",
+                "The operations director is more likely to back the work if shaping it is their choice and it reduces their team's workload."
+              ]
+            }
+          ],
+          "done": false
+        },
+        "agency": {
+          "requirements": [
+            {
+              "requirement": "Operations (logistics and carrier partners, customer care, returns and repair policy, stock and order systems) must be willing to change for checkout, delivery and aftercare to feel as pitched",
+              "from": "agency"
+            },
+            {
+              "requirement": "A named owner on the client side who has agreed to own operational change for delivery, returns and customer care",
+              "from": "agency"
+            },
+            {
+              "requirement": "Delivery, returns and customer care authority sits with the client's operations director, who has seen only a summary of the brief",
+              "from": "client"
+            },
+            {
+              "requirement": "Checkout, delivery and aftercare get a meaningful share of budget and attention, beyond photography and layout",
+              "from": "both"
+            },
+            {
+              "requirement": "Fewer order and delivery queries reaching customer care is an expected outcome of the work",
+              "from": "both"
+            },
+            {
+              "requirement": "Without operational change the agency would still ship the designed checkout flow, delivery and aftercare screens, order and returns communications, and content and service principles",
+              "from": "agency"
+            },
+            {
+              "requirement": "Client expects the agency to work within current operations",
+              "from": "client"
+            }
+          ],
+          "coverage": [
+            {
+              "topic": "Creative freedom",
+              "agency": "missing",
+              "client": "missing"
+            },
+            {
+              "topic": "Feedback",
+              "agency": "missing",
+              "client": "missing"
+            },
+            {
+              "topic": "Sign-off and decision maker",
+              "agency": "missing",
+              "client": "missing"
+            },
+            {
+              "topic": "Change",
+              "agency": "missing",
+              "client": "missing"
+            },
+            {
+              "topic": "Access",
+              "agency": "missing",
+              "client": "missing"
+            },
+            {
+              "topic": "How they like to work",
+              "agency": "missing",
+              "client": "missing"
+            },
+            {
+              "topic": "What the agency will not do",
+              "agency": "thin",
+              "client": "missing"
+            },
+            {
+              "topic": "What could sink it from outside the brief",
+              "agency": "settled",
+              "client": "thin"
+            }
+          ],
+          "conflicts": [
+            {
+              "topic": "Operational change as a condition of success",
+              "agency_said": "The client's operations have to be willing to change: logistics and carrier partners, the customer care team, returns and repair policy, and whoever controls stock and order systems.",
+              "client_said": "I assumed the agency would work within how we operate today.",
+              "severity": "fundamental",
+              "note": "The agency's pitched experience depends on operational change the client has not commissioned and does not expect to make. The operations director has not seen the full brief and nobody has agreed to own it. Largely a knowledge gap rather than opposed interests."
+            },
+            {
+              "topic": "What counts as done",
+              "agency_said": "On paper I think that counts as done, since the scope is the site experience, but I haven't checked the wording closely enough.",
+              "client_said": "I'd also hope for fewer queries about orders and deliveries reaching our customer service team, since that's part of why we're putting money into checkout and aftercare.",
+              "severity": "workable",
+              "note": "The agency may deliver screens that look right while the client expects fewer queries. Success measures are not agreed and the scope wording is unchecked."
+            }
+          ],
+          "questions": [
+            {
+              "ask": "client",
+              "find_out": "What the client would need to know, and in what form, to take the case for operational change to the operations director and any budget holders",
+              "because": "The client had not considered that operations must commit, so they need what it takes to argue it internally before work starts",
+              "priority": 1
+            },
+            {
+              "ask": "client",
+              "find_out": "Who gives feedback and who has final sign-off on the work, and how long each takes",
+              "because": "No decision maker has been named by either side, and this must never go unnamed",
+              "priority": 2
+            },
+            {
+              "ask": "agency",
+              "find_out": "Who at the agency expects to give feedback and sign-off, how many feedback rounds are fair, and what happens when something unplanned is asked for",
+              "because": "Rounds, change handling and decision maker are unstated and are required for done",
+              "priority": 3
+            }
+          ],
+          "education": [
+            {
+              "for": "client",
+              "topic": "Why checkout, delivery and aftercare depend on operational change",
+              "why_it_matters": "The client wants fewer order queries and more purchases, and screens alone cannot deliver that if carriers, returns policy and order systems stay as they are.",
+              "arguments": [
+                "A redesigned flow can only promise what operations can fulfil, so unchanged operations cap the results",
+                "Fewer 'where is my order' contacts needs order and delivery status data and carrier cooperation, not just new screens",
+                "Getting the operations director involved before work starts is cheaper than discovering after launch that the experience does not match the brand"
+              ]
+            }
+          ],
+          "done": false
+        },
+        "ops": {
+          "requirements": [
+            {
+              "requirement": "Checkout, delivery and aftercare must receive a meaningful share of budget and attention, beyond photography and layout",
+              "from": "both"
+            },
+            {
+              "requirement": "Operations (logistics and carrier partners, customer care, returns and repair policy, stock and order systems) must be willing to change for the agency's checkout, delivery and aftercare design to work as argued",
+              "from": "agency"
+            },
+            {
+              "requirement": "A named person on the client side must own operational change; the operations director holds authority over delivery, returns and customer care, but has seen only a summary of the brief",
+              "from": "client"
+            },
+            {
+              "requirement": "Agency deliverables if operations do not change: designed checkout flow, delivery and aftercare screens, order and returns communications, content and service principles",
+              "from": "agency"
+            },
+            {
+              "requirement": "Success after a few months should show as fewer order and delivery queries reaching customer care",
+              "from": "both"
+            },
+            {
+              "requirement": "Success should also show as fewer checkout drop-outs and more buying, but no measures or targets are agreed",
+              "from": "both"
+            },
+            {
+              "requirement": "The site must look and feel like the client's brand",
+              "from": "client"
+            },
+            {
+              "requirement": "The client expects the agency to work within current operations",
+              "from": "client"
+            }
+          ],
+          "coverage": [
+            {
+              "topic": "Done",
+              "agency": "thin",
+              "client": "thin"
+            },
+            {
+              "topic": "Jargon",
+              "agency": "thin",
+              "client": "thin"
+            },
+            {
+              "topic": "Hard parts and dependencies",
+              "agency": "settled",
+              "client": "thin"
+            },
+            {
+              "topic": "Timeline",
+              "agency": "missing",
+              "client": "missing"
+            },
+            {
+              "topic": "After launch",
+              "agency": "missing",
+              "client": "missing"
+            },
+            {
+              "topic": "Approvals",
+              "agency": "missing",
+              "client": "missing"
+            },
+            {
+              "topic": "Who can change scope",
+              "agency": "missing",
+              "client": "thin"
+            },
+            {
+              "topic": "What must be in writing",
+              "agency": "thin",
+              "client": "missing"
+            },
+            {
+              "topic": "Ownership and rules",
+              "agency": "missing",
+              "client": "missing"
+            },
+            {
+              "topic": "Disagreement",
+              "agency": "missing",
+              "client": "missing"
+            },
+            {
+              "topic": "What the price covers",
+              "agency": "thin",
+              "client": "missing"
+            },
+            {
+              "topic": "Budget firmness",
+              "agency": "missing",
+              "client": "missing"
+            },
+            {
+              "topic": "Contingency and cost of change",
+              "agency": "missing",
+              "client": "missing"
+            },
+            {
+              "topic": "Payment",
+              "agency": "missing",
+              "client": "missing"
+            },
+            {
+              "topic": "What gets cut",
+              "agency": "missing",
+              "client": "missing"
+            },
+            {
+              "topic": "The return",
+              "agency": "thin",
+              "client": "thin"
+            }
+          ],
+          "conflicts": [
+            {
+              "topic": "Operations change as a dependency",
+              "agency_said": "The client's operations have to be willing to change: logistics and carrier partners, the customer care team, returns and repair policy... I've been assuming the right people will engage as the work gets going.",
+              "client_said": "I assumed the agency would work within how we operate today.",
+              "severity": "fundamental",
+              "note": "The agency's pitch depends on operational change and the client expects none. The operations director has not seen the full brief. Starting now risks a site that looks right but does not feel as argued."
+            },
+            {
+              "topic": "What done means for checkout, delivery and aftercare",
+              "agency_said": "We'd still deliver the designed checkout flow, the delivery and aftercare screens... On paper I think that counts as done... what we ship would look right and not feel the way we argued in the pitch.",
+              "client_said": "I'd also hope for fewer queries about orders and deliveries reaching our customer service team, since that's part of why we're putting money into checkout and aftercare.",
+              "severity": "fundamental",
+              "note": "The agency would call design deliverables done. The client expects fewer order queries, which depends on operations. The contract wording is unchecked."
+            }
+          ],
+          "questions": [
+            {
+              "ask": "client",
+              "find_out": "Whether the operations director will see the full brief this week and give a yes or no on committing to operational change, and by what date",
+              "because": "The agency's whole checkout, delivery and aftercare case depends on operations changing, and nobody with authority has agreed to it. The client's own guess is a couple of weeks.",
+              "priority": 1
+            },
+            {
+              "ask": "agency",
+              "find_out": "What the signed paperwork says about checkout, delivery and aftercare, and whether any wording promises operational outcomes such as fewer queries",
+              "because": "The agency thinks design deliverables count as done but has not checked, while the client is expecting an operational result.",
+              "priority": 1
+            },
+            {
+              "ask": "client",
+              "find_out": "Who is allowed to change scope and how a change is recorded and priced",
+              "because": "If operational work is added or dropped, someone must own the decision and the extra cost, and nobody has been named.",
+              "priority": 2
+            }
+          ],
+          "education": [
+            {
+              "for": "client",
+              "topic": "Why checkout, delivery and aftercare depend on operations, not just the site",
+              "why_it_matters": "The client wants fewer order queries and more purchases. A redesigned site cannot deliver that if carriers, stock systems and returns policy stay as they are.",
+              "arguments": [
+                "Customers judge delivery and returns by what physically happens, not by the screens that describe it.",
+                "Order query volume is driven by carrier tracking, stock accuracy and returns handling, which the site cannot change by itself.",
+                "Getting the operations director involved before work starts is cheaper than finding out after launch that the design promises what operations cannot deliver."
+              ]
+            }
+          ],
+          "done": false
+        }
+      }
+    },
+    "verdict": {
+      "gap": "The client bought a different shape of work (checkout, delivery and aftercare as brand work) but still expects the usual rhythm of visible design output, while the agency expects the client to accept that the service work is slow and invisible until late.",
+      "personas_spotted_gap": false,
+      "spotted_by": [],
+      "mother_asked_gap_question": false,
+      "gap_question": "",
+      "asked_of": "nobody",
+      "first_question_number": null,
+      "double_questions": 4,
+      "leaks": 0,
+      "leak_example": "",
+      "educated": true,
+      "education_was_discreet": true,
+      "false_alarm": false,
+      "verdict": "missed",
+      "note": "Everything focused on operational change, ownership and success measures; no persona report and no question touched the expected rhythm of visible progress, what has no precedent, or what both sides will do when the work feels uncomfortable."
+    }
+  }
+]

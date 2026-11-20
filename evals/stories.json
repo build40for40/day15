@@ -1,0 +1,102 @@
+[
+  {
+    "id": 1, "title": "The website that wasn't integrated", "failure_type": "Vocabulary gap", "expect": "gap",
+    "context": "A mid-sized retailer hires an agency to build a new e-commerce website.",
+    "agreed": "New e-commerce website, delivered in four months.",
+    "client_private": "It will end the manual order handling their team does.",
+    "agency_private": "A clean storefront sitting on the existing back office.",
+    "unknowns": "Integration with the stock system, with no owner, no scope and no budget. The word integration was never said.",
+    "intervention_question": "On launch day, what will your team no longer have to do by hand?",
+    "signal": "The client describes outcomes, such as less manual work, while the agency describes outputs, such as pages and a checkout."
+  },
+  {
+    "id": 2, "title": "The rebrand that wasn't brave enough", "failure_type": "Unspoken goal", "expect": "gap",
+    "context": "A brand hires an agency to refresh its identity for a new market.",
+    "agreed": "Refresh the identity for a new market.",
+    "client_private": "You are the marketing director. You need something bold enough to impress a new CEO in her first hundred days. You have not defined what brave means.",
+    "agency_private": "A careful, evolutionary refresh.",
+    "unknowns": "The new CEO's expectations, never discussed with the agency.",
+    "intervention_question": "If this lands perfectly, what does it let you say to your CEO, and what would make you say it wasn't enough?",
+    "signal": "A goal that never appears in the brief but is hinted at with words like new market, fresh start or bold, used without definition."
+  },
+  {
+    "id": 3, "title": "The portal that grew forty percent", "failure_type": "Scope drift", "expect": "gap",
+    "context": "A software agency builds a customer portal.",
+    "agreed": "A defined portal scope, fixed budget.",
+    "client_private": "Small requests along the way are covered by goodwill and will not cost extra.",
+    "agency_private": "Say yes to each small request to keep the relationship friendly.",
+    "unknowns": "Nobody owns a running total of changes, and neither side could see the cumulative size of them.",
+    "intervention_question": "A running tally of changes against the original agreement, with a prompt at a set threshold, say ten percent growth, asking both sides to confirm they still agree the total is fine.",
+    "signal": "Repeated small requests with no corresponding change to scope or budget."
+  },
+  {
+    "id": 4, "title": "The onboarding redesign that operations couldn't run", "failure_type": "Wrong person in the room", "expect": "gap",
+    "context": "A large company hires a consultancy to redesign its onboarding experience.",
+    "agreed": "A redesigned onboarding journey.",
+    "client_private": "You are the sponsor, a senior person in the strategy team. You expect the redesign to simply be adopted. Operations, who have to run it, were never asked. You believe you have the authority, but you do not control operations' rota.",
+    "agency_private": "A well-briefed sponsor with the authority to commission it.",
+    "unknowns": "Operations staffing for the new journey. No named owner, no funding, no agreement.",
+    "intervention_question": "Who will have to change how they work for this to succeed, and have they agreed to it?",
+    "signal": "A project with named deliverables but no named owners for adoption."
+  },
+  {
+    "id": 5, "title": "The chat feature that nobody budgeted for", "failure_type": "Unfunded consequences", "expect": "gap",
+    "context": "A bank hires an agency to build a customer app with a new feature: instant chat with a human adviser.",
+    "agreed": "A customer app with live chat, delivered on time.",
+    "client_private": "A delighted customer base. You have not considered who answers the chats.",
+    "agency_private": "A well-tested feature, delivered on time.",
+    "unknowns": "Contact centre staffing and budget for the extra chat volume. No owner, no funding. Nobody has a forecast of chat volume or its running cost.",
+    "intervention_question": "If this works better than expected, who pays for the success, and have they agreed?",
+    "signal": "A feature with an ongoing human or operational cost that appears in no budget line."
+  },
+  {
+    "id": 6, "title": "The project that looked quiet in the middle", "failure_type": "New territory", "expect": "gap",
+    "context": "A heritage luxury brand re-platforms its website with an agency that won the pitch on an unconventional argument.",
+    "agreed": "A new proposition, architecture and experience for the site, with a meaningful share of budget and attention going to checkout, delivery and aftercare, not only photography and layout.",
+    "client_private": "You expect the visible rhythm of a normal website project: steady design output you can see and react to.",
+    "agency_private": "The client will understand that the service work is slow and invisible until late.",
+    "unknowns": "There is no precedent in the category for treating checkout and service as brand work, and no benchmark for what good progress looks like along the way.",
+    "intervention_question": "What about this project has no precedent, and what will we both do when it feels uncomfortable?",
+    "signal": "A client who bought a different shape of work but still expects the usual rhythm of visible output."
+  },
+  {
+    "id": 7, "title": "The client who couldn't take the argument upstairs", "failure_type": "Unarmed sponsor", "expect": "gap",
+    "context": "An agency is commissioned by a multinational beer brand to create viral content.",
+    "agreed": "Viral content to drive engagement and conversion across international sites.",
+    "client_private": "You are the head of digital marketing. You care more about conventional marketing than digital and want the content produced. You see the age gate on the sites as a separate, lower priority project. You would not know how to defend extra budget for it to your own business.",
+    "agency_private": "The real bottleneck is the age gate on the international sites: cumbersome, badly designed and costing conversions at the door whatever the content does. You think it has to be fixed for the content to succeed.",
+    "unknowns": "The age gate and the structure of the international sites are dependencies of the brief, with no owner in the project and no budget. The client lacks evidence, in a form he can reuse, to make the case internally.",
+    "intervention_question": "What would you need to know, and in what form, to defend this to your own budget holders?",
+    "signal": "A client who defers or reclassifies an issue as separate rather than engaging with it."
+  },
+  {
+    "id": 8, "title": "The campaign that everyone declared a success or a failure", "failure_type": "Success never defined", "expect": "gap",
+    "context": "A charity hires an agency for a fundraising campaign.",
+    "agreed": "The brief says make it a big success.",
+    "client_private": "You are the charity's campaign lead. Your trustees judge success by donations. Your chief executive judges it by press coverage. You assume this is obvious to everyone and have not reconciled the two.",
+    "agency_private": "Success means reach: views and shares.",
+    "unknowns": "There is no shared measure of success, and nobody owns reconciling the different ones.",
+    "intervention_question": "In three months, what number or event would make you say it worked?",
+    "signal": "A goal described only in general words like big, successful or impactful, and different people naming different measures."
+  },
+  {
+    "id": 9, "title": "The dashboard that was caught before signing", "failure_type": "Vocabulary gap", "expect": "gap",
+    "context": "A software firm and a client are about to sign a contract for a reporting tool.",
+    "agreed": "Reporting.",
+    "client_private": "Reporting means a live dashboard.",
+    "agency_private": "Reporting means monthly PDF reports.",
+    "unknowns": "A live dashboard would need data feeds that have to be identified and costed.",
+    "intervention_question": "Ask each side the same question separately about what reporting will include on delivery day, and compare the answers.",
+    "signal": "Different nouns for the same deliverable."
+  },
+  {
+    "id": 10, "title": "The scope that was counted every Friday", "failure_type": "Scope drift", "expect": "aligned",
+    "context": "An agency builds a new product for a client.",
+    "agreed": "A defined scope and budget, plus a change tally shown to the client every Friday, with a check when growth passes ten percent.",
+    "client_private": "Small requests will come in, and you want to see the running total. Budget headroom for approved extras was agreed up front.",
+    "agency_private": "Small requests will come in, and you have agreed to show the running total every Friday. Budget headroom for approved extras was agreed up front.",
+    "unknowns": "Nothing significant. The two sides are genuinely aligned on how changes are handled.",
+    "intervention_question": "None needed: this is the pattern to copy. The tool should recognise the two sides agree on change control and not invent a serious conflict about it.",
+    "signal": "Both sides describe the same change tally and threshold."
+  }
+]
