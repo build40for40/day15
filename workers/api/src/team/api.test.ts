@@ -10,6 +10,12 @@ import { createTeamApi } from './api'
 
 const data = async (res: Response) => (await res.json()) as any
 
+const said: Array<{ participantId: number; message: string }> = []
+const fakeCoachTurn = async (_env: Env, _room: unknown, participant: { id: number }, message: string) => {
+  said.push({ participantId: participant.id, message })
+  return { reply: 'Noted.', itemId: 1, noted: [], people: [], closed: [], ask: null }
+}
+
 function setup(user: string | null = 'user_fake') {
   const directories = new Map<string, DirectoryStore>()
   const rooms = new Map<string, RoomStore>()
@@ -17,7 +23,7 @@ function setup(user: string | null = 'user_fake') {
     TEAMS: { getByName: (name: string) => directories.get(name) ?? directories.set(name, memoryDirectory()).get(name) },
     ROOMS: { getByName: (name: string) => rooms.get(name) ?? rooms.set(name, memoryRoom()).get(name) },
   } as unknown as Env
-  const api = createTeamApi(async () => user)
+  const api = createTeamApi(async () => user, { coachTurn: fakeCoachTurn as never })
   const call = (method: string, path: string, body?: unknown) =>
     api(
       new Request(`https://day15.test${path}`, {
@@ -35,6 +41,42 @@ async function teamWithProject() {
   const { project } = await data(await s.call('POST', '/api/projects', { name: 'Orchard Dash' }))
   return { ...s, projectId: project.id as string }
 }
+
+describe('talking to the coach from the page', () => {
+  async function withPeople() {
+    const s = await teamWithProject()
+    const person = async (side: 'agency' | 'client') =>
+      (await data(await s.call('POST', `/api/projects/${s.projectId}/people`, { name: side === 'agency' ? 'Jonah' : 'Maya', persona: side === 'agency' ? 'agency_lead' : 'marketing_lead', side }))).participant.id as number
+    return { ...s, agency: await person('agency'), client: await person('client') }
+  }
+
+  it('hands what the agency person said to the coach and returns its reply', async () => {
+    const { call, projectId, agency } = await withPeople()
+    said.length = 0
+    const res = await call('POST', `/api/projects/${projectId}/say`, { participantId: agency, message: '  The budget is now 150k.  ' })
+    expect(res.status).toBe(200)
+    expect(await data(res)).toEqual({ reply: 'Noted.' })
+    expect(said).toEqual([{ participantId: agency, message: 'The budget is now 150k.' }])
+  })
+
+  it('does not let the owner speak for the client side', async () => {
+    const { call, projectId, client } = await withPeople()
+    said.length = 0
+    expect((await call('POST', `/api/projects/${projectId}/say`, { participantId: client, message: 'Hello' })).status).toBe(403)
+    expect(said).toEqual([])
+  })
+
+  it('refuses an empty message, an unknown person, and a project that is not theirs', async () => {
+    const { call, projectId, agency } = await withPeople()
+    expect((await call('POST', `/api/projects/${projectId}/say`, { participantId: agency, message: '   ' })).status).toBe(400)
+    expect((await call('POST', `/api/projects/${projectId}/say`, { participantId: 999, message: 'Hi' })).status).toBe(404)
+    expect((await call('POST', '/api/projects/00000000-0000-4000-8000-000000000000/say', { participantId: agency, message: 'Hi' })).status).toBe(404)
+  })
+
+  it('refuses anyone who is not signed in', async () => {
+    expect((await setup(null).call('POST', '/api/projects/x/say', { participantId: 1, message: 'Hi' })).status).toBe(401)
+  })
+})
 
 describe('team API', () => {
   it('refuses anyone who is not signed in', async () => {

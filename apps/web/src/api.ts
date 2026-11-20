@@ -77,3 +77,6 @@ export const removePerson = (projectId: string, participantId: number) =>
 export const freshAddress = (projectId: string, participantId: number) =>
   request<PersonWithAddress & { address: string }>(`${person(projectId, participantId)}/address`, 'POST')
 export const getRoom = (projectId: string) => request<{ room: RoomView }>(`projects/${projectId}/room`)
+/** Speaks to the coach as someone on the agency side, from the page. Returns what the coach says back. */
+export const talkToCoach = (projectId: string, participantId: number, message: string) =>
+  request<{ reply: string }>(`projects/${projectId}/say`, 'POST', { participantId, message })

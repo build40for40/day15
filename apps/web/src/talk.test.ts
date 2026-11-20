@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { topicStates, type RoomView } from './circle'
-import { changedTopics, fingerprints, sayToCoach } from './talk'
+import { changedTopics, fingerprints, messageForCoach, messageForOwnAi } from './talk'
 
 let nextId = 0
 
@@ -56,18 +56,29 @@ describe('changedTopics', () => {
   })
 })
 
-describe('sayToCoach', () => {
-  it('opens the room and leaves the words to the person when no card is open', () => {
-    expect(sayToCoach(null)).toContain('Open my A-Line room.')
+describe('what is said to the coach', () => {
+  const budget = () => topicStates(room([fact('budget', 'client'), fact('budget', 'agency')], [question({})])).find((state) => state.id === 'budget')!
+
+  it('is just the words when no card is open', () => {
+    expect(messageForCoach(null, 'The date moved.')).toBe('The date moved.')
   })
 
-  it('points at the open card', () => {
-    const budget = topicStates(room([fact('budget', 'client')])).find((state) => state.id === 'budget')!
-    expect(sayToCoach(budget)).toContain('About Budget')
+  it('names the card the words are about', () => {
+    expect(messageForCoach(budget(), 'It is now 150k.')).toBe('About Budget: It is now 150k.')
   })
 
-  it('quotes the question the coach is waiting on', () => {
-    const budget = topicStates(room([fact('budget', 'client'), fact('budget', 'agency')], [question({})])).find((state) => state.id === 'budget')!
-    expect(sayToCoach(budget)).toContain('The quote and the budget are £20k apart.')
+  it('says which question is being answered', () => {
+    const state = budget()
+    expect(messageForCoach(state, '150k.', state.questions[0])).toBe('About Budget (the coach asked: "The quote and the budget are £20k apart."): 150k.')
+  })
+
+  it('adds how to open the room when it is for their own AI', () => {
+    expect(messageForOwnAi(budget(), 'It is now 150k.')).toBe('Open my A-Line room. About Budget: It is now 150k.')
+  })
+
+  it('does not treat the coach reordering questions as a change', () => {
+    const facts = [fact('budget', 'client'), fact('budget', 'agency')]
+    const before = fingerprints(topicStates(room(facts, [question({ id: 901 }), question({ id: 902 })])))
+    expect(changedTopics(before, topicStates(room(facts, [question({ id: 902 }), question({ id: 901 })])))).toEqual([])
   })
 })

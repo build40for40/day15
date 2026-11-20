@@ -4,7 +4,7 @@ import type { Fact, Participant, Topic } from '@day15/shared/schema'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import AlignmentCircle from './AlignmentCircle.vue'
-import { getRoom } from './api'
+import { getRoom, talkToCoach } from './api'
 import { overall, questionText, statusLine, topicStates, type Bucket, type RoomQuestion, type RoomView, type TopicState } from './circle'
 import PairGlyph from './PairGlyph.vue'
 import { changedTopics, fingerprints } from './talk'
@@ -43,6 +43,10 @@ const latest = computed(() => room.value.facts[room.value.facts.length - 1] ?? n
 const dock = ref<InstanceType<typeof TalkDock> | null>(null)
 const flashId = ref<Topic | null>(null)
 const selectedState = computed(() => topics.value.find((topic) => topic.id === selected.value) ?? null)
+/** The page can speak to the coach for people on the agency side. The client talks from their own link. */
+const speakers = computed(() => props.people.filter((person) => person.side === 'agency' && !person.removedAt))
+const busy = ref(false)
+let lastReaction = 0
 /** What each topic held at the last read, so a refresh can tell what someone just changed. */
 let seen: Map<Topic, string> | null = null
 let flashTimer: ReturnType<typeof setTimeout> | undefined
@@ -91,10 +95,46 @@ function react(ids: Topic[], now: TopicState[]) {
   flashTimer = setTimeout(() => {
     flashId.value = null
   }, 1800)
+  if (Date.now() - lastReaction < 15_000) return
+  lastReaction = Date.now()
   const names = ids.map((id) => now.find((topic) => topic.id === id)?.name ?? id)
   const list = names.length > 2 ? `${names[0]}, ${names[1]} and ${names.length - 2} more` : names.join(' and ')
   dock.value?.announce(`${list} just changed in the room.`, first)
   void dock.value?.fly(first)
+}
+
+async function say(participantId: number, message: string) {
+  const { reply } = await talkToCoach(props.projectId, participantId, message)
+  await load()
+  return reply
+}
+
+/** A fact someone else put forward that the agency can back, so it only needs one tap. */
+const confirmable = (topic: TopicState) => topic.facts.find((fact) => fact.status === 'proposed' && (fact.authorKind === 'lens' || fact.side !== 'agency')) ?? null
+
+function answer(topic: TopicState, question: RoomQuestion) {
+  selected.value = topic.id
+  dock.value?.show(question)
+}
+
+function change(topic: TopicState) {
+  selected.value = topic.id
+  dock.value?.show(null)
+}
+
+async function confirm(topic: TopicState) {
+  const fact = confirmable(topic)
+  const speaker = speakers.value[0]
+  if (!fact || !speaker || busy.value) return
+  busy.value = true
+  try {
+    const reply = await say(speaker.id, `About ${topic.name}: I confirm this: "${fact.statement}"`)
+    dock.value?.announce(`Confirmed. ${reply}`, topic.id)
+  } catch (caught) {
+    dock.value?.announce(caught instanceof Error ? caught.message : 'Could not send that. Try again?')
+  } finally {
+    busy.value = false
+  }
 }
 
 function pick(id: Topic, fromCircle = false) {
@@ -228,22 +268,29 @@ watch(
                   <span v-if="question.clientSaid" class="said"><i class="dot client" />{{ plain(question.clientSaid) }}</span>
                   <span v-if="question.because" class="meta">{{ plain(question.because) }}</span>
                   <span v-if="chasing(question)" class="meta">{{ chasing(question) }}</span>
+                  <button v-if="speakers.length" type="button" class="act" @click="answer(topic, question)">Answer this</button>
                 </li>
                 <li v-if="!topic.questions.length" class="empty">Nothing open.</li>
               </ul>
             </section>
+
+            <div v-if="speakers.length" class="acts">
+              <button type="button" class="act" @click="change(topic)">This changed</button>
+              <button v-if="confirmable(topic)" type="button" class="act" :disabled="busy" @click="confirm(topic)">{{ busy ? 'Confirming...' : 'Confirm' }}</button>
+            </div>
           </div>
         </li>
         <li v-if="!rows.length" class="empty none">Nothing here yet.</li>
       </ul>
     </div>
 
-    <TalkDock ref="dock" :topic="selectedState" @show="pick($event, true)" />
+    <TalkDock ref="dock" :topic="selectedState" :speakers="speakers" :send="say" @show="pick($event, true)" />
   </div>
 </template>
 
 <style scoped>
 .circle-view {
+  padding-bottom: 120px;
   display: grid;
   grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr);
   gap: clamp(20px, 3.4vw, 52px);
@@ -565,23 +612,51 @@ ul {
   }
 }
 .item.flash .head {
-  animation: row-flash 1.6s ease-out;
+  animation: row-flash 1.8s ease-out;
   border-radius: 8px;
 }
 
 @keyframes row-flash {
   0% {
-    background: rgba(255, 156, 145, 0.28);
+    box-shadow: inset 0 0 0 1.5px rgba(255, 156, 145, 0.75);
   }
   100% {
-    background: transparent;
+    box-shadow: inset 0 0 0 1.5px rgba(255, 156, 145, 0);
   }
+}
+
+.acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.act {
+  cursor: pointer;
+  align-self: start;
+  font: 500 13px var(--sans);
+  padding: 7px 14px;
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+}
+
+.act:hover:not(:disabled),
+.act:focus-visible {
+  border-color: var(--coral);
+  color: #fff;
+}
+
+.act:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .item.flash .head {
     animation: none;
-    background: rgba(255, 156, 145, 0.18);
+    box-shadow: inset 0 0 0 1.5px rgba(255, 156, 145, 0.5);
   }
 }
 </style>
