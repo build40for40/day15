@@ -99,9 +99,9 @@ async function coach(request: Request, env: Env, room: DurableObjectStub<Project
       output: Output.object({ schema: brainReplySchema, name: 'question' }),
       providerOptions,
     })
-    const { lens, question, why, rationale } = output
-    await room.pend(party, { lens, question, rationale })
-    return Response.json({ lens, question, why } satisfies CoachReply)
+    const { lens, note, question, why, rationale } = output
+    await room.pend(party, { lens, question, rationale, note: note || undefined })
+    return Response.json({ lens, note, question, why } satisfies CoachReply)
   } catch (error) {
     // Only the name: the full error holds the request, which holds what people typed.
     console.error('Coach failed:', error instanceof Error ? error.name : 'Unknown error')

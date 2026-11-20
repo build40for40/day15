@@ -25,13 +25,22 @@ function report(lens: LensId, found: PersonaReport, party: Party) {
     .filter((question) => question.ask === party)
     .sort((a, b) => a.priority - b.priority)
     .map((question) => `- priority ${question.priority}: find out ${question.find_out} Because: ${question.because}`)
+  const education = found.education
+    .filter((item) => item.for === party)
+    .map(
+      (item) =>
+        `- ${item.topic}: ${item.why_it_matters} Arguments they could use: ${item.arguments.join(' | ')}`,
+    )
   return [
     `### ${lens} (${NAMES[lens]})${found.done ? ', says it is done' : ''}`,
     requirements.length ? `Requirements picked up so far:\n${requirements.join('\n')}` : 'No requirements picked up yet.',
     conflicts.length ? conflicts.join('\n') : '- no conflicts',
     `Not yet settled on the ${party} side: ${gaps.length ? gaps.join(', ') : 'nothing'}.`,
     questions.length ? `Wants the ${party} side asked:\n${questions.join('\n')}` : `Has nothing to ask the ${party} side.`,
-  ].join('\n')
+    education.length ? `Thinks the ${party} side could do with understanding:\n${education.join('\n')}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n')
 }
 
 function heardFrom(side: RoomSide | undefined) {
@@ -58,7 +67,8 @@ export function instructions(party: Party, room: Room, reports: Reports) {
     `## Your reply\n\nReply with "rationale" first: two or three plain sentences for the team running this, never ` +
       `shown to either side. Say which persona agent you took the question from, which choosing rule applied and why. ` +
       `Here you may refer to what the ${other} side said. Then "lens" set to that persona agent's id ` +
-      `(${LENS_IDS.join(', ')}), "question", and "why" as your one short reason for the person.`,
+      `(${LENS_IDS.join(', ')}), "note" (what you explain before asking, or an empty string when you are only asking), ` +
+      `"question", and "why" as your one short reason for the person.`,
   ].join('\n\n')
 }
 
@@ -67,7 +77,7 @@ export function messages(side: RoomSide) {
   return [
     { role: 'user' as const, content: `Here is the project, in my words:\n\n${side.project}` },
     ...side.turns.flatMap((turn) => [
-      { role: 'assistant' as const, content: turn.question },
+      { role: 'assistant' as const, content: turn.note ? `${turn.note}\n\n${turn.question}` : turn.question },
       { role: 'user' as const, content: turn.answer },
     ]),
   ]

@@ -10,7 +10,7 @@ import {
 } from '@day15/shared/schema'
 
 /** A question the coach has asked and is waiting on, with the brain's private reasoning. */
-export type Pending = Pick<BrainReply, 'lens' | 'question' | 'rationale'>
+export type Pending = Pick<BrainReply, 'lens' | 'question' | 'rationale'> & { note?: string }
 
 export interface RoomSide {
   project: string
@@ -66,8 +66,9 @@ export function record(room: Room, party: Party, project: string, turn?: Turn): 
   const { pending, ...side } = room.sides[party] ?? { project, turns: [] }
   if (!turn || side.turns.length >= MAX_TURNS) return { ...room, sides: { ...room.sides, [party]: { ...side, pending } } }
   // The answer closes the question that was waiting, and takes its reasoning with it.
-  const rationale = pending?.question === turn.question ? pending.rationale : undefined
-  return { ...room, sides: { ...room.sides, [party]: { ...side, turns: [...side.turns, { ...turn, rationale }] } } }
+  const asked = pending?.question === turn.question ? pending : undefined
+  const answered = { ...turn, note: asked?.note || turn.note || undefined, rationale: asked?.rationale }
+  return { ...room, sides: { ...room.sides, [party]: { ...side, turns: [...side.turns, answered] } } }
 }
 
 /** Notes the question a side is now looking at. */
@@ -81,7 +82,7 @@ export function mySide(room: Room, party: Party): MySide {
   const side = room.sides[party]
   return {
     project: side?.project ?? '',
-    turns: (side?.turns ?? []).map(({ lens, question, answer }) => ({ lens, question, answer })),
+    turns: (side?.turns ?? []).map(({ lens, question, answer, note }) => ({ lens, question, answer, note })),
     otherSideStarted: Boolean(room.sides[OTHER_SIDE[party]]),
   }
 }

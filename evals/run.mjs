@@ -18,7 +18,7 @@ const HERE = new URL('.', import.meta.url)
 const APP = process.env.EVAL_APP ?? 'http://localhost:5173/day15/api'
 const MODEL = 'claude-sonnet-5-5'
 /** Questions the coach gets to ask each side. Each side answers all but the last. */
-const QUESTIONS_PER_SIDE = 3
+const QUESTIONS_PER_SIDE = Number(process.env.EVAL_QUESTIONS ?? 3)
 const AT_ONCE = 4
 const SIDES = ['agency', 'client']
 
@@ -105,7 +105,7 @@ async function runStory(story) {
   for (let round = 1; round < QUESTIONS_PER_SIDE; round++) {
     for (const side of SIDES) {
       const state = sides[side]
-      const { lens, question } = state.waiting
+      const { lens, question, note } = state.waiting
       const answer = await claude(character(story, side), [
         { role: 'user', content: `Here is how you described the project: ${state.project}` },
         { role: 'assistant', content: 'Understood.' },
@@ -113,7 +113,7 @@ async function runStory(story) {
           { role: 'user', content: turn.question },
           { role: 'assistant', content: turn.answer },
         ]),
-        { role: 'user', content: question },
+        { role: 'user', content: note ? `${note}\n\n${question}` : question },
       ])
       state.chat.push({ question, answer })
       state.waiting = await app(`/projects/${projectId}/coach`, {
@@ -135,6 +135,7 @@ function transcript(room, side) {
     `Their description: ${half.project}`,
     ...asked.map(
       (turn, index) =>
+        (turn.note ? `Before question ${index + 1} the coach explained: ${turn.note}\n` : '') +
         `Question ${index + 1} (from the ${turn.lens} persona agent): ${turn.question}\n` +
         (turn.answer ? `Answer: ${turn.answer}` : 'Not answered yet.'),
     ),
@@ -152,6 +153,7 @@ function reports(room) {
         ),
         ...report.questions.map((question) => `Still wants to ask the ${question.ask}: ${question.find_out}`),
         ...report.requirements.map((item) => `Requirement (${item.from}): ${item.requirement}`),
+        ...(report.education ?? []).map((item) => `Thinks the ${item.for} needs to understand: ${item.topic}. ${item.why_it_matters}`),
       ].join('\n'),
     )
     .join('\n\n')
@@ -173,6 +175,8 @@ You are given a story with a known hidden gap, both private conversations, and t
   "double_questions": number,                     // questions that really ask two separate things
   "leaks": number,                                // questions that reveal or strongly hint at something only the OTHER side said
   "leak_example": "the worst one, or empty",
+  "educated": true or false,                      // the coach explained an issue to a side and gave them arguments they could reuse inside their own organisation
+  "education_was_discreet": true or false,        // if it educated: it did so as general knowledge, without revealing or implying the other side raised it (true if it did not educate)
   "false_alarm": true or false,                   // a fundamental conflict was reported that the story does not support
   "verdict": "caught" | "partly" | "missed",
   "note": "one sentence on why"
@@ -237,11 +241,11 @@ const file = new URL(`results/${new Date().toISOString().replace(/[:.]/g, '-')}.
 await writeFile(file, JSON.stringify(results, null, 2))
 
 const yes = (value) => (value ? 'yes' : 'no')
-console.log('| # | Story | Type | Verdict | Personas spotted it | Mother asked it | Double questions | Leaks |')
-console.log('| --- | --- | --- | --- | --- | --- | --- | --- |')
+console.log('| # | Story | Type | Verdict | Personas spotted it | Mother asked it | Educated | Double questions | Leaks |')
+console.log('| --- | --- | --- | --- | --- | --- | --- | --- | --- |')
 for (const { story, verdict, error } of results) {
   if (error) {
-    console.log(`| ${story.id} | ${story.title} | ${story.failure_type} | did not finish | | | | |`)
+    console.log(`| ${story.id} | ${story.title} | ${story.failure_type} | did not finish | | | | | |`)
     continue
   }
   const spotted = verdict.personas_spotted_gap ? `yes (${verdict.spotted_by.join(', ')})` : 'no'
@@ -249,7 +253,7 @@ for (const { story, verdict, error } of results) {
     ? `yes (${verdict.asked_of}, question ${verdict.first_question_number})`
     : 'no'
   console.log(
-    `| ${story.id} | ${story.title} | ${story.failure_type} | ${verdict.verdict} | ${story.expect === 'aligned' ? `aligned, false alarm: ${yes(verdict.false_alarm)}` : spotted} | ${asked} | ${verdict.double_questions} | ${verdict.leaks} |`,
+    `| ${story.id} | ${story.title} | ${story.failure_type} | ${verdict.verdict} | ${story.expect === 'aligned' ? `aligned, false alarm: ${yes(verdict.false_alarm)}` : spotted} | ${asked} | ${verdict.educated ? (verdict.education_was_discreet ? 'yes' : 'yes, NOT discreet') : 'no'} | ${verdict.double_questions} | ${verdict.leaks} |`,
   )
 }
 const done = results.filter((result) => result.verdict)

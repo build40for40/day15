@@ -90,7 +90,7 @@ export function fakeApi(): Plugin {
           const question = `[fake] ${questions[side.turns.length % questions.length]}`
           side.pending = { lens, question, rationale: `[fake] It was the ${lens} hat's turn. A real brain would explain itself here.` }
           await wait(400)
-          return json({ lens, question, why: 'This is the fake coach, so the reason is canned too.' })
+          return json({ lens, note: '', question, why: 'This is the fake coach, so the reason is canned too.' })
         }
 
         res.writeHead(404)

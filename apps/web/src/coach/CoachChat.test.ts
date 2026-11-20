@@ -24,8 +24,8 @@ const fresh: MySide = { project: '', turns: [], otherSideStarted: false }
 describe('CoachChat', () => {
   it('asks, takes an answer, and hands it over with the hidden hat for the next question', async () => {
     const { fetch, posts } = api(fresh, [
-      { lens: 'ops', question: 'What does done look like?', why: 'So nobody guesses.' },
-      { lens: 'agency', question: 'Who signs it off?', why: 'So it can end.' },
+      { lens: 'ops', note: 'Done means different things to different people.', question: 'What does done look like?', why: 'So nobody guesses.' },
+      { lens: 'agency', note: '', question: 'Who signs it off?', why: 'So it can end.' },
     ])
 
     const wrapper = mount(CoachChat, { props })
@@ -42,13 +42,18 @@ describe('CoachChat', () => {
     await wrapper.get('form').trigger('submit')
     await vi.waitFor(() => expect(wrapper.text()).toContain('Who signs it off?'))
     expect(posts[1]).toMatchObject({
-      turn: { lens: 'ops', question: 'What does done look like?', answer: 'Live by March.' },
+      turn: {
+        lens: 'ops',
+        question: 'What does done look like?',
+        answer: 'Live by March.',
+        note: 'Done means different things to different people.',
+      },
     })
     expect(wrapper.find('.turns').text()).toContain('Live by March.')
   })
 
   it('never shows which hat the coach has on', async () => {
-    api(fresh, [{ lens: 'ops', question: 'Who can change the scope?', why: 'It always changes.' }])
+    api(fresh, [{ lens: 'ops', note: '', question: 'Who can change the scope?', why: 'It always changes.' }])
     const wrapper = mount(CoachChat, { props })
     await flushPromises()
     await wrapper.get('#project').setValue('A fictional app.')
@@ -60,7 +65,7 @@ describe('CoachChat', () => {
   it('picks up a conversation that was already going', async () => {
     const turn = { lens: 'agency' as const, question: 'Who pays for overruns?', answer: 'We split it.' }
     const { posts } = api({ project: 'A fictional app.', turns: [turn], otherSideStarted: true }, [
-      { lens: 'agency', question: 'Who has the final say?', why: 'Someone must.' },
+      { lens: 'agency', note: '', question: 'Who has the final say?', why: 'Someone must.' },
     ])
     const wrapper = mount(CoachChat, { props })
     await vi.waitFor(() => expect(wrapper.text()).toContain('Who has the final say?'))

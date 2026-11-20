@@ -67,11 +67,13 @@ onUnmounted(() => clearInterval(timer))
         <p class="quiet">"{{ view[party]!.project }}"</p>
         <ol>
           <li v-for="(turn, index) in view[party]!.turns" :key="index">
+            <p v-if="turn.note" class="said">Explained first: {{ turn.note }}</p>
             <p><span class="hat">{{ HATS[turn.lens] }}</span> {{ turn.question }}</p>
             <p v-if="turn.rationale" class="rationale">{{ turn.rationale }}</p>
             <p class="said">{{ turn.answer }}</p>
           </li>
           <li v-if="view[party]!.pending" class="waiting">
+            <p v-if="view[party]!.pending!.note" class="said">Explained first: {{ view[party]!.pending!.note }}</p>
             <p><span class="hat">{{ HATS[view[party]!.pending!.lens] }}</span> {{ view[party]!.pending!.question }}</p>
             <p class="rationale">{{ view[party]!.pending!.rationale }}</p>
             <p class="quiet">Waiting for their answer.</p>

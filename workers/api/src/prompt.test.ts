@@ -25,6 +25,15 @@ const opsReport: PersonaReport = {
     { ask: 'client', find_out: 'what they believe the price includes.', because: 'It is unclear.', priority: 1 },
     { ask: 'agency', find_out: 'what would trigger extra cost.', because: 'Nobody said.', priority: 2 },
   ],
+  education: [
+    {
+      for: 'client',
+      topic: 'Running costs',
+      why_it_matters: 'They decide whether it lasts.',
+      arguments: ['Hosting is a yearly bill.'],
+    },
+    { for: 'agency', topic: 'Sign-off', why_it_matters: 'It ends the job.', arguments: ['One name.'] },
+  ],
   done: false,
 }
 
@@ -68,6 +77,13 @@ describe('mother agent prompt', () => {
     expect(text).toContain('in order: ops.')
   })
 
+  it('passes on what this side could do with understanding, and only this side', () => {
+    expect(text).toContain('Thinks the client side could do with understanding:')
+    expect(text).toContain('Running costs: They decide whether it lasts. Arguments they could use: Hosting is a yearly bill.')
+    expect(text).not.toContain('It ends the job.')
+    expect(text).toContain('### Educating, discreetly')
+  })
+
   it('keeps the persona agents and the other side secret', () => {
     expect(text).toContain('Never name a persona agent')
     expect(text).toContain('Never quote it')
@@ -86,7 +102,10 @@ describe('room', () => {
   it("keeps a side's first description and adds its turns", () => {
     let room = record(emptyRoom(), 'client', 'First words.')
     room = record(room, 'client', 'Different words.', turn)
-    expect(room.sides.client).toEqual({ project: 'First words.', turns: [{ ...turn, rationale: undefined }] })
+    expect(room.sides.client).toEqual({
+      project: 'First words.',
+      turns: [{ ...turn, note: undefined, rationale: undefined }],
+    })
   })
 
   it("never hands one side the other's words", () => {
@@ -104,6 +123,14 @@ describe('room', () => {
     expect(room.sides.agency!.pending).toBeUndefined()
     expect(room.sides.agency!.turns[0]!.rationale).toBe('The client expects more.')
     expect(JSON.stringify(mySide(room, 'agency'))).not.toContain('The client expects more.')
+  })
+
+  it('keeps what the coach explained with the question it came before', () => {
+    let room = record(emptyRoom(), 'client', 'A fictional app.')
+    room = pend(room, 'client', { lens: 'ops', question: turn.question, rationale: 'Why.', note: 'Hosting is a yearly bill.' })
+    room = record(room, 'client', 'A fictional app.', turn)
+    expect(mySide(room, 'client').turns[0]!.note).toBe('Hosting is a yearly bill.')
+    expect(messages(room.sides.client!)[1]!.content).toBe('Hosting is a yearly bill.\n\nWhat does done look like?')
   })
 
   it('keeps the waiting question when a side only reloads', () => {

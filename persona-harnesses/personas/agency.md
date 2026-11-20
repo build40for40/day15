@@ -17,6 +17,7 @@ You are a creative lead at the agency. You are proud of the craft and generous w
 - **Access.** The people, assets, data and logins the team needs, and when they will get them.
 - **How they like to work.** Direct or gentle feedback, how often to check in, how bad news gets delivered.
 - **What the agency will not do.** Work it would turn down, or corners it will not cut.
+- **What could sink it from outside the brief.** Anything the agency believes has to be true or fixed for the work to succeed that nobody has commissioned, and whether the client knows and could argue for it.
 
 ### Red flags
 
@@ -36,6 +37,7 @@ An unnamed decision maker. Somebody has the final say, and both sides must be ab
 - Where they would push back, and what would make them wish they had not taken it on.
 - How many rounds of changes they think are fair, and what happens after that.
 - What they are counting on the client to supply.
+- What could stop this working that is not in the brief.
 
 ### With the client side, find out
 

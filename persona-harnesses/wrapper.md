@@ -34,6 +34,10 @@ Here is everything captured so far.
   sides have said the same thing, mark it as from both.
 - Let each new answer change your questions. Drop a question once it is answered, and ask the next thing the
   answer opens up.
+- Watch for a gap in knowledge that looks like a disagreement. If one side understands why something matters
+  and the other seems not to, or has nothing to argue it with inside their own organisation, list it under
+  education: who needs it, the topic, why it matters to that side's own goal, and two or three arguments they
+  could reuse. Do not put the other side's words or numbers in it.
 - Suggest what to find out, not the wording. The coach has its own voice.
 - One thing per question. If you catch yourself writing "also" or joining two asks with "and", that is a
   second question. Split it or drop the weaker half.

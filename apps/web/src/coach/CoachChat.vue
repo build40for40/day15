@@ -59,7 +59,7 @@ function reply() {
   const text = answer.value.trim()
   const lens = object.value?.lens
   if (!text || !question.value || !lens || isLoading.value) return
-  const turn: Turn = { lens, question: question.value, answer: text }
+  const turn: Turn = { lens, question: question.value, answer: text, note: object.value?.note || undefined }
   turns.value.push(turn)
   answer.value = ''
   askNext(turn)
@@ -79,6 +79,7 @@ function reply() {
   <template v-else>
     <ol v-if="turns.length" class="turns">
       <li v-for="(turn, index) in turns" :key="index">
+        <p v-if="turn.note" class="note">{{ turn.note }}</p>
         <p class="asked">{{ turn.question }}</p>
         <p class="said">{{ turn.answer }}</p>
       </li>
@@ -87,6 +88,7 @@ function reply() {
     <section class="now" aria-live="polite">
       <p v-if="error" role="alert">{{ error.message }}</p>
       <template v-else-if="question">
+        <p v-if="object?.note" class="note">{{ object.note }}</p>
         <p class="asked">{{ question }}</p>
         <p v-if="object?.why" class="why">{{ object.why }}</p>
       </template>
@@ -168,6 +170,12 @@ p {
 .now .asked {
   font-size: 1.2rem;
   line-height: 1.35;
+}
+
+.note {
+  margin-bottom: 0.75rem;
+  padding-left: 0.75rem;
+  border-left: 3px solid var(--accent);
 }
 
 .why {

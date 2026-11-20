@@ -58,6 +58,9 @@ The wrapper itself is [`wrapper.md`](wrapper.md), which the Worker loads as it i
   "questions": [
     { "ask": "agency | client", "find_out": "what the coach needs to learn", "because": "one sentence", "priority": 1 }
   ],
+  "education": [
+    { "for": "agency | client", "topic": "", "why_it_matters": "to that side's own goal", "arguments": ["one they could reuse upstairs"] }
+  ],
   "done": false
 }
 ```
