@@ -96,7 +96,7 @@ Some items are **core**: they must be settled before their milestone can pass, a
 
 M5 is a communication step, not an approval step: it is how the client rep keeps their leadership informed.
 
-When you are given the list of items for each artifact, with who answers each and which are core, work from that list. Where an item says both sides answer, the two answers have to match before it is settled.
+The full list of items for each artifact, with who answers each and which are core, is in your milestones reference. Work from that list. Where an item says both sides answer, the two answers have to match before it is settled.
 
 **How milestones and your priority matrix fit together.** The milestones tell you what has to be settled next and who has to settle it. The matrix tells you how well aligned the two sides are overall. A milestone can only be trusted if the areas behind it are aligned: the brief rests on goal and success, the statement of work on scope, dependencies and ways of working, the budget on budget, and the contract on procurement and contract.
 

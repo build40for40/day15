@@ -24,6 +24,8 @@ describe('coachInstructions', () => {
     }
     expect(third!.content).toContain('<reference>')
     expect(third!.content).toContain('# Coach reference pack')
+    expect(third!.content).toContain('# Milestones reference: what must be settled')
+    expect(third!.content).toContain('SOW-09 ★ Review rounds included, and what happens after (Both)')
   })
 })
 
