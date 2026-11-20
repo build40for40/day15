@@ -1,16 +1,6 @@
 <script setup lang="ts">
-import type { LensId } from '@day15/shared/lenses'
-import {
-  MAX_JOB_TITLE_LENGTH,
-  MAX_NAME_LENGTH,
-  MAX_ORGANISATION_LENGTH,
-  PERSONA_LENS,
-  PERSONA_NAMES,
-  PERSONAS,
-  type Persona,
-  type Side,
-} from '@day15/shared/schema'
-import { computed, nextTick, onMounted, reactive, ref, useTemplateRef, watch } from 'vue'
+import { MAX_JOB_TITLE_LENGTH, MAX_NAME_LENGTH, MAX_ORGANISATION_LENGTH } from '@day15/shared/schema'
+import { computed, onMounted, reactive, ref, useTemplateRef } from 'vue'
 
 import { addPerson, createProject, createTeam, type Project, type Team } from './api'
 import { inviteMessage, whatsappUrl } from './invite'
@@ -20,7 +10,6 @@ import {
   lonelySide,
   CLIENT_REP_KEY,
   newGuest,
-  PERSONA_HINTS,
   PROCUREMENT_KEY,
   roleName,
   seats,
@@ -31,8 +20,7 @@ import {
   type Step,
 } from './onboarding'
 import OnboardingSketch from './OnboardingSketch.vue'
-import PersonMore from './PersonMore.vue'
-import SeatCard from './SeatCard.vue'
+import TeamEditor from './TeamEditor.vue'
 
 const props = defineProps<{ team: Team | null }>()
 const emit = defineEmits<{ finish: [team: Team, project: Project] }>()
@@ -54,27 +42,6 @@ const draft = reactive<Draft>({
   clientName: '',
   guests: [],
 })
-const blank = () => ({
-  name: '',
-  persona: 'marketing_lead' as Persona,
-  side: 'client' as Side,
-  link: true,
-  jobTitle: '',
-  organisation: '',
-  lenses: [PERSONA_LENS.marketing_lead] as LensId[],
-  notes: '',
-})
-const next = reactive(blank())
-// Until they tick one by hand, the advisers who speak for someone follow their role.
-const lensesTouched = ref(false)
-watch(
-  () => next.persona,
-  (persona) => {
-    if (!lensesTouched.value) next.lenses = [PERSONA_LENS[persona]]
-  },
-)
-const sideOrganisation = (side: Side) => (side === 'agency' ? agencyName.value : draft.clientName.trim())
-let guestKey = 0
 
 // What has been made so far, so a retry after a failure carries on instead of starting again.
 const madeTeam = ref<Team | null>(props.team)
@@ -105,7 +72,6 @@ onMounted(() => {
   const setup = takeSetup(window.sessionStorage)
   if (setup) {
     Object.assign(draft, setup)
-    guestKey = setup.guests.length
     step.value = blocker('hello', draft, needsAgencyName.value) || blocker('project', draft, false) ? 'hello' : 'review'
   }
   // A new step isn't in the page until the old one has left, so focus it when it arrives.
@@ -145,30 +111,6 @@ function switchMode(to: 'talk' | 'form') {
   error.value = ''
   mode.value = to
   step.value = 'hello'
-}
-
-function addGuest() {
-  const name = next.name.trim()
-  if (!name) return
-  draft.guests.push({
-    key: ++guestKey,
-    name,
-    persona: next.persona,
-    side: next.side,
-    link: next.link,
-    jobTitle: next.jobTitle,
-    organisation: next.organisation,
-    lenses: [...next.lenses],
-    notes: next.notes,
-  })
-  // Keep the side and role, since people usually add a few from the same place.
-  Object.assign(next, { name: '', jobTitle: '', organisation: '', notes: '', lenses: [PERSONA_LENS[next.persona]] })
-  lensesTouched.value = false
-  nextTick(focusFirst)
-}
-
-function dropGuest(key: number) {
-  draft.guests.splice(draft.guests.findIndex((guest) => guest.key === key), 1)
 }
 
 async function setUp() {
@@ -272,21 +214,7 @@ const finish = () => emit('finish', madeTeam.value!, madeProject.value!)
             </section>
 
             <section class="group">
-              <h3>Your client's team</h3>
-              <SeatCard
-                v-model="draft.clientRep"
-                role="Client rep"
-                does="Owns the brief on the client side"
-                placeholder="Your day-to-day contact"
-                :assumed-company="draft.clientName.trim()"
-              />
-              <SeatCard
-                v-model="draft.procurementRep"
-                role="Client procurement"
-                does="Handles terms, contracts and budget sign-off"
-                placeholder="Who handles the contract"
-                :assumed-company="draft.clientName.trim()"
-              />
+              <TeamEditor :draft="draft" :agency-name="agencyName" />
             </section>
 
             <p v-if="error" class="error" role="alert">{{ error }}</p>
@@ -342,85 +270,15 @@ const finish = () => emit('finish', madeTeam.value!, madeProject.value!)
             </div>
           </form>
 
-          <!-- 3. Your client's team -->
+          <!-- 3. The teams -->
           <div v-else-if="view === 'people'" key="people" class="ask">
-            <p class="eyebrow">Your client</p>
-            <h2>Who's on the client side?</h2>
+            <p class="eyebrow">The teams</p>
+            <h2>Who's on each side?</h2>
             <p class="lead">
-              You'll create a profile for each person, then send them their own link at the end. Add the two people
-              the coach needs to hear from first.
+              You'll create a profile for everyone, then send each person their own link at the end. Start with the two
+              people the coach needs to hear from first, then add the rest of the team on either side.
             </p>
-
-            <SeatCard
-              v-model="draft.clientRep"
-              role="Client rep"
-              does="Owns the brief on the client side"
-              placeholder="Your day-to-day contact"
-              :assumed-company="draft.clientName.trim()"
-              autofocus
-            />
-            <SeatCard
-              v-model="draft.procurementRep"
-              role="Client procurement"
-              does="Handles terms, contracts and budget sign-off"
-              placeholder="Who handles the contract"
-              :assumed-company="draft.clientName.trim()"
-            />
-
-            <details class="extra" :open="draft.guests.length > 0">
-              <summary>Anyone else involved?</summary>
-              <form class="adder" @submit.prevent="addGuest">
-              <label>
-                <span class="q">Their name</span>
-                <input v-model="next.name" :maxlength="MAX_NAME_LENGTH" autocomplete="off" placeholder="Someone on the project" />
-              </label>
-
-              <fieldset>
-                <legend class="q">Which side are they on?</legend>
-                <div class="segmented">
-                  <label v-for="side in (['client', 'agency'] as const)" :key="side">
-                    <input v-model="next.side" type="radio" name="side" :value="side" class="sr-only" />
-                    <span>{{ (side === 'agency' ? agencyName : draft.clientName.trim()) || (side === 'agency' ? 'Agency' : 'Client') }}</span>
-                  </label>
-                </div>
-              </fieldset>
-
-              <fieldset>
-                <legend class="q">What do they do on this?</legend>
-                <div class="chips">
-                  <label v-for="persona in PERSONAS" :key="persona" class="chip">
-                    <input v-model="next.persona" type="radio" name="persona" :value="persona" class="sr-only" />
-                    <span>
-                      <strong>{{ PERSONA_NAMES[persona] }}</strong>
-                      <small>{{ PERSONA_HINTS[persona] }}</small>
-                    </span>
-                  </label>
-                </div>
-              </fieldset>
-
-              <PersonMore :model-value="next" :assumed-company="sideOrganisation(next.side)" @update:model-value="Object.assign(next, $event)" @lenses-touched="lensesTouched = true" />
-
-              <label class="check">
-                <input v-model="next.link" type="checkbox" />
-                Give them a link to talk to the coach
-              </label>
-              <button type="submit" class="quiet" :disabled="!next.name.trim()">Add {{ firstName(next.name) || 'them' }}</button>
-            </form>
-
-            <ul v-if="draft.guests.length" class="added" aria-label="People you've added">
-              <li v-for="guest in draft.guests" :key="guest.key">
-                <span>
-                  <strong>{{ guest.name }}</strong>
-                  <small>
-                    {{ guest.jobTitle.trim() || roleName(guest.persona, guest.side) }}, {{ guest.organisation.trim() || sideOrganisation(guest.side) || guest.side
-                    }}{{ guest.link ? '' : ', no link' }}
-                  </small>
-                </span>
-                <button type="button" class="quiet small" :aria-label="`Remove ${guest.name}`" @click="dropGuest(guest.key)">Remove</button>
-              </li>
-            </ul>
-            </details>
-
+            <TeamEditor :draft="draft" :agency-name="agencyName" />
             <p v-if="lonely" class="nudge">
               Nobody on the {{ draft.clientName.trim() || 'client' }} side yet. I find the most when I can hear from both
               sides, so add at least one if you can.
@@ -693,132 +551,6 @@ button.small {
   margin: 0;
 }
 
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border: 0;
-}
-
-.adder {
-  display: grid;
-  gap: 1rem;
-  padding: 1rem;
-  border: 1px solid var(--line);
-  border-radius: 0.75rem;
-  background: var(--paper);
-}
-
-.adder input[type='text'],
-.adder input:not([type]) {
-  background: var(--card);
-}
-
-.extra {
-  border: 1px solid var(--line);
-  border-radius: 0.75rem;
-  padding: 0 1rem 1rem;
-}
-
-.extra > summary {
-  cursor: pointer;
-  padding: 0.85rem 0;
-  min-height: 2.75rem;
-  font-weight: 600;
-}
-
-.extra[open] > summary {
-  margin-bottom: 0.25rem;
-}
-
-.segmented {
-  display: inline-flex;
-  max-width: 100%;
-  border: 1px solid var(--line);
-  border-radius: 0.5rem;
-  overflow: hidden;
-  background: var(--card);
-}
-
-.segmented label {
-  display: block;
-}
-
-.segmented span {
-  display: block;
-  padding: 0.6rem 1rem;
-  min-height: 2.75rem;
-  cursor: pointer;
-  overflow-wrap: anywhere;
-  transition: background 0.2s ease;
-}
-
-.segmented label + label span {
-  border-left: 1px solid var(--line);
-}
-
-.segmented input:checked + span {
-  background: var(--accent);
-  color: var(--on-accent);
-  font-weight: 600;
-}
-
-.chips {
-  display: grid;
-  gap: 0.5rem;
-  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
-}
-
-.chip span {
-  display: grid;
-  gap: 0.1rem;
-  height: 100%;
-  padding: 0.6rem 0.75rem;
-  border: 1px solid var(--line);
-  border-radius: 0.5rem;
-  background: var(--card);
-  cursor: pointer;
-  transition: border-color 0.2s ease, transform 0.2s ease;
-}
-
-.chip small,
-.added small {
-  color: var(--muted);
-  font-size: 0.8125rem;
-}
-
-.chip:hover span {
-  border-color: var(--ink);
-}
-
-.chip input:checked + span {
-  border-color: var(--ink);
-  box-shadow: inset 0 0 0 1px var(--ink), 0 0 0 3px color-mix(in srgb, var(--accent) 60%, transparent);
-}
-
-.segmented input:focus-visible + span,
-.chip input:focus-visible + span {
-  outline: 3px solid var(--accent);
-  outline-offset: 2px;
-}
-
-.check {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.check input {
-  min-height: auto;
-  width: 1.1rem;
-  height: 1.1rem;
-}
-
 .added {
   list-style: none;
   margin: 0;
@@ -918,9 +650,7 @@ button.small {
 @media (prefers-reduced-motion: reduce) {
   .step-enter-active,
   .step-leave-active,
-  .dot,
-  .segmented span,
-  .chip span {
+  .dot {
     transition: none;
   }
 }

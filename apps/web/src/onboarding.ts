@@ -21,7 +21,7 @@ export type Step = (typeof STEPS)[number]
 export const STEP_LABELS: Record<Step, string> = {
   hello: 'You',
   project: 'The win',
-  people: 'Your client',
+  people: 'The teams',
   review: 'Review',
 }
 
@@ -233,4 +233,21 @@ export function takeSetup(storage: Storage): Draft | null {
   } catch {
     return null
   }
+}
+
+/** A gentle prompt for each role, in the questions an agency would actually be asked before work starts. */
+export const PERSONA_NUDGES: Record<Persona, string> = {
+  agency_lead: 'Who else leads this for the agency?',
+  marketing_lead: 'Who signs off the brief?',
+  procurement: 'Who handles the contract and terms?',
+  cfo: 'Who holds the budget?',
+  delivery_lead: 'Who makes it, and by when?',
+}
+
+/** The next free key for someone added to the draft. */
+export const nextGuestKey = (draft: Draft) => Math.max(0, ...draft.guests.map((guest) => guest.key)) + 1
+
+/** A fresh teammate: a sensible role to start from for their side, which they can change. */
+export function newTeammate(draft: Draft, side: Side): Guest {
+  return newGuest(nextGuestKey(draft), side === 'agency' ? 'delivery_lead' : 'cfo', side)
 }

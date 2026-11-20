@@ -169,6 +169,67 @@ describe('App', () => {
     expect(sidebarNames(wrapper)).toEqual(['Alex Example', 'Robin Fakeworth', 'Pat Pretend'])
   })
 
+  it('lets the agency rep add a whole team on each side, each with their own role and link', async () => {
+    auth.currentUser.mockResolvedValue({ id: 'user_fake' })
+    const fetchMock = serve({ team, projects: [] })
+    const wrapper = mount(App)
+    await flushPromises()
+    await wrapper.get('input[placeholder="Your name"]').setValue('Alex Example')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    await wrapper.get('input[placeholder="Orchard Dash"]').setValue('Orchard Dash')
+    await wrapper.get('input[placeholder="The client\'s company"]').setValue('Make-Believe Foods')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    await wrapper.get('input[placeholder="Your day-to-day contact"]').setValue('Robin Fakeworth')
+    // Two more on the agency side, one more on the client side.
+    await button(wrapper, '+ Add someone from your agency').trigger('click')
+    await button(wrapper, '+ Add someone from your agency').trigger('click')
+    await button(wrapper, '+ Add someone from the client').trigger('click')
+    await flushPromises()
+    const agency = wrapper.findAll('[data-team="agency"] .seat')
+    const client = wrapper.findAll('[data-team="client"] .seat')
+    expect(agency).toHaveLength(2)
+    expect(client).toHaveLength(3)
+
+    await agency[0]!.get('input[placeholder="Someone on your team"]').setValue('Sam Pretend')
+    await agency[1]!.get('input[placeholder="Someone on your team"]').setValue('Dana Mistake')
+    await agency[1]!.get('select').setValue('agency_lead')
+    await client[2]!.get('input[placeholder="Someone on the client team"]').setValue('Lee Odd')
+    // Each added person is prompted with a question for their role.
+    expect(agency[0]!.text()).toContain('Who makes it, and by when?')
+    expect(client[2]!.text()).toContain('Who holds the budget?')
+    // Dana was added by mistake and is removed.
+    await agency[1]!.findAll('button').find((b) => b.text() === 'Remove')!.trigger('click')
+    await flushPromises()
+    expect(wrapper.findAll('[data-team="agency"] .seat')).toHaveLength(1)
+    expect(wrapper.get('aside').text()).toContain('Sam Pretend')
+    expect(wrapper.get('aside').text()).not.toContain('Dana Mistake')
+
+    await button(wrapper, 'Review').trigger('click')
+    await flushPromises()
+    await button(wrapper, 'Set it up').trigger('click')
+    await flushPromises()
+
+    const people = fetchMock.mock.calls
+      .filter(([url, init]) => init?.method === 'POST' && String(url).endsWith('/people'))
+      .map(([, init]) => JSON.parse(String(init!.body)))
+    expect(people.map((p) => [p.name, p.side, p.persona, p.organisation, p.lenses])).toEqual([
+      ['Alex Example', 'agency', 'agency_lead', 'Fake Agency', ['agency']],
+      ['Robin Fakeworth', 'client', 'marketing_lead', 'Make-Believe Foods', ['client']],
+      ['Sam Pretend', 'agency', 'delivery_lead', 'Fake Agency', ['cto']],
+      ['Lee Odd', 'client', 'cfo', 'Make-Believe Foods', ['cfo']],
+    ])
+    // Everyone gets a message from the agency rep, the agency rep's own last.
+    expect(wrapper.findAll('.invites .who strong').map((who) => who.text())).toEqual([
+      'For Robin Fakeworth',
+      'For Sam Pretend',
+      'For Lee Odd',
+      'Your own link',
+    ])
+  })
+
   it('lets someone fill in a form instead of being asked, and still reviews before creating anything', async () => {
     auth.currentUser.mockResolvedValue({ id: 'user_fake' })
     const fetchMock = serve({ team, projects: [] })
