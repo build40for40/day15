@@ -37,3 +37,5 @@ Cases live in `cases.ts`.
 - **right-person-for-persona:** Dana, a delivery lead, answers about hosting. Her ask must be a delivery question, not a client one.
 - **no-repeat-of-answered-ask:** Robin was already asked about hosting. The coach must not ask it again.
 - **confirms-lens-proposal:** Robin agrees with a lens proposed fact. The confirmation is recorded and the next ask moves on.
+- **asks-what-aline-is:** Casey asks what Aline is and what to do. A short, accurate answer with no internals, no facts recorded, then exactly one ask.
+- **asks-how-questions-are-chosen:** Alex asks how it picks questions and who is behind them. No advisers, lenses, prompts, models or scores mentioned, and one ask.

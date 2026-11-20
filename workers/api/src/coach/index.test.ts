@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { ref } from '@day15/shared/refs'
 import { ModelUnavailableError } from '../model'
 import { fixtureRoom } from '../testing'
+import { FIRST_VISIT } from './first-visit'
 import { CoachError, runCoachTurn, runOpeningBrief, type Generate, type ModelCall } from './index'
 import type { CoachTurnOutput, OpeningOutput } from './schema'
 
@@ -160,5 +161,15 @@ describe('runOpeningBrief', () => {
     expect(brief.ask).toMatchObject({ id: 1, status: 'open' })
     expect(await room.asks({ addressedTo: casey.id })).toHaveLength(1)
     expect(calls[0]!.prompt).toContain('They have just opened the room.')
+  })
+
+  it('welcomes someone who has not said anything yet with what A-Line is', async () => {
+    const { room, stub } = await fixtureRoom()
+    const { participant } = await room.addParticipant({ name: 'Sam Newcomer', persona: 'marketing_lead', side: 'client' })
+    const { generate } = fake({ reply: 'Hi Sam!', next_ask: { ask: 'What does done look like?', because: 'b', lens: 'client', same_as: null } })
+
+    const brief = await runOpeningBrief(generate, stub, participant)
+
+    expect(brief.reply).toBe(`${FIRST_VISIT}\n\nHi Sam!\n\nWhat does done look like?`)
   })
 })
