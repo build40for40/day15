@@ -51,7 +51,7 @@ function renderRun(run: LensRun, room: RoomSnapshot): string {
 /** Where each lens stands, for the coach. Their open questions are in the room. People never see these. */
 export function renderReports(room: RoomSnapshot): string {
   return [
-    '# Where the five advisers stand',
+    '# Where the advisers stand',
     'From their newest reports. What they found unresolved is in the open questions in the room above, and facts ' +
       'they proposed are there as proposed facts.',
     ...LENS_IDS.map((lens) => {

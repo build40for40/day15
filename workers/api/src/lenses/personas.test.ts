@@ -9,7 +9,7 @@ describe('persona files', () => {
     for (const lens of LENS_IDS) {
       for (const part of ['## Actor', '## Instructions', '## Mission']) expect(PERSONAS[lens]).toContain(part)
     }
-    expect(PERSONAS.cto).toContain('# Delivery persona harness')
+    expect(PERSONAS.procurement).toContain('# Procurement persona harness')
   })
 
   it('fills the slots it has values for and leaves the rest', () => {

@@ -14,7 +14,7 @@ export const FIXTURE_PROJECT = {
 const AGENCY = 'Make-Believe Studio'
 const CLIENT = 'Pipsqueak Juice'
 
-/** Alex speaks for two lenses. Nobody on the client side speaks for delivery. */
+/** Alex speaks for two lenses. Dana's seat gives her the procurement lens, which carries delivery. */
 const PEOPLE = {
   alex: {
     name: 'Alex Example',
@@ -22,7 +22,7 @@ const PEOPLE = {
     side: 'agency',
     jobTitle: 'Managing Director',
     organisation: AGENCY,
-    lenses: ['agency', 'cfo'],
+    lenses: ['agency', 'procurement'],
     notes: "Signs off the agency's quotes.",
   },
   dana: { name: 'Dana Placeholder', persona: 'delivery_lead', side: 'agency', jobTitle: 'Head of Delivery', organisation: AGENCY },
@@ -152,7 +152,7 @@ const SAID: { by: FixturePerson; text: string; facts: Record<string, FixtureFact
   },
 ]
 
-const CFO_REPORT: PersonaReport = {
+const MONEY_REPORT: PersonaReport = {
   coverage: [
     { topic: 'What the price covers', agency: 'settled', client: 'settled' },
     { topic: 'Contingency', agency: 'missing', client: 'missing' },
@@ -164,9 +164,18 @@ const CFO_REPORT: PersonaReport = {
       client_said: 'it has to cover everything for the first year, hosting included',
       priority: 1,
       note: 'They are pricing two different projects.',
+      area: 'budget',
     },
   ],
-  questions: [{ ask: 'client', find_out: 'what happens if hosting pushes the total past £60k', because: 'Nobody holds a cushion.', priority: 1 }],
+  questions: [
+    {
+      ask: 'client',
+      find_out: 'what happens if hosting pushes the total past £60k',
+      because: 'Nobody holds a cushion.',
+      priority: 1,
+      area: 'budget',
+    },
+  ],
   done: false,
 }
 
@@ -210,7 +219,7 @@ export async function seedFixture(
     Object.keys(said.facts).forEach((key, index) => (facts[key] = added[index]!))
   }
 
-  const run = await room.saveLensRun({ lens: 'cfo', round: 1, watermark: facts.wholeBudget!.id, report: CFO_REPORT, status: 'done' })
+  const run = await room.saveLensRun({ lens: 'procurement', round: 1, watermark: facts.wholeBudget!.id, report: MONEY_REPORT, status: 'done' })
   const [budgetGap] = await room.addFacts([
     {
       authorKind: 'lens',
