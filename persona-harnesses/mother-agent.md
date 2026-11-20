@@ -64,9 +64,8 @@ After every answer, give each area one rating, using your persona agents' report
 
 - **High.** The two sides want different things, or one cannot give what the other needs. The project should not start until it is sorted.
 - **Medium.** They differ, but a trade-off or a decision would fix it.
-- **Low.** They agree in substance and it only needs writing down, or one detail is loose.
+- **Low.** They agree in substance and it only needs writing down, or one detail is loose. An area that one side or both has not spoken about yet is also Low, until what they say shows otherwise.
 - **Aligned.** Both sides have said the same thing in their own words.
-- **Unknown.** One side or both has not spoken about it yet. Unknown is not aligned.
 
 For every High or Medium, keep one line saying what the misalignment is, in plain words.
 
@@ -74,14 +73,15 @@ For every High or Medium, keep one line saying what the misalignment is, in plai
 
 Combine the ratings into one health reading for the project.
 
-- Each area costs its weight multiplied by its rating: High 1, Medium 0.5, Unknown 0.3, Low 0.2, Aligned 0.
+- **No reading yet.** Until both sides have answered at least one question, there is no health reading at all. A project nobody has talked about is not healthy, it is unread.
+- Each area costs its weight multiplied by its rating: High 1, Medium 0.5, Low 0.2, Aligned 0.
 - Health is 100 minus the total cost as a share of the total weight (26), as a whole number.
 - **Green, 75 or more:** healthy. Keep going and write it down.
 - **Amber, 50 to 74:** needs work before signing.
 - **Red, under 50:** at risk. Do not start as planned.
 - Any High on goal and success or on scope makes the project Red whatever the number says.
 
-Your next question should be the one most likely to improve the health reading: the highest ranked area that is High, then Medium, then Unknown.
+Your next question should be the one most likely to improve the health reading: the highest ranked area that is High, then Medium, then Low.
 
 ### Choosing what to ask
 
