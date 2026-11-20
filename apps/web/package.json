@@ -2,7 +2,7 @@
   "name": "web",
   "version": "0.0.0",
   "private": true,
-  "description": "The agency setup page, served at the root of day15.build40for40.com.",
+  "description": "The agency setup page, served at the root of a-line.build40for40.com.",
   "type": "module",
   "scripts": {
     "dev": "vite",
