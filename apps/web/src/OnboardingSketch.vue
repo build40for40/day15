@@ -52,8 +52,8 @@ const waiting = (side: Side) => (side === 'agency' ? 'Just you so far' : 'Waitin
 
 <style scoped>
 .sketch {
-  background: var(--card);
-  border: 1px dashed var(--line);
+  background: color-mix(in srgb, var(--raise) 55%, transparent);
+  border: 1px dashed var(--line-2);
   border-radius: 1rem;
   padding: 1.25rem;
   display: grid;
@@ -71,8 +71,8 @@ const waiting = (side: Side) => (side === 'agency' ? 'Just you so far' : 'Waitin
 
 h3 {
   margin: 0.25rem 0 0;
-  font-family: ui-serif, Georgia, serif;
-  font-size: 1.5rem;
+  font-family: var(--serif);
+  font-size: 1.6rem;
   line-height: 1.2;
   overflow-wrap: anywhere;
 }
@@ -106,7 +106,11 @@ h4.empty {
 }
 
 .side.agency {
-  border-top-color: var(--accent);
+  border-top-color: var(--agency);
+}
+
+.side.client {
+  border-top-color: var(--client);
 }
 
 h4 {
@@ -137,16 +141,14 @@ li {
   width: 2rem;
   height: 2rem;
   border-radius: 50%;
-  background: var(--accent);
-  color: #1c1d22;
+  background: var(--agency);
+  color: var(--on-accent);
   font-weight: 700;
   font-size: 0.875rem;
 }
 
 .client .avatar {
-  background: transparent;
-  border: 2px solid var(--ink);
-  color: var(--ink);
+  background: var(--client);
 }
 
 .who {

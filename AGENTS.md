@@ -85,8 +85,14 @@ The address is only ever in the answer that made it.
 
 `apps/web/src/`, phone first: on a phone the sidebar sits above the pane.
 
-- Signed out, `SignInScreen` offers WorkOS sign-in. Signed in with no team, `NameForm` names it.
+- Signed out, `SignInScreen` offers WorkOS sign-in. Signed in with no team, or a team with no project, the agency rep gets `OnboardingFlow` (below).
 - `ProjectWorkspace` holds the state: the projects, the current one, who is selected, and any address made this session. With no project yet it asks for one.
+
+**First-run onboarding** (`OnboardingFlow.vue`, logic in `onboarding.ts`). The agency rep is the person signing up, and they create the profiles for everyone, then send each person their own link. Three seats map onto existing personas: agency rep (`agency_lead`), client rep (`marketing_lead`, client side) and client procurement (`procurement`, client side), with anyone else behind "Anyone else involved?". Each person has every field `PersonForm` has (name, job title, company, which lenses speak for them, notes, link); `PersonMore.vue` holds the optional ones and `SeatCard.vue` the two client seats. Two ways in, one review: "talk" asks one question at a time, "form" shows every field on one page (a switch sits above the card). Nothing is created until the review is approved, then team, project and people are made, and each person's invite (naming who set them up) is shown once, client people first. A failed run carries on without duplicating.
+
+**Setup from chat.** The `/onboarding` skill (`.claude/skills/onboarding/`) interviews the agency rep in Claude and runs `setup-link.mjs` to make `https://a-line.build40for40.com/#setup=<base64url JSON>`. `main.ts` calls `captureSetup` to move the fragment into session storage (so it survives the WorkOS redirect and never reaches a server), and the flow reads it with `takeSetup` and opens on the review. `parseSetup` drops anything unexpected and cuts long text.
+
+**Look.** "Glisten midnight", one dark theme, tokens in `styles/base.css`: midnight backgrounds, gold accent, Spectral for headings and Instrument Sans for text (loaded in `index.html`), teal for the agency side, orange for the client side, coral for A-Line itself.
 - `PeopleSidebar` lists the current project's people (name, job title, and whether they have a link or were only mentioned to the coach), with "Add person" at the top and a project switcher plus "New project".
 - `PersonPanel` shows one person: `PersonLink` (while the address is fresh, a ready-to-send message from `invite.ts` with the address and how to connect, behind "Copy prompt" and "WhatsApp" buttons, and otherwise get a new link or give them one), `PersonForm` to edit their details, and remove with a confirm step. Adding a person uses the same `PersonForm`, with lenses that follow the persona until ticked by hand.
 

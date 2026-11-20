@@ -1,5 +1,16 @@
-import type { LensId } from '@day15/shared/lenses'
-import { PERSONA_LENS, PERSONA_NAMES, type Persona, type Side } from '@day15/shared/schema'
+import { LENS_IDS, type LensId } from '@day15/shared/lenses'
+import {
+  MAX_JOB_TITLE_LENGTH,
+  MAX_NAME_LENGTH,
+  MAX_NOTES_LENGTH,
+  MAX_ORGANISATION_LENGTH,
+  PERSONA_LENS,
+  PERSONA_NAMES,
+  PERSONAS,
+  SIDES,
+  type Persona,
+  type Side,
+} from '@day15/shared/schema'
 
 import type { PersonDetails } from './api'
 
@@ -137,4 +148,89 @@ export function roleName(persona: Persona, side: Side): string {
   if (persona === 'marketing_lead' && side === 'client') return 'Client rep'
   if (persona === 'procurement' && side === 'client') return 'Client procurement'
   return PERSONA_NAMES[persona]
+}
+
+// ---- A setup made in chat -------------------------------------------------------------------------------------
+//
+// The /onboarding skill interviews the agency rep in Claude, then gives them a link like
+// https://a-line.build40for40.com/#setup=<base64url JSON>. The answers sit in the fragment, so they never reach a
+// server. The page keeps them in session storage across the sign-in redirect, then opens on the review step.
+
+export const SETUP_KEY = 'a-line.setup'
+
+const text = (value: unknown, max: number) => (typeof value === 'string' ? value.trim().slice(0, max) : '')
+
+function decode(encoded: string): unknown {
+  const base64 = encoded.replace(/-/g, '+').replace(/_/g, '/')
+  const bytes = Uint8Array.from(atob(base64 + '='.repeat((4 - (base64.length % 4)) % 4)), (char) => char.charCodeAt(0))
+  return JSON.parse(new TextDecoder().decode(bytes))
+}
+
+function guestFrom(raw: unknown, key: number, persona: Persona, side: Side): Guest {
+  const given = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  const lenses = Array.isArray(given.lenses) ? LENS_IDS.filter((lens) => (given.lenses as unknown[]).includes(lens)) : []
+  return {
+    ...newGuest(key, persona, side),
+    name: text(given.name, MAX_NAME_LENGTH),
+    jobTitle: text(given.jobTitle, MAX_JOB_TITLE_LENGTH),
+    organisation: text(given.organisation, MAX_ORGANISATION_LENGTH),
+    notes: text(given.notes, MAX_NOTES_LENGTH),
+    lenses: lenses.length ? lenses : [PERSONA_LENS[persona]],
+    link: given.link !== false,
+  }
+}
+
+/** Reads a setup link's payload into a draft. Anything unreadable gives null, and odd values are dropped, not trusted. */
+export function parseSetup(encoded: string): Draft | null {
+  let raw: Record<string, unknown>
+  try {
+    const decoded = decode(encoded)
+    if (!decoded || typeof decoded !== 'object') return null
+    raw = decoded as Record<string, unknown>
+  } catch {
+    return null
+  }
+  const you = (raw.you && typeof raw.you === 'object' ? raw.you : {}) as Record<string, unknown>
+  const others = Array.isArray(raw.others) ? raw.others.slice(0, 12) : []
+  return {
+    yourName: text(you.name, MAX_NAME_LENGTH),
+    yourJobTitle: text(you.jobTitle, MAX_JOB_TITLE_LENGTH),
+    agencyName: text(raw.agency, MAX_NAME_LENGTH),
+    projectName: text(raw.project, MAX_NAME_LENGTH),
+    clientName: text(raw.client, MAX_ORGANISATION_LENGTH),
+    clientRep: guestFrom(raw.clientRep, CLIENT_REP_KEY, 'marketing_lead', 'client'),
+    procurementRep: guestFrom(raw.procurementRep, PROCUREMENT_KEY, 'procurement', 'client'),
+    guests: others
+      .map((other, index) => {
+        const given = (other && typeof other === 'object' ? other : {}) as Record<string, unknown>
+        const persona = PERSONAS.find((p) => p === given.persona) ?? 'marketing_lead'
+        const side = SIDES.find((s) => s === given.side) ?? 'client'
+        return guestFrom(other, index + 1, persona, side)
+      })
+      .filter((guest) => guest.name),
+  }
+}
+
+/** Called before the page mounts: moves a setup out of the address bar and into this tab's session storage. */
+export function captureSetup(location: Location, history: History, storage: Storage): void {
+  const match = /^#setup=([\w-]+)$/.exec(location.hash)
+  if (!match) return
+  try {
+    storage.setItem(SETUP_KEY, match[1]!)
+  } catch {
+    // Without storage the answers are lost across sign-in, which is only a convenience lost.
+  }
+  history.replaceState(null, '', location.pathname + location.search)
+}
+
+/** Reads and forgets a captured setup. */
+export function takeSetup(storage: Storage): Draft | null {
+  try {
+    const encoded = storage.getItem(SETUP_KEY)
+    if (!encoded) return null
+    storage.removeItem(SETUP_KEY)
+    return parseSetup(encoded)
+  } catch {
+    return null
+  }
 }

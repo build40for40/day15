@@ -139,7 +139,7 @@ textarea {
 .pill input:checked + span {
   background: var(--accent);
   border-color: var(--accent);
-  color: #1c1d22;
+  color: var(--on-accent);
   font-weight: 600;
 }
 

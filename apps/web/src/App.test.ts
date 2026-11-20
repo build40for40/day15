@@ -2,6 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import App from './App.vue'
+import { SETUP_KEY } from './onboarding'
 
 const auth = vi.hoisted(() => ({ currentUser: vi.fn(), signIn: vi.fn(), signOut: vi.fn(), getAccessToken: vi.fn() }))
 vi.mock('./auth', () => auth)
@@ -166,6 +167,56 @@ describe('App', () => {
     await button(wrapper, 'Go to my project').trigger('click')
     await flushPromises()
     expect(sidebarNames(wrapper)).toEqual(['Alex Example', 'Robin Fakeworth', 'Pat Pretend'])
+  })
+
+  it('lets someone fill in a form instead of being asked, and still reviews before creating anything', async () => {
+    auth.currentUser.mockResolvedValue({ id: 'user_fake' })
+    const fetchMock = serve({ team, projects: [] })
+    const wrapper = mount(App)
+    await flushPromises()
+    await button(wrapper, 'Prefer a form? Fill it in all at once').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Set up your project')
+    expect(wrapper.text()).toContain('Client procurement')
+
+    await wrapper.get('form').trigger('submit')
+    expect(wrapper.text()).toContain('Tell me your name.')
+    await wrapper.get('input[placeholder="Your name"]').setValue('Alex Example')
+    await wrapper.get('input[placeholder="Orchard Dash"]').setValue('Orchard Dash')
+    await wrapper.get('input[placeholder="The client\'s company"]').setValue('Make-Believe Foods')
+    await wrapper.get('input[placeholder="Your day-to-day contact"]').setValue('Robin Fakeworth')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Shall I set it up?')
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(0)
+
+    // Back from the review returns to the form, not to a question.
+    await button(wrapper, 'Back').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Set up your project')
+    expect((wrapper.get('input[placeholder="Orchard Dash"]').element as HTMLInputElement).value).toBe('Orchard Dash')
+  })
+
+  it('opens on the review, prefilled, when the /onboarding skill sent a setup link', async () => {
+    auth.currentUser.mockResolvedValue({ id: 'user_fake' })
+    serve({ team: null, projects: [] })
+    sessionStorage.setItem(
+      SETUP_KEY,
+      Buffer.from(
+        JSON.stringify({
+          you: { name: 'Alex Example' },
+          agency: 'Fake Agency',
+          project: 'Orchard Dash',
+          client: 'Make-Believe Foods',
+          clientRep: { name: 'Robin Fakeworth' },
+        }),
+      ).toString('base64url'),
+    )
+    const wrapper = mount(App)
+    await flushPromises()
+    expect(wrapper.text()).toContain("Here's Orchard Dash. Shall I set it up?")
+    expect(wrapper.get('.added').text()).toContain('Robin Fakeworth')
+    expect(sessionStorage.getItem(SETUP_KEY)).toBeNull()
   })
 
   it('skips the agency question when the team already exists, and carries on after a failure without repeating itself', async () => {

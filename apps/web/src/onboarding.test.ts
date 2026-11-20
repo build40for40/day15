@@ -1,6 +1,19 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
-import { blocker, CLIENT_REP_KEY, lonelySide, newGuest, PROCUREMENT_KEY, seats, type Draft, type Guest } from './onboarding'
+import {
+  blocker,
+  captureSetup,
+  CLIENT_REP_KEY,
+  lonelySide,
+  newGuest,
+  parseSetup,
+  PROCUREMENT_KEY,
+  seats,
+  SETUP_KEY,
+  takeSetup,
+  type Draft,
+  type Guest,
+} from './onboarding'
 
 const guest = (overrides: Partial<Guest> = {}): Guest => ({
   key: 1,
@@ -128,5 +141,62 @@ describe('lonelySide', () => {
   it('flags a project with nobody on the client side', () => {
     expect(lonelySide(draft())).toBe('client')
     expect(lonelySide(draft({ guests: [guest()] }))).toBeNull()
+  })
+})
+
+const encode = (value: unknown) => Buffer.from(JSON.stringify(value), 'utf8').toString('base64url')
+
+describe('a setup made in chat', () => {
+  const setup = {
+    v: 1,
+    you: { name: 'Alex Example', jobTitle: 'Managing Director' },
+    agency: 'Fake Agency',
+    project: 'Orchard Dash',
+    client: 'Make-Believe Foods',
+    clientRep: { name: 'Robin Fakeworth', jobTitle: 'Head of Brand', lenses: ['client', 'procurement', 'nonsense'], notes: 'Signs off the brief.' },
+    procurementRep: { name: 'Pat Pretend' },
+    others: [{ name: 'Sam Pretend', persona: 'delivery_lead', side: 'agency' }, { name: '' }, { name: 'Lee Odd', persona: 'wizard', side: 'moon' }],
+  }
+
+  it('reads every answer, with accents and unknown values handled', () => {
+    const parsed = parseSetup(encode({ ...setup, project: 'Café Orchard ✨' }))!
+    expect(parsed).toMatchObject({
+      yourName: 'Alex Example',
+      yourJobTitle: 'Managing Director',
+      agencyName: 'Fake Agency',
+      projectName: 'Café Orchard ✨',
+      clientName: 'Make-Believe Foods',
+    })
+    expect(parsed.clientRep).toMatchObject({ name: 'Robin Fakeworth', persona: 'marketing_lead', side: 'client', lenses: ['client', 'procurement'], notes: 'Signs off the brief.', link: true })
+    expect(parsed.procurementRep).toMatchObject({ name: 'Pat Pretend', persona: 'procurement', lenses: ['procurement'] })
+    expect(parsed.guests.map((g) => [g.name, g.persona, g.side])).toEqual([
+      ['Sam Pretend', 'delivery_lead', 'agency'],
+      ['Lee Odd', 'marketing_lead', 'client'],
+    ])
+    expect(seats(parsed, 'Fake Agency').map((seat) => seat.details.name)).toEqual(['Alex Example', 'Robin Fakeworth', 'Pat Pretend', 'Sam Pretend', 'Lee Odd'])
+  })
+
+  it('gives null for anything that is not a setup, and cuts overlong text', () => {
+    expect(parseSetup('not base64 at all!!')).toBeNull()
+    expect(parseSetup(encode('just a string'))).toBeNull()
+    expect(parseSetup(encode({ project: 'x'.repeat(500) }))!.projectName).toHaveLength(80)
+  })
+
+  it('moves a setup from the address bar to session storage, then hands it over once', () => {
+    const store = new Map<string, string>()
+    const storage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v), removeItem: (k: string) => void store.delete(k) } as unknown as Storage
+    const replaceState = vi.fn()
+    const encoded = encode(setup)
+    captureSetup({ hash: `#setup=${encoded}`, pathname: '/', search: '?x=1' } as Location, { replaceState } as unknown as History, storage)
+    expect(store.get(SETUP_KEY)).toBe(encoded)
+    expect(replaceState).toHaveBeenCalledWith(null, '', '/?x=1')
+    expect(takeSetup(storage)!.projectName).toBe('Orchard Dash')
+    expect(takeSetup(storage)).toBeNull()
+  })
+
+  it('ignores any other fragment', () => {
+    const replaceState = vi.fn()
+    captureSetup({ hash: '#other', pathname: '/', search: '' } as Location, { replaceState } as unknown as History, {} as Storage)
+    expect(replaceState).not.toHaveBeenCalled()
   })
 })

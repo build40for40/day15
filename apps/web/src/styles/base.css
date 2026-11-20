@@ -10,26 +10,49 @@ body {
 }
 
 body {
-  font-family: system-ui, sans-serif;
+  font-family: var(--sans);
   font-size: 16px;
   line-height: 1.5;
   overflow-x: hidden;
 }
 
 :root {
-  color-scheme: light dark;
-  --paper: light-dark(#f6f3ec, #17181c);
-  --card: light-dark(#ffffff, #212329);
-  --ink: light-dark(#1c1d22, #f1eee6);
-  --muted: light-dark(#5c5e68, #a9abb5);
-  --line: light-dark(#d9d4c7, #383b44);
-  --accent: light-dark(#ffd76a, #ffd76a);
-  --danger: light-dark(#a3231b, #ff8f86);
+  /* A-Line's look: Glisten midnight. One dark look, by choice. Teal is the agency, orange the client, coral A-Line itself. */
+  color-scheme: dark;
+  --midnight: #070b14;
+  --midnight-2: #0d1424;
+  --paper: #070b14;
+  --card: #0d1424;
+  --raise: #111a2e;
+  --ink: #c9d1e0;
+  --lit: #f7ecd2;
+  --muted: #8a96b0;
+  --line: #1c2840;
+  --line-2: #2a3a58;
+  --accent: #f2c86b;
+  --on-accent: #070b14;
+  --danger: #ff9c91;
+  --agency: #46d6c8;
+  --client: #ffae6b;
+  --coach: #ff9c91;
+  --done: #5de0a8;
+  --serif: 'Spectral', Georgia, 'Times New Roman', serif;
+  --sans: 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
 body {
-  background: var(--paper);
+  background: radial-gradient(120% 70% at 50% -10%, var(--midnight-2), var(--midnight) 62%) fixed;
+  background-color: var(--midnight);
   color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--serif);
+  font-weight: 400;
+  color: var(--lit);
 }
 
 :focus-visible {
@@ -45,9 +68,9 @@ button {
   padding: 0.6rem 0.75rem;
   min-height: 2.75rem;
   border: 1px solid var(--line);
-  border-radius: 0.5rem;
-  background: var(--paper);
-  color: var(--ink);
+  border-radius: 0.6rem;
+  background: var(--raise);
+  color: var(--lit);
   min-width: 0;
   max-width: 100%;
 }
@@ -58,14 +81,38 @@ textarea {
 
 button {
   background: var(--accent);
-  color: #1c1d22;
+  color: var(--on-accent);
   font-weight: 600;
   cursor: pointer;
+  border-color: transparent;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+button:hover:not(:disabled) {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent), 0 6px 20px -6px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: color-mix(in srgb, var(--muted) 75%, transparent);
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  border-color: var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button {
+    transition: none;
+  }
 }
 
 button.quiet {
   background: transparent;
   color: var(--ink);
+  border-color: var(--line-2);
 }
 
 button.danger {

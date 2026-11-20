@@ -26,6 +26,7 @@ import {
   seats,
   STEP_LABELS,
   STEPS,
+  takeSetup,
   type Draft,
   type Step,
 } from './onboarding'
@@ -37,6 +38,8 @@ const props = defineProps<{ team: Team | null }>()
 const emit = defineEmits<{ finish: [team: Team, project: Project] }>()
 
 const step = ref<Step>('hello')
+// Talk: one question at a time. Form: every field on one page. Both end at the same review.
+const mode = ref<'talk' | 'form'>('talk')
 const phase = ref<'asking' | 'working' | 'done'>('asking')
 const error = ref('')
 const stage = useTemplateRef<HTMLElement>('stage')
@@ -82,6 +85,7 @@ const needsAgencyName = computed(() => !props.team)
 const agencyName = computed(() => (props.team?.name ?? draft.agencyName).trim())
 const plan = computed(() => seats(draft, agencyName.value))
 const lonely = computed(() => lonelySide(draft))
+const view = computed(() => (phase.value === 'done' ? 'done' : step.value === 'review' ? 'review' : mode.value === 'form' ? 'form' : step.value))
 const stepIndex = computed(() => (phase.value === 'done' ? STEPS.length : STEPS.indexOf(step.value)))
 const started = computed(() => madeProject.value !== null)
 const withLinks = computed(() => plan.value.filter((seat) => seat.link))
@@ -96,8 +100,17 @@ function arrive() {
   focusFirst()
 }
 
-// A new step isn't in the page until the old one has left, so focus it when it arrives.
-onMounted(focusFirst)
+// A setup made in chat arrives prefilled, and opens on the review so it can be checked and approved.
+onMounted(() => {
+  const setup = takeSetup(window.sessionStorage)
+  if (setup) {
+    Object.assign(draft, setup)
+    guestKey = setup.guests.length
+    step.value = blocker('hello', draft, needsAgencyName.value) || blocker('project', draft, false) ? 'hello' : 'review'
+  }
+  // A new step isn't in the page until the old one has left, so focus it when it arrives.
+  focusFirst()
+})
 
 function go(to: Step) {
   error.value = ''
@@ -114,7 +127,24 @@ function forward() {
 }
 
 function back() {
-  go(STEPS[STEPS.indexOf(step.value) - 1]!)
+  go(mode.value === 'form' ? 'hello' : STEPS[STEPS.indexOf(step.value) - 1]!)
+}
+
+function submitForm() {
+  for (const check of ['hello', 'project'] as const) {
+    const stop = blocker(check, draft, needsAgencyName.value)
+    if (stop) {
+      error.value = stop
+      return
+    }
+  }
+  go('review')
+}
+
+function switchMode(to: 'talk' | 'form') {
+  error.value = ''
+  mode.value = to
+  step.value = 'hello'
 }
 
 function addGuest() {
@@ -186,7 +216,8 @@ const finish = () => emit('finish', madeTeam.value!, madeProject.value!)
 
 <template>
   <section ref="stage" class="flow" aria-label="Set up your first project">
-    <ol class="progress" aria-label="Progress">
+    <div class="topline">
+    <ol v-if="mode === 'talk'" class="progress" aria-label="Progress">
       <li
         v-for="(name, index) in STEPS"
         :key="name"
@@ -197,12 +228,73 @@ const finish = () => emit('finish', madeTeam.value!, madeProject.value!)
         <span class="label">{{ STEP_LABELS[name] }}</span>
       </li>
     </ol>
+    <p v-else class="eyebrow">Your project, all on one page</p>
+    <button v-if="phase === 'asking' && !started && step !== 'review'" type="button" class="quiet small switch" @click="switchMode(mode === 'talk' ? 'form' : 'talk')">
+      {{ mode === 'talk' ? 'Prefer a form? Fill it in all at once' : 'Prefer to be asked? Talk me through it' }}
+    </button>
+    </div>
 
     <div class="layout">
       <div class="card">
         <Transition name="step" mode="out-in" @after-enter="arrive">
+          <!-- The same questions on one page -->
+          <form v-if="view === 'form'" key="form" class="ask" @submit.prevent="submitForm">
+            <h2>Set up your project</h2>
+            <p class="lead">Fill in what you know. Only the first few are needed, and nothing is created until you've reviewed it.</p>
+
+            <section class="group">
+              <h3>You, the agency rep</h3>
+              <label>
+                <span class="q">Your name</span>
+                <input v-model="draft.yourName" data-focus :maxlength="MAX_NAME_LENGTH" autocomplete="name" placeholder="Your name" />
+              </label>
+              <label>
+                <span class="q">Your job title</span>
+                <input v-model="draft.yourJobTitle" :maxlength="MAX_JOB_TITLE_LENGTH" autocomplete="organization-title" placeholder="Managing Director" />
+              </label>
+              <label v-if="needsAgencyName">
+                <span class="q">Your agency</span>
+                <input v-model="draft.agencyName" :maxlength="MAX_NAME_LENGTH" autocomplete="organization" placeholder="Your agency" />
+              </label>
+              <p v-else class="hint">Setting this up for {{ team!.name }}.</p>
+            </section>
+
+            <section class="group">
+              <h3>The project</h3>
+              <label>
+                <span class="q">Project name</span>
+                <input v-model="draft.projectName" :maxlength="MAX_NAME_LENGTH" placeholder="Orchard Dash" />
+              </label>
+              <label>
+                <span class="q">Client company</span>
+                <input v-model="draft.clientName" :maxlength="MAX_ORGANISATION_LENGTH" autocomplete="off" placeholder="The client's company" />
+              </label>
+            </section>
+
+            <section class="group">
+              <h3>Your client's team</h3>
+              <SeatCard
+                v-model="draft.clientRep"
+                role="Client rep"
+                does="Owns the brief on the client side"
+                placeholder="Your day-to-day contact"
+                :assumed-company="draft.clientName.trim()"
+              />
+              <SeatCard
+                v-model="draft.procurementRep"
+                role="Client procurement"
+                does="Handles terms, contracts and budget sign-off"
+                placeholder="Who handles the contract"
+                :assumed-company="draft.clientName.trim()"
+              />
+            </section>
+
+            <p v-if="error" class="error" role="alert">{{ error }}</p>
+            <div class="actions"><button type="submit">Review</button></div>
+          </form>
+
           <!-- 1. Hello -->
-          <form v-if="phase === 'asking' && step === 'hello'" key="hello" class="ask" @submit.prevent="forward">
+          <form v-else-if="view === 'hello'" key="hello" class="ask" @submit.prevent="forward">
             <p class="eyebrow">Welcome to A-Line</p>
             <h2>You've just won the pitch. Let's make sure everyone means the same thing.</h2>
             <p class="lead">
@@ -230,7 +322,7 @@ const finish = () => emit('finish', madeTeam.value!, madeProject.value!)
           </form>
 
           <!-- 2. The win -->
-          <form v-else-if="phase === 'asking' && step === 'project'" key="project" class="ask" @submit.prevent="forward">
+          <form v-else-if="view === 'project'" key="project" class="ask" @submit.prevent="forward">
             <p class="eyebrow">The win</p>
             <h2>Nice to meet you, {{ firstName(draft.yourName) }}. What have you just won?</h2>
             <p class="lead">Name it however your team does. A codename is fine.</p>
@@ -251,7 +343,7 @@ const finish = () => emit('finish', madeTeam.value!, madeProject.value!)
           </form>
 
           <!-- 3. Your client's team -->
-          <div v-else-if="phase === 'asking' && step === 'people'" key="people" class="ask">
+          <div v-else-if="view === 'people'" key="people" class="ask">
             <p class="eyebrow">Your client</p>
             <h2>Who's on the client side?</h2>
             <p class="lead">
@@ -340,7 +432,7 @@ const finish = () => emit('finish', madeTeam.value!, madeProject.value!)
           </div>
 
           <!-- 4. Review -->
-          <div v-else-if="phase !== 'done' && step === 'review'" key="review" class="ask">
+          <div v-else-if="view === 'review'" key="review" class="ask">
             <p class="eyebrow">Review</p>
             <h2 tabindex="-1" data-focus>Here's {{ draft.projectName.trim() }}. Shall I set it up?</h2>
             <p class="lead">
@@ -353,11 +445,10 @@ const finish = () => emit('finish', madeTeam.value!, madeProject.value!)
                 <span>
                   <strong>{{ seat.details.name }}<template v-if="seat.you"> (you)</template></strong>
                   <small>
-                    {{ seat.details.jobTitle || roleName(seat.details.persona, seat.details.side) }}, {{ seat.details.organisation || seat.details.side }}
-                    <template v-if="seat.details.notes">, with notes for the coach</template>
+                    {{ seat.details.jobTitle || roleName(seat.details.persona, seat.details.side) }}, {{ seat.details.organisation || seat.details.side }}{{ seat.details.notes ? ', with notes for the coach' : '' }}
                   </small>
                 </span>
-                <small>{{ seat.link ? 'Gets a link' : 'No link' }}</small>
+                <small class="nowrap">{{ seat.link ? 'Gets a link' : 'No link' }}</small>
               </li>
             </ul>
             <p class="hint">What people tell the coach is shared with both sides unless they ask for it to be kept private.</p>
@@ -416,6 +507,30 @@ const finish = () => emit('finish', madeTeam.value!, madeProject.value!)
   gap: 1.25rem;
 }
 
+.topline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
+}
+
+.switch {
+  margin-left: auto;
+}
+
+.group {
+  display: grid;
+  gap: 0.85rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.group h3 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
 .progress {
   list-style: none;
   margin: 0;
@@ -448,7 +563,7 @@ const finish = () => emit('finish', madeTeam.value!, madeProject.value!)
 .progress .done .dot {
   background: var(--accent);
   border-color: var(--accent);
-  color: #1c1d22;
+  color: var(--on-accent);
 }
 
 .progress .now {
@@ -458,6 +573,7 @@ const finish = () => emit('finish', madeTeam.value!, madeProject.value!)
 
 .progress .now .dot {
   border-color: var(--accent);
+  color: var(--lit);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
@@ -479,11 +595,11 @@ const finish = () => emit('finish', madeTeam.value!, madeProject.value!)
 }
 
 .card {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 1rem;
+  background: linear-gradient(180deg, var(--raise), var(--card));
+  border: 1px solid var(--line-2);
+  border-radius: 1.25rem;
   padding: 1.5rem;
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--ink) 6%, transparent), 0 12px 32px -16px color-mix(in srgb, var(--ink) 18%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--lit) 3%, transparent) inset, 0 24px 48px -24px rgba(0, 0, 0, 0.7);
 }
 
 @media (min-width: 40rem) {
@@ -502,14 +618,14 @@ const finish = () => emit('finish', madeTeam.value!, madeProject.value!)
   font-size: 0.75rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--accent);
 }
 
 h2 {
   margin: 0;
-  font-family: ui-serif, Georgia, serif;
-  font-size: 1.75rem;
-  font-weight: 600;
+  font-family: var(--serif);
+  font-size: 1.85rem;
+  font-weight: 400;
   line-height: 1.2;
   text-wrap: balance;
 }
@@ -648,7 +764,7 @@ button.small {
 
 .segmented input:checked + span {
   background: var(--accent);
-  color: #1c1d22;
+  color: var(--on-accent);
   font-weight: 600;
 }
 
@@ -719,6 +835,10 @@ button.small {
   padding: 0.6rem 0.75rem;
   border: 1px solid var(--line);
   border-radius: 0.5rem;
+}
+
+.nowrap {
+  white-space: nowrap;
 }
 
 .added li span {
