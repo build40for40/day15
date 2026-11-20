@@ -1,6 +1,6 @@
-# Persona prompts
+# Persona harnesses
 
-Five personas feed the main brain. Each one reads everything both sides have told the coach so far and reports back, through its own lens, what is settled, what is missing and where the two sides are heading for a row. The brain reads all five reports and decides what the coach asks next.
+Five persona harnesses feed the main brain. Each one reads everything both sides have told the coach so far and reports back, through its own lens, what is settled, what is missing and where the two sides are heading for a row. The brain reads all five reports and decides what the coach asks next.
 
 Neither the agency nor the client ever sees a persona, its name or its report. They only ever meet one warm coach.
 
@@ -12,9 +12,9 @@ Neither the agency nor the client ever sees a persona, its name or its report. T
 | `personas/procurement.md` | Procurement | The agreement, and the bad day |
 | `personas/delivery.md` | Delivery | The promise being buildable |
 
-## The shared harness
+## The shared wrapper
 
-Every persona runs with the same wrapper. The persona file is dropped into the `<persona>` slot.
+Every persona harness runs inside the same wrapper. The persona file is dropped into the `<persona>` slot.
 
 ```text
 You are one of five advisers to a coach. The coach is helping an agency and a client get their
@@ -50,7 +50,7 @@ Rules:
 - At most three questions in total. Fewer is better. None is fine if your topics are settled.
 ```
 
-## What every persona sends back
+## What every persona harness sends back
 
 ```json
 {

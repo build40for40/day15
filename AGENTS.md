@@ -38,6 +38,10 @@ Shared 40 for 40 context lives in `../AGENTS.md`.
 - Deploys need the `CLOUDFLARE_API_TOKEN` secret on the repo. Without it CI still tests and builds, and skips deploying.
 - The Worker needs the `ANTHROPIC_API_KEY` Cloudflare secret, set once with `npm run wrangler -- secret put ANTHROPIC_API_KEY`. Every Worker secret is listed, with an empty value, in `.dev.vars.example`. `ANTHROPIC_WORKSPACE_ID` is optional: set it only when the key isn't scoped to a workspace, and the Worker sends it as the `anthropic-workspace-id` header.
 
+## Persona harnesses
+
+`persona-harnesses/` holds the five persona harnesses (client, agency, CFO, procurement, delivery) as plain markdown, with the shared wrapper and report format in its `README.md`. Each one reads what both sides have said and reports to the main brain. They are drafts under review and are not wired into the Worker yet: the prototype still uses the shorter personas in `worker/personas.ts`.
+
 ## The problem
 
 Expectation Manager
