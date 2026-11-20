@@ -1,0 +1,448 @@
+<title>The Mix</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: a recessed console. Truth ladder across the top, six bus rows (shared axes), six channel strips, then the dock. */
+:root {
+  color-scheme: dark;
+  --ink: #101214;
+  --steel1: #30353a;
+  --steel2: #23272b;
+  --steel3: #1a1d20;
+  --cream: #ebe4d0;
+  --mut: #a29d89;
+  --brass: #d9b36c;
+  --line: #3b4147;
+  --ok: #34d27b;
+  --warn: #ffb020;
+  --bad: #ff4d5e;
+  --disp: 'Barlow Condensed', 'Arial Narrow', 'Helvetica Neue', sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--ink);
+  background-image: radial-gradient(ellipse at 50% -10%, #1f2327 0%, var(--ink) 60%);
+  color: var(--cream);
+  font: 13px/1.45 var(--mono);
+  padding-block: 20px 28px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 14px; min-width: 0; }
+header.top { display: grid; gap: 8px; }
+h1 { margin: 0; font: 700 44px/0.95 var(--disp); letter-spacing: .02em; text-transform: uppercase; text-wrap: balance; }
+h1 em { font-style: normal; color: var(--brass); }
+.sub { margin: 0; color: var(--mut); max-width: 68ch; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 16px; color: var(--mut); font-size: 11px; letter-spacing: .04em; align-items: center; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.lg-dot { width: 11px; height: 11px; border-radius: 50%; border: 2px solid; background: #15181b; }
+.lg-master { width: 7px; height: 16px; border-radius: 2px; background: linear-gradient(90deg, #cfc6ae, #f3ecd9, #bdb399); }
+.lg-led { width: 10px; height: 10px; border-radius: 2px; }
+
+/* The console body */
+.desk {
+  position: relative; border-radius: 14px; padding: 16px; display: grid; gap: 14px; min-width: 0;
+  background:
+    repeating-linear-gradient(90deg, rgba(255,255,255,.028) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, var(--steel1), var(--steel2) 40%, var(--steel3));
+  border: 1px solid #0a0b0c;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), inset 0 -2px 8px rgba(0,0,0,.5), 0 18px 40px rgba(0,0,0,.5);
+}
+.screw { position: absolute; width: 9px; height: 9px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #6a7077, #22262a 70%); box-shadow: 0 0 0 1px #0b0c0d; }
+.screw::after { content: ""; position: absolute; left: 1px; right: 1px; top: 4px; height: 1px; background: #101214; transform: rotate(35deg); }
+.screw.a { left: 7px; top: 7px; } .screw.b { right: 7px; top: 7px; } .screw.c { left: 7px; bottom: 7px; } .screw.d { right: 7px; bottom: 7px; }
+.plate { font: 600 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--mut); display: flex; align-items: center; gap: 10px; }
+.plate::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, var(--line), transparent); }
+
+/* Truth ladder */
+.ladder-wrap { display: grid; gap: 8px; }
+.ladder-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.mix-lamp { display: inline-flex; align-items: center; gap: 8px; font: 600 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--mut); }
+.mix-lamp i { width: 12px; height: 12px; border-radius: 50%; background: #1b1e21; box-shadow: inset 0 1px 3px #000; transition: background .3s, box-shadow .3s; }
+.mix-lamp.on { color: var(--ok); }
+.mix-lamp.on i { background: var(--ok); box-shadow: 0 0 10px var(--ok), inset 0 0 0 1px rgba(255,255,255,.3); }
+.ladder { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 6px; }
+.rung { display: grid; gap: 4px; justify-items: stretch; min-width: 0; }
+.rung .led { height: 16px; border-radius: 3px; background: #15181a; box-shadow: inset 0 1px 3px #000, 0 1px 0 rgba(255,255,255,.06); transition: background .3s, box-shadow .3s; }
+.rung.amber .led { background: var(--warn); box-shadow: 0 0 8px rgba(255,176,32,.7), inset 0 1px 0 rgba(255,255,255,.35); }
+.rung.green .led { background: var(--ok); box-shadow: 0 0 10px rgba(52,210,123,.8), inset 0 1px 0 rgba(255,255,255,.35); }
+.rung.conflict .led { background: var(--bad); box-shadow: 0 0 10px rgba(255,77,94,.9); animation: blink .5s steps(2) infinite; }
+.rung span { font: 500 10px/1.15 var(--mono); color: var(--mut); text-align: center; text-transform: uppercase; letter-spacing: .04em; overflow-wrap: anywhere; }
+.rung.green span { color: var(--cream); }
+@keyframes blink { 50% { opacity: .35; } }
+
+/* Clip banner */
+.clip { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--bad); border-radius: 8px; padding: 9px 12px; background: rgba(255,77,94,.1); font-size: 12.5px; }
+.clip b { flex: none; font: 700 12px var(--disp); letter-spacing: .12em; background: var(--bad); color: #fff; padding: 3px 7px; border-radius: 3px; text-transform: uppercase; animation: blink .6s steps(2) infinite; }
+.clip .x { color: var(--bad); font-weight: 600; padding: 0 4px; }
+
+/* Buses */
+.buses { display: grid; gap: 10px; }
+.bus { display: grid; grid-template-columns: 138px minmax(0, 1fr) 176px; gap: 14px; align-items: center; padding: 8px 12px; border-radius: 9px; background: linear-gradient(180deg, rgba(0,0,0,.32), rgba(0,0,0,.14)); box-shadow: inset 0 1px 4px rgba(0,0,0,.55), 0 1px 0 rgba(255,255,255,.05); min-width: 0; }
+.bus .name { font: 600 22px/1 var(--disp); letter-spacing: .04em; text-transform: uppercase; display: grid; gap: 3px; }
+.bus .name small { font: 400 10px var(--mono); color: var(--mut); letter-spacing: .05em; text-transform: none; }
+.rail { position: relative; height: 54px; min-width: 0; }
+.rail::before { /* tick marks */
+  content: ""; position: absolute; left: 0; right: 0; top: 4px; height: 10px;
+  background: repeating-linear-gradient(90deg, var(--line) 0 1px, transparent 1px 10%);
+  background-size: calc(100% - 1px) 100%; opacity: .9;
+}
+.rail::after { /* slot */
+  content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 7px; transform: translateY(-50%); border-radius: 4px;
+  background: #07080a; box-shadow: inset 0 1px 3px #000, 0 1px 0 rgba(255,255,255,.08);
+}
+.ends { position: absolute; left: 0; right: 0; bottom: -2px; display: flex; justify-content: space-between; font: 400 9.5px var(--mono); color: var(--mut); letter-spacing: .06em; text-transform: uppercase; }
+.peg {
+  position: absolute; left: 50%; top: calc(50% + (var(--i) - 2) * 6px); width: 14px; height: 14px; border-radius: 50%;
+  transform: translate(-50%, -50%); border: 3px solid var(--c); background: #121417; z-index: 2;
+  box-shadow: 0 0 6px color-mix(in srgb, var(--c) 55%, transparent), 0 2px 3px rgba(0,0,0,.6);
+  transition: left 1.1s cubic-bezier(.2,.7,.2,1);
+}
+.master {
+  position: absolute; left: 50%; top: 50%; width: 11px; height: 36px; border-radius: 3px; z-index: 3; transform: translate(-50%, -50%);
+  background: linear-gradient(90deg, #b4ab94, #f4eddb 45%, #cfc6ae); border: 1px solid #0b0b0b;
+  box-shadow: 0 3px 6px rgba(0,0,0,.65), inset 0 0 0 1px rgba(255,255,255,.35);
+  transition: left 1.3s cubic-bezier(.2,.7,.2,1);
+}
+.master::after { content: ""; position: absolute; left: 50%; top: 4px; bottom: 4px; width: 1px; background: #262421; transform: translateX(-50%); }
+.bus.slam .master { transition: left .38s cubic-bezier(.3,1.9,.5,1); }
+.bus.slam .peg { transition: left .5s cubic-bezier(.3,1.5,.5,1); }
+.bus.thunk { animation: thunk .45s ease-out; }
+@keyframes thunk { 0% { transform: translateY(0); } 25% { transform: translateY(3px); box-shadow: inset 0 0 30px rgba(52,210,123,.45); } 100% { transform: translateY(0); } }
+.peg.shake { animation: shake .18s linear 7; }
+@keyframes shake { 0%,100% { margin-top: 0; } 25% { margin-top: -3px; } 75% { margin-top: 3px; } }
+
+.read { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; align-items: center; min-width: 0; }
+.mval { font: 600 26px/1 var(--disp); font-variant-numeric: tabular-nums; color: var(--cream); text-align: right; min-width: 2.2ch; }
+.meters { display: grid; gap: 5px; }
+.mrow { display: flex; align-items: center; gap: 6px; font: 500 9.5px var(--mono); color: var(--mut); letter-spacing: .08em; text-transform: uppercase; }
+.mrow b { width: 42px; font-weight: 500; }
+.lock { width: 11px; height: 11px; border-radius: 50%; background: #15181a; box-shadow: inset 0 1px 3px #000; transition: background .25s, box-shadow .25s; }
+.lock.on { background: var(--ok); box-shadow: 0 0 9px var(--ok), inset 0 0 0 1px rgba(255,255,255,.3); }
+.spread { display: flex; gap: 3px; }
+.spread i { width: 11px; height: 9px; border-radius: 2px; background: #15181a; box-shadow: inset 0 1px 2px #000; transition: background .3s; }
+.spread i.on.g { background: var(--ok); } .spread i.on.y { background: var(--warn); } .spread i.on.r { background: var(--bad); box-shadow: 0 0 6px var(--bad); }
+.bus.clipping .spread i { background: var(--bad); box-shadow: 0 0 6px var(--bad); animation: blink .35s steps(2) infinite; }
+.bus.clipping { box-shadow: inset 0 0 0 1px rgba(255,77,94,.7), inset 0 1px 4px rgba(0,0,0,.55); }
+
+/* Strips */
+.strips-scroll { overflow-x: auto; min-width: 0; padding-bottom: 4px; }
+.strips { display: grid; grid-template-columns: repeat(6, minmax(104px, 1fr)); gap: 8px; min-width: 640px; }
+.strip { border-radius: 9px; padding: 8px 8px 10px; display: grid; gap: 8px; min-width: 0; background: linear-gradient(180deg, rgba(0,0,0,.36), rgba(0,0,0,.16)); box-shadow: inset 0 1px 4px rgba(0,0,0,.55), 0 1px 0 rgba(255,255,255,.05); border-top: 4px solid var(--c); }
+.strip .who { display: grid; gap: 1px; }
+.strip .who b { font: 700 24px/1 var(--disp); text-transform: uppercase; letter-spacing: .03em; }
+.strip .who span { font: 400 10px/1.25 var(--mono); color: var(--mut); }
+.focus { font: 500 10px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--brass); min-height: 1.3em; }
+.chan { display: grid; grid-template-columns: 16px 1fr; gap: 10px; height: 128px; }
+.vu { display: flex; flex-direction: column-reverse; gap: 2px; }
+.vu i { flex: 1; border-radius: 1px; background: #15181a; box-shadow: inset 0 1px 1px #000; }
+.vu i.on { background: var(--ok); } .vu i.on.y { background: var(--warn); } .vu i.on.r { background: var(--bad); }
+.fader { position: relative; }
+.fader::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 6px; transform: translateX(-50%); background: #07080a; border-radius: 3px; box-shadow: inset 0 1px 3px #000, 0 1px 0 rgba(255,255,255,.08); }
+.fader::after { content: ""; position: absolute; left: 4px; right: 4px; top: 0; bottom: 0; background: repeating-linear-gradient(180deg, var(--line) 0 1px, transparent 1px 25%); opacity: .6; }
+.cap { position: absolute; left: 50%; width: 30px; height: 22px; border-radius: 3px; transform: translate(-50%, 50%); z-index: 2;
+  background: linear-gradient(180deg, #4a5056, #25292d); border: 1px solid #0a0b0c; box-shadow: 0 3px 6px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.2);
+  transition: bottom 1.1s cubic-bezier(.2,.7,.2,1); }
+.cap::after { content: ""; position: absolute; left: 3px; right: 3px; top: 50%; height: 4px; transform: translateY(-50%); background: var(--c); border-radius: 1px; box-shadow: 0 0 6px color-mix(in srgb, var(--c) 70%, transparent); }
+.lights { display: flex; gap: 6px; }
+.lamp { flex: 1; text-align: center; font: 600 9px/1 var(--mono); letter-spacing: .08em; padding: 5px 0; border-radius: 3px; background: #15181a; color: #5a5f57; box-shadow: inset 0 1px 2px #000; transition: background .15s, color .15s, box-shadow .15s; }
+.strip.on .lamp.solo { background: var(--c); color: #101214; box-shadow: 0 0 10px color-mix(in srgb, var(--c) 80%, transparent); }
+.strip.clipped .lamp.clipl { background: var(--bad); color: #fff; box-shadow: 0 0 10px var(--bad); animation: blink .5s steps(2) infinite; }
+.hat { font: 500 10px var(--mono); color: var(--brass); min-height: 1.3em; letter-spacing: .04em; }
+
+/* Dock theme */
+.dockhost { --em-bg: #14171a; --em-panel: #1c2024; --em-fg: var(--cream); --em-mut: var(--mut); --em-line: var(--line); --em-acc: var(--brass); --em-ok: var(--ok); --em-warn: var(--warn); --em-bad: var(--bad); --em-font: 'Barlow Condensed', 'Arial Narrow', sans-serif; --em-mono: var(--mono); --em-radius: 10px; min-width: 0; }
+.dockhost .emd-tick { font-size: 17px; line-height: 1.3; }
+.dockhost .emd-opt { font-size: 15px; } .dockhost .emd-opt span { font-size: 13px; }
+.dockhost .emd-choice h5 { font-size: 17px; }
+.dockhost .emx-body { font-size: 14px; } .dockhost .emx-head { font-size: 13px; } .dockhost .emx-tab { font-size: 15px; }
+
+footer { color: var(--mut); font-size: 11px; letter-spacing: .06em; text-align: center; padding-top: 4px; }
+
+@media (max-width: 860px) {
+  .bus { grid-template-columns: minmax(0, 1fr) auto; row-gap: 6px; }
+  .bus .rail { grid-column: 1 / -1; grid-row: 2; }
+  .bus .read { grid-row: 1; grid-column: 2; }
+  .ladder { grid-template-columns: repeat(6, minmax(0, 1fr)); row-gap: 10px; }
+}
+@media (max-width: 520px) { h1 { font-size: 36px; } .desk { padding: 12px; } .read { grid-template-columns: auto auto; } .meters { display: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .peg, .master, .cap, .rung .led, .lock, .spread i, .lamp { transition: none !important; }
+  .peg.shake, .bus.thunk, .clip b, .rung.conflict .led, .strip.clipped .lamp.clipl, .bus.clipping .spread i { animation: none !important; }
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <h1>The <em>Mix</em></h1>
+    <p class="sub">Five people want five different things from the same project. Watch each fader and marker move toward the master as the room settles money, scope, speed and risk. Pick when the coach asks and the master lands somewhere else.</p>
+    <div class="legend" id="legend" aria-label="Legend"></div>
+  </header>
+
+  <div class="desk">
+    <i class="screw a"></i><i class="screw b"></i><i class="screw c"></i><i class="screw d"></i>
+    <div class="ladder-wrap">
+      <div class="ladder-head">
+        <div class="plate" style="flex:1">Project truth ladder</div>
+        <span class="mix-lamp" id="mixLamp"><i></i><span id="mixTxt">Mix open</span></span>
+      </div>
+      <div class="ladder" id="ladder"></div>
+    </div>
+    <div class="clip" id="clip" hidden></div>
+    <div class="plate">Shared buses</div>
+    <div class="buses" id="buses"></div>
+    <div class="plate">Channel strips</div>
+    <div class="strips-scroll"><div class="strips" id="strips"></div></div>
+  </div>
+
+  <div class="dockhost" id="dockhost"></div>
+  <footer>Concept for Expectation Manager, Day 15</footer>
+</div>
+
+<!--ENGINE-->
+<script>
+(function () {
+  'use strict';
+  var EM = window.EM, CAST = EM.CAST, PEOPLE = EM.PEOPLE;
+  var session = EM.createSession();
+  var el = EM.el;
+
+  var AX = [
+    { id: 'ambition', name: 'Ambition', lo: 'Modest', hi: 'Bold', hint: 'How big a swing' },
+    { id: 'budget', name: 'Budget', lo: 'Tight', hi: 'Generous', hint: 'How much money' },
+    { id: 'speed', name: 'Speed', lo: 'Steady', hi: 'Fast', hint: 'How soon' },
+    { id: 'scope', name: 'Scope', lo: 'Lean', hi: 'Big', hint: 'How much gets made' },
+    { id: 'risk', name: 'Risk', lo: 'Cautious', hi: 'Daring', hint: 'How much can go wrong' },
+    { id: 'creative', name: 'Creative freedom', lo: 'Tight brief', hi: 'Open', hint: 'How much room' }
+  ];
+  var AXI = {}; AX.forEach(function (a, i) { AXI[a.id] = i; });
+  // Starting positions, 0 to 100, in the order of AX.
+  var START = {
+    client:      [70, 55, 75, 65, 45, 45],
+    agency:      [92, 85, 50, 90, 70, 90],
+    cfo:         [40, 20, 40, 30, 15, 35],
+    procurement: [35, 40, 35, 40, 10, 30],
+    delivery:    [50, 50, 30, 35, 30, 55]
+  };
+  // Where each agreed section pulls the master.
+  var MAP = {
+    goal:        { ambition: 60, creative: 65 },
+    audience:    { creative: 60, risk: 40 },
+    success:     { ambition: 62, speed: 60 },
+    scope:       { scope: 50, ambition: 55 },
+    budget:      { budget: 50, scope: 45 },
+    contingency: { risk: 35, budget: 50 },
+    signoff:     { creative: 62, speed: 55 },
+    feedback:    { creative: 55, speed: 50 },
+    done:        { scope: 45, risk: 35 },
+    timeline:    { speed: 58 },
+    ownership:   { risk: 35, creative: 58 },
+    disagree:    { risk: 30 }
+  };
+  // What each choice slams the master to. Index matches the option order in the engine.
+  var CHOICE = {
+    budget:      [{ budget: 44, scope: 30, ambition: 46 }, { budget: 74, scope: 74, ambition: 70 }, { budget: 50, scope: 48, ambition: 56 }],
+    contingency: [{ risk: 32, budget: 52 }, { risk: 46, budget: 46 }, { risk: 62, budget: 38 }],
+    feedback:    [{ creative: 52, speed: 42 }, { creative: 46, speed: 74 }, { creative: 72, speed: 52 }],
+    ownership:   [{ risk: 34, creative: 55 }, { risk: 26, creative: 36 }, { risk: 44, creative: 70 }]
+  };
+  var SHORT = { goal: 'Goal', audience: 'Audience', success: 'Success', scope: 'Scope', budget: 'Money', contingency: 'Extras', signoff: 'Sign-off', feedback: 'Rounds', done: 'Done', timeline: 'Dates', ownership: 'Owner', disagree: 'Pineapple' };
+  var SEC_ORDER = EM.SECTIONS.map(function (s) { return s.id; });
+
+  var pos = {}, master = [], chosen = {}, rows = [], strips = {}, rungs = {};
+  var focusAxis = 1, speaking = {}, level = {}, clipRows = {}, clipPeople = {}, clipSec = null;
+
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function eff(sec, ax) {
+    var c = chosen[sec];
+    if (c != null && CHOICE[sec] && CHOICE[sec][c][ax] != null) return CHOICE[sec][c][ax];
+    if (sec === 'scope' && chosen.budget != null && CHOICE.budget[chosen.budget][ax] != null) return CHOICE.budget[chosen.budget][ax];
+    return MAP[sec][ax];
+  }
+
+  /* ---- build static DOM ---- */
+  function buildLegend() {
+    var lg = document.getElementById('legend');
+    PEOPLE.forEach(function (p) {
+      lg.appendChild(el('span', {}, [el('i', { class: 'lg-dot', style: 'border-color:' + CAST[p].color }), CAST[p].name + ' ' + CAST[p].tag.toLowerCase()]));
+    });
+    lg.appendChild(el('span', {}, [el('i', { class: 'lg-master' }), 'Master: where the room lands']));
+    lg.appendChild(el('span', {}, [el('i', { class: 'lg-led', style: 'background:var(--ok)' }), 'Agreed / locked']));
+    lg.appendChild(el('span', {}, [el('i', { class: 'lg-led', style: 'background:var(--warn)' }), 'One side only']));
+    lg.appendChild(el('span', {}, [el('i', { class: 'lg-led', style: 'background:var(--bad)' }), 'Clipping: conflict']));
+  }
+  function buildLadder() {
+    var L = document.getElementById('ladder');
+    EM.SECTIONS.forEach(function (s) {
+      var r = el('div', { class: 'rung', title: s.label }, [el('div', { class: 'led' }), el('span', { text: SHORT[s.id] })]);
+      rungs[s.id] = r; L.appendChild(r);
+    });
+  }
+  function buildBuses() {
+    var B = document.getElementById('buses');
+    AX.forEach(function (a, ai) {
+      var rail = el('div', { class: 'rail' });
+      var pegs = {};
+      PEOPLE.forEach(function (p, i) {
+        var g = el('div', { class: 'peg', title: CAST[p].name + ' on ' + a.name, style: '--c:' + CAST[p].color + ';--i:' + i });
+        pegs[p] = g; rail.appendChild(g);
+      });
+      var m = el('div', { class: 'master', title: 'Master on ' + a.name });
+      rail.appendChild(m);
+      rail.appendChild(el('div', { class: 'ends' }, [el('span', { text: a.lo }), el('span', { text: a.hi })]));
+      var val = el('div', { class: 'mval', text: '50' });
+      var lock = el('i', { class: 'lock' });
+      var spread = el('span', { class: 'spread' }); var leds = [];
+      for (var k = 0; k < 5; k++) { var d = el('i'); leds.push(d); spread.appendChild(d); }
+      var meters = el('div', { class: 'meters' }, [
+        el('div', { class: 'mrow' }, [el('b', { text: 'Lock' }), lock]),
+        el('div', { class: 'mrow' }, [el('b', { text: 'Spread' }), spread])
+      ]);
+      var row = el('div', { class: 'bus' }, [
+        el('div', { class: 'name' }, [a.name, el('small', { text: a.hint })]),
+        rail,
+        el('div', { class: 'read' }, [val, meters])
+      ]);
+      rows.push({ row: row, pegs: pegs, master: m, val: val, lock: lock, leds: leds, timer: 0 });
+      B.appendChild(row);
+    });
+  }
+  function buildStrips() {
+    var S = document.getElementById('strips');
+    ['coach'].concat(PEOPLE).forEach(function (id) {
+      var c = CAST[id];
+      var vu = el('div', { class: 'vu' }); var segs = [];
+      for (var k = 0; k < 10; k++) { var s = el('i'); segs.push(s); vu.appendChild(s); }
+      var cap = el('div', { class: 'cap' });
+      var fader = el('div', { class: 'fader' }, [cap]);
+      var focus = el('div', { class: id === 'coach' ? 'hat' : 'focus', text: id === 'coach' ? 'Hat: none yet' : '' });
+      var strip = el('div', { class: 'strip', style: '--c:' + c.color }, [
+        el('div', { class: 'who' }, [el('b', { text: c.name }), el('span', { text: id === 'coach' ? 'Coach · fader = truth' : c.tag + ' · ' + c.role })]),
+        focus,
+        el('div', { class: 'chan' }, [vu, fader]),
+        el('div', { class: 'lights' }, [el('span', { class: 'lamp solo', text: 'SOLO' }), el('span', { class: 'lamp clipl', text: 'CLIP' })])
+      ]);
+      strips[id] = { strip: strip, segs: segs, cap: cap, focus: focus, lit: -1 };
+      level[id] = 0; speaking[id] = 0;
+      S.appendChild(strip);
+    });
+  }
+
+  /* ---- state to visuals ---- */
+  function spreadOf(ai) {
+    var lo = 101, hi = -1;
+    PEOPLE.forEach(function (p) { var v = pos[p][ai]; if (v < lo) lo = v; if (v > hi) hi = v; });
+    return hi - lo;
+  }
+  function paintRow(ai) {
+    var r = rows[ai];
+    PEOPLE.forEach(function (p) { r.pegs[p].style.left = pos[p][ai] + '%'; });
+    r.master.style.left = master[ai] + '%';
+    r.val.textContent = String(Math.round(master[ai]));
+    var sp = spreadOf(ai), n = sp < 5 ? 0 : Math.min(5, Math.ceil(sp / 14));
+    r.leds.forEach(function (d, k) { d.className = k < n ? 'on ' + (k < 2 ? 'g' : k < 4 ? 'y' : 'r') : ''; });
+    var locked = SEC_ORDER.every(function (sid) { return MAP[sid][AX[ai].id] == null || session.state.sections[sid].status === 'green'; });
+    r.lock.classList.toggle('on', locked);
+  }
+  function paintFaders() {
+    PEOPLE.forEach(function (p) { strips[p].cap.style.bottom = pos[p][focusAxis] + '%'; strips[p].focus.textContent = AX[focusAxis].name; });
+    var g = session.progress().green / 12 * 100;
+    strips.coach.cap.style.bottom = g + '%';
+  }
+  function paintLadder() {
+    EM.SECTIONS.forEach(function (s) { rungs[s.id].className = 'rung ' + session.state.sections[s.id].status; });
+  }
+  function init() {
+    PEOPLE.forEach(function (p) { pos[p] = START[p].slice(); });
+    master = AX.map(function (a, ai) { var t = 0; PEOPLE.forEach(function (p) { t += START[p][ai]; }); return Math.round(t / PEOPLE.length); });
+    chosen = {}; clipRows = {}; clipPeople = {}; clipSec = null; focusAxis = 1;
+    rows.forEach(function (r, ai) { r.row.classList.remove('clipping', 'slam', 'thunk'); paintRow(ai); });
+    Object.keys(strips).forEach(function (id) { strips[id].strip.classList.remove('clipped', 'on'); });
+    strips.coach.focus.textContent = 'Hat: none yet';
+    document.getElementById('clip').hidden = true;
+    document.getElementById('mixLamp').classList.remove('on'); document.getElementById('mixTxt').textContent = 'Mix open';
+    paintLadder(); paintFaders();
+  }
+  function flash(r, cls, ms) { r.row.classList.remove(cls); void r.row.offsetWidth; r.row.classList.add(cls); clearTimeout(r.timer); r.timer = setTimeout(function () { r.row.classList.remove(cls); }, ms); }
+
+  /* ---- events ---- */
+  session.on(function (ev) {
+    var sec, axes, by;
+    if (ev.type === 'say') {
+      speaking[ev.from] = performance.now() + Math.min(ev.ms || 2000, 9000) * 0.92;
+      if (ev.from === 'coach' && ev.hat) strips.coach.focus.textContent = 'Hat: ' + CAST[ev.hat].tag;
+    } else if (ev.type === 'conflict') {
+      sec = ev.section; axes = Object.keys(MAP[sec]); clipSec = sec;
+      clipRows[sec] = axes.map(function (a) { return AXI[a]; });
+      clipPeople[sec] = [ev.a, ev.b];
+      axes.forEach(function (a) {
+        var ai = AXI[a], r = rows[ai];
+        [ev.a, ev.b].forEach(function (p) { pos[p][ai] = START[p][ai]; r.pegs[p].classList.remove('shake'); void r.pegs[p].offsetWidth; r.pegs[p].classList.add('shake'); setTimeout(function () { r.pegs[p].classList.remove('shake'); }, 1400); });
+        r.row.classList.add('clipping'); paintRow(ai);
+      });
+      focusAxis = AXI[axes[0]]; paintFaders();
+      var cb = document.getElementById('clip'); cb.hidden = false; cb.innerHTML = '';
+      cb.appendChild(el('b', { text: 'Clip' }));
+      cb.appendChild(el('span', {}, [EM.SECTIONS.filter(function (s) { return s.id === sec; })[0].label + ': ', el('b', { style: 'background:none;color:' + CAST[ev.a].color + ';padding:0;animation:none;letter-spacing:.02em;font-size:15px', text: CAST[ev.a].name }), ' ' + ev.aText, el('span', { class: 'x', text: '✕' }), el('b', { style: 'background:none;color:' + CAST[ev.b].color + ';padding:0;animation:none;letter-spacing:.02em;font-size:15px', text: CAST[ev.b].name }), ' ' + ev.bText]));
+      paintLadder();
+    } else if (ev.type === 'set') {
+      sec = ev.section;
+      if (ev.status === 'conflict') { paintLadder(); return; }
+      axes = Object.keys(MAP[sec]); by = ev.by || [];
+      focusAxis = AXI[axes[0]];
+      axes.forEach(function (a) {
+        var ai = AXI[a], t = eff(sec, a), r = rows[ai];
+        if (ev.status === 'green') {
+          PEOPLE.forEach(function (p, i) { pos[p][ai] = Math.max(0, Math.min(100, t + (i - 2) * 1.6)); });
+          master[ai] = t;
+          r.row.classList.remove('clipping'); flash(r, 'thunk', 480);
+        } else {
+          by.forEach(function (p) { if (pos[p]) pos[p][ai] = lerp(pos[p][ai], t, 0.6); });
+          master[ai] = lerp(master[ai], t, 0.5);
+        }
+        paintRow(ai);
+      });
+      if (ev.status === 'green' && clipSec === sec) {
+        clipSec = null; document.getElementById('clip').hidden = true;
+        (clipPeople[sec] || []).forEach(function (p) { strips[p].strip.classList.remove('clipped'); });
+      }
+      // rows of other sections may still be clipping
+      rows.forEach(function (r, ai) { var still = false; Object.keys(clipRows).forEach(function (s2) { if (clipRows[s2].indexOf(ai) >= 0 && session.state.sections[s2].status === 'conflict') still = true; }); r.row.classList.toggle('clipping', still); });
+      paintLadder(); paintFaders();
+    } else if (ev.type === 'resolved') {
+      sec = ev.section; chosen[sec] = ev.index;
+      var tg = CHOICE[sec] && CHOICE[sec][ev.index];
+      if (tg) Object.keys(tg).forEach(function (a) { var ai = AXI[a]; master[ai] = tg[a]; flash(rows[ai], 'slam', 900); paintRow(ai); });
+      if (tg) { focusAxis = AXI[Object.keys(tg)[0]]; paintFaders(); }
+    } else if (ev.type === 'done') {
+      document.getElementById('mixLamp').classList.add('on'); document.getElementById('mixTxt').textContent = 'Mix locked';
+      rows.forEach(function (r) { r.row.classList.remove('clipping'); });
+    } else if (ev.type === 'reset') {
+      init();
+    }
+    // strip clip lights follow the state of the current conflict
+    if (ev.type === 'conflict') { PEOPLE.forEach(function (p) { strips[p].strip.classList.toggle('clipped', p === ev.a || p === ev.b); }); }
+  });
+
+  /* ---- VU loop ---- */
+  function frame(t) {
+    ['coach'].concat(PEOPLE).forEach(function (id, i) {
+      var s = strips[id], on = t < speaking[id];
+      var target = on ? 0.4 + 0.5 * Math.abs(Math.sin(t * 0.021 + i * 7) * Math.sin(t * 0.0113 + i)) + Math.random() * 0.12 : 0;
+      level[id] += (target - level[id]) * (on ? 0.4 : 0.14);
+      var n = Math.round(level[id] * 10);
+      if (n !== s.lit) { s.lit = n; s.segs.forEach(function (d, k) { d.className = k < n ? 'on' + (k >= 8 ? ' r' : k >= 6 ? ' y' : '') : ''; }); }
+      s.strip.classList.toggle('on', on);
+    });
+    requestAnimationFrame(frame);
+  }
+
+  buildLegend(); buildLadder(); buildBuses(); buildStrips(); init();
+  EM.mountDock(document.getElementById('dockhost'), session);
+  requestAnimationFrame(frame);
+})();
+</script>

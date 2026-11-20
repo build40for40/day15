@@ -16,7 +16,9 @@ import {
 } from '@day15/shared/schema'
 import coachHarness from '../../../../persona-harnesses/coach.md'
 import coachReference from '../../../../persona-harnesses/coach-reference.md'
+import milestones from '../../../../persona-harnesses/milestones-reference.md'
 import motherAgent from '../../../../persona-harnesses/mother-agent.md'
+import aboutALine from '../../../../persona-harnesses/about-a-line.md'
 import { renderRoom } from '../room/render'
 import { heardFrom, lensGaps, speakersFor, type AskCandidate } from './select'
 
@@ -71,11 +73,17 @@ const HOW_THEY_FIT = [
     'follow the mother agent. Where they differ on how facts are recorded, follow the coach harness.',
 ].join('\n\n')
 
-/** The mother agent, the coach's harness and the reference pack, the same for every call. */
+/** The mother agent, the coach's harness and the two reference packs, the same for every call. */
 export function renderHarness(): string {
-  return [HOW_THEY_FIT, motherAgent.trim(), coachHarness.trim(), '<reference>', coachReference.trim(), '</reference>'].join(
-    '\n\n',
-  )
+  return [
+    HOW_THEY_FIT,
+    motherAgent.trim(),
+    coachHarness.trim(),
+    '<reference>',
+    coachReference.trim(),
+    milestones.trim(),
+    '</reference>',
+  ].join('\n\n')
 }
 
 const CAUSES = { knowledge_gap: 'a gap in knowledge', different_expectations: 'a genuine difference in expectation' } as const
@@ -100,12 +108,13 @@ export function renderAssessment(previous: Assessment | null | undefined): strin
   ].join('\n')
 }
 
-/** Room first, then the lens reports, then the coach's own harness. */
+/** Room first, then the lens reports, then the coach's own harness, then what it knows about A-Line. */
 export function coachInstructions(room: RoomSnapshot): SystemModelMessage[] {
   return [
     { role: 'system', content: renderRoom(room), providerOptions: CACHED },
     { role: 'system', content: renderReports(room) },
     { role: 'system', content: renderHarness() },
+    { role: 'system', content: aboutALine.trim() },
   ]
 }
 

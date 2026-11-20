@@ -24,6 +24,19 @@ describe('coachInstructions', () => {
     }
     expect(third!.content).toContain('<reference>')
     expect(third!.content).toContain('# Coach reference pack')
+    expect(third!.content).toContain('# Milestones reference: what must be settled')
+    expect(third!.content).toContain('SOW-09 ★ Review rounds included, and what happens after (Both)')
+  })
+
+  it('ends with what the coach knows about A-Line, after the room text', async () => {
+    const { room } = await fixtureRoom()
+    const instructions = coachInstructions((await room.read())!)
+    const about = instructions.findIndex((message) => String(message.content).startsWith('# About A-Line'))
+    expect(about).toBe(instructions.length - 1)
+    expect(about).toBeGreaterThan(0)
+    expect(instructions[about]!.content).toContain('Aline')
+    expect(instructions[about]!.content).toContain('## Who can see what')
+    expect(instructions[about]!.content).toContain('## Behind the curtain')
   })
 })
 

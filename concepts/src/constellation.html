@@ -1,0 +1,573 @@
+<title>Constellation</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Spectral:ital,wght@0,300;0,400;1,300;1,400&display=swap">
+<style>
+/* Layout: one night sky. Header, then the sky canvas beside a lore column (axioms + the twelve points), then the dock.
+   Gold is the only warm thing; stakeholder stars keep their cast colours. Single dark look by choice. */
+:root {
+  color-scheme: dark;
+  --midnight: #070b14;
+  --midnight-2: #0d1424;
+  --panel: #0b1220;
+  --line: #1c2840;
+  --text: #c9d1e0;
+  --dim: #8a96b0;
+  --lit: #f7ecd2;
+  --gold: #f2c86b;
+  --amber: #ffb020;
+  --red: #ff4d5e;
+  --unlit: #3a4766;
+  --display: "Cormorant Garamond", "Iowan Old Style", Georgia, serif;
+  --serif: "Spectral", Georgia, "Times New Roman", serif;
+  --mono: ui-monospace, Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html { background: var(--midnight); }
+body {
+  margin: 0;
+  background: radial-gradient(110% 60% at 50% 0%, var(--midnight-2), var(--midnight) 65%);
+  background-color: var(--midnight);
+  color: var(--text);
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: 16px;
+  line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 36px;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, p, ol, ul { margin: 0; }
+a:focus-visible, button:focus-visible, canvas:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+[hidden] { display: none !important; }
+.wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 18px; min-width: 0; }
+
+header { display: grid; gap: 10px; min-width: 0; }
+.mark { display: flex; align-items: center; gap: 12px; }
+.mark svg { width: 26px; height: 26px; flex: none; }
+h1 { font: italic 400 clamp(40px, 7vw, 68px)/1 var(--display); color: var(--lit); letter-spacing: -0.01em; text-wrap: balance; }
+.lede { max-width: 62ch; color: var(--text); font-size: 17px; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; color: var(--dim); font-size: 13px; }
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--unlit); flex: none; }
+.dot[data-st="amber"] { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+.dot[data-st="green"] { background: var(--gold); box-shadow: 0 0 10px var(--gold); }
+.dot[data-st="conflict"] { background: var(--red); box-shadow: 0 0 8px var(--red); }
+.who { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.who span i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 16px; align-items: start; }
+@media (max-width: 860px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+.sky { position: relative; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--midnight); min-width: 0; touch-action: pan-y; }
+canvas { display: block; width: 100%; }
+.tip {
+  position: absolute; z-index: 2; pointer-events: none; max-width: 250px; padding: 8px 11px;
+  background: rgba(7, 11, 20, 0.94); border: 1px solid var(--line); border-radius: 8px;
+  font-size: 13px; line-height: 1.4; color: var(--text);
+}
+.tip b { display: block; font-weight: 400; color: var(--lit); font-size: 14px; }
+.tip small { display: block; font: 600 10px/1.6 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); }
+
+aside { display: grid; gap: 16px; min-width: 0; }
+.card { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: 14px 15px; display: grid; gap: 10px; min-width: 0; }
+.card h2 { font: italic 500 22px/1.15 var(--display); color: var(--lit); }
+.card h2 small { display: block; margin-top: 3px; font: 12px/1.4 var(--mono); color: var(--dim); font-style: normal; letter-spacing: 0.02em; }
+.lore { list-style: none; padding: 0; display: grid; gap: 10px; max-height: 330px; overflow: auto; }
+.lore li { display: grid; gap: 1px; padding-left: 14px; position: relative; animation: rise .8s ease both; }
+.lore li::before { content: ""; position: absolute; left: 0; top: 8px; width: 6px; height: 6px; background: var(--gold); border-radius: 50%; box-shadow: 0 0 8px var(--gold); }
+.lore em { font-style: italic; color: var(--lit); font-size: 15px; line-height: 1.35; }
+.lore small { font: 600 10px/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); }
+.empty { color: var(--dim); font-style: italic; font-size: 14px; }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.pts { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)); gap: 6px 10px; font-size: 13px; color: var(--text); }
+.pts li { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.pts li span:last-child { min-width: 0; overflow-wrap: anywhere; }
+
+.dockwrap { min-width: 0; }
+.dockwrap .emd, .dockwrap .emx {
+  --em-bg: #070b14; --em-panel: #0b1220; --em-fg: #c9d1e0; --em-mut: #8a96b0; --em-line: #1c2840;
+  --em-acc: #f2c86b; --em-font: "Spectral", Georgia, serif; --em-radius: 12px;
+}
+footer { color: var(--dim); font-size: 13px; text-align: center; }
+@media (prefers-reduced-motion: reduce) { .lore li { animation: none; } }
+</style>
+
+<main class="wrap">
+  <header>
+    <div class="mark">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#f2c86b" d="M12 1.5l2.6 7.9 7.9 2.6-7.9 2.6L12 22.5l-2.6-7.9L1.5 12l7.9-2.6z"/></svg>
+      <h1>Constellation</h1>
+    </div>
+    <p class="lede">Five stars, one wand-comet. Wisp glides between them with questions, and each time two stars agree a point of the sky lights up and joins the project truth.</p>
+    <div class="who" id="who" aria-label="The stars"></div>
+    <div class="legend" aria-label="Point colours">
+      <span><i class="dot" data-st="empty"></i>Unlit</span>
+      <span><i class="dot" data-st="amber"></i>One side has said it</span>
+      <span><i class="dot" data-st="green"></i>Agreed</span>
+      <span><i class="dot" data-st="conflict"></i>In conflict</span>
+      <span>Hover or tap a point to read it.</span>
+    </div>
+  </header>
+
+  <div class="stage">
+    <div class="sky" id="sky">
+      <canvas id="cv" role="img" aria-label="A night sky. Five stakeholder stars and a gold comet named Wisp light twelve points that join into the project truth constellation."></canvas>
+      <div class="tip" id="tip" hidden></div>
+    </div>
+    <aside>
+      <section class="card" aria-live="polite">
+        <h2>The First-Step Star <small id="count">0 of 12 stars lit</small></h2>
+        <ol class="lore" id="lore"></ol>
+        <p class="empty" id="empty">Nothing is written in the stars yet.</p>
+      </section>
+      <section class="card">
+        <h2>The twelve points</h2>
+        <ul class="pts" id="pts"></ul>
+      </section>
+    </aside>
+  </div>
+
+  <div class="dockwrap" id="dock"></div>
+  <footer>Concept for Expectation Manager, Day 15</footer>
+</main>
+
+<!--ENGINE-->
+<script>
+(function () {
+  'use strict';
+  var EMx = window.EM, CAST = EMx.CAST, SECTIONS = EMx.SECTIONS, PEOPLE = EMx.PEOPLE;
+  var GOLD = '#f2c86b', RED = '#ff4d5e', AMBER = '#ffb020', DIM = '#3a4766', LIT = '#f7ecd2';
+  var reduce = false;
+  try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+
+  var session = EMx.createSession();
+  EMx.mountDock(document.getElementById('dock'), session);
+
+  var secIdx = {}; SECTIONS.forEach(function (s, i) { secIdx[s.id] = i; });
+  var $ = function (id) { return document.getElementById(id); };
+  var cv = $('cv'), sky = $('sky'), tip = $('tip'), ctx = cv.getContext('2d');
+
+  /* ---------- static chrome ---------- */
+  var who = $('who');
+  PEOPLE.forEach(function (id) {
+    var c = CAST[id], s = document.createElement('span');
+    var i = document.createElement('i'); i.style.background = c.color; i.style.boxShadow = '0 0 8px ' + c.color;
+    s.appendChild(i); s.appendChild(document.createTextNode(' ' + c.name + ', ' + c.tag));
+    who.appendChild(s);
+  });
+  var ws = document.createElement('span'), wi = document.createElement('i');
+  wi.style.background = GOLD; wi.style.boxShadow = '0 0 8px ' + GOLD; ws.appendChild(wi); ws.appendChild(document.createTextNode(' Wisp, the coach')); who.appendChild(ws);
+
+  var ptsEl = $('pts'), ptDots = {};
+  SECTIONS.forEach(function (s) {
+    var li = document.createElement('li'), d = document.createElement('span'), t = document.createElement('span');
+    d.className = 'dot'; d.setAttribute('data-st', 'empty'); t.textContent = s.label;
+    li.appendChild(d); li.appendChild(t); ptsEl.appendChild(li); ptDots[s.id] = d;
+  });
+
+  var loreEl = $('lore'), emptyEl = $('empty'), countEl = $('count'), loreShown = 0;
+  function renderLore() {
+    var ax = session.state.axioms;
+    if (ax.length < loreShown) { loreEl.innerHTML = ''; loreShown = 0; }
+    for (; loreShown < ax.length; loreShown++) {
+      var a = ax[loreShown], li = document.createElement('li');
+      var em = document.createElement('em'), sm = document.createElement('small');
+      em.textContent = a.text; sm.textContent = SECTIONS[secIdx[a.section]].label;
+      li.appendChild(sm); li.appendChild(em); loreEl.appendChild(li);
+      loreEl.scrollTop = loreEl.scrollHeight;
+    }
+    emptyEl.hidden = ax.length > 0;
+    var p = session.progress(); countEl.textContent = p.green + ' of ' + p.total + ' stars lit';
+  }
+  function renderPts() {
+    SECTIONS.forEach(function (s) { ptDots[s.id].setAttribute('data-st', session.state.sections[s.id].status); });
+  }
+
+  /* ---------- geometry ---------- */
+  var W = 600, H = 480, dpr = 1, cx = 300, cy = 240, R = 140;
+  var pts = {}, base = {}, off = {}, wisp = { x: 300, y: 40, tx: 300, ty: 40, px: 300, py: 40, color: GOLD };
+  PEOPLE.forEach(function (id) { off[id] = { x: 0, y: 0 }; });
+  var stars = [];
+  (function seed() {
+    var s = 7;
+    function rnd() { s |= 0; s = (s + 0x6D2B79F5) | 0; var t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }
+    for (var i = 0; i < 150; i++) stars.push({ x: rnd(), y: rnd(), l: i % 3, sz: 0.6 + rnd() * 1.1, ph: rnd() * 6.28, sp: 0.4 + rnd() * 1.4 });
+  })();
+
+  function layout() {
+    var r = sky.getBoundingClientRect();
+    W = Math.max(300, Math.floor(r.width) || 600);
+    H = W < 520 ? 500 : Math.max(440, Math.min(640, Math.round(W * 0.6)));
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.style.height = H + 'px'; cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    cx = W * 0.5; cy = H * 0.5; R = Math.min(W * 0.3, H * 0.34);
+    SECTIONS.forEach(function (s, i) {
+      var ang = (i * 30 - 90) * Math.PI / 180, rr = R * (i % 2 === 0 ? 1 : 0.52);
+      pts[s.id] = { x: cx + Math.cos(ang) * rr, y: cy + Math.sin(ang) * rr };
+    });
+    var narrow = W < 520, sp = {
+      client: [narrow ? 0.13 : 0.1, 0.2], agency: [narrow ? 0.87 : 0.9, 0.2],
+      cfo: [narrow ? 0.13 : 0.1, 0.72], procurement: [narrow ? 0.87 : 0.9, 0.72], delivery: [0.5, 0.91]
+    };
+    PEOPLE.forEach(function (id) { base[id] = { x: W * sp[id][0], y: H * sp[id][1] }; });
+    wisp.tx = Math.min(Math.max(wisp.tx, 20), W - 20); wisp.ty = Math.min(Math.max(wisp.ty, 20), H - 20);
+  }
+
+  /* ---------- effects state ---------- */
+  var now = 0;
+  var particles = [], rings = [], beams = [], pulses = [], speak = {}, flash = {};
+  var conflicts = {}, bends = {}, seg = {}, pf = {}, finished = false, doneAt = 0;
+  var hover = null, sticky = false, mouse = { x: 0.5, y: 0.5 };
+  SECTIONS.forEach(function (s) { pf[s.id] = { g: 0, a: 0, r: 0 }; });
+
+  function resetFx() {
+    particles = []; rings = []; beams = []; pulses = []; speak = {}; flash = {}; conflicts = {}; bends = {}; seg = {};
+    finished = false; doneAt = 0; hover = null; tip.hidden = true;
+    SECTIONS.forEach(function (s) { pf[s.id] = { g: 0, a: 0, r: 0 }; });
+    PEOPLE.forEach(function (id) { off[id] = { x: 0, y: 0 }; });
+    wisp.tx = W * 0.5; wisp.ty = H * 0.08;
+  }
+
+  function spos(id) {
+    var b = base[id], o = off[id], f = reduce ? 0 : 3;
+    return { x: b.x + o.x + Math.sin(now * 0.0007 + id.length) * f, y: b.y + o.y + Math.cos(now * 0.0009 + id.length * 2) * f };
+  }
+  function posOf(id) { return id === 'wisp' ? { x: wisp.x, y: wisp.y } : spos(id); }
+  function nearStar(id) {
+    var p = base[id], dx = cx - p.x, dy = cy - p.y, d = Math.hypot(dx, dy) || 1;
+    return { x: p.x + dx / d * 38, y: p.y + dy / d * 38 };
+  }
+  function burst(x, y, color, n, speed) {
+    for (var i = 0; i < n && particles.length < 420; i++) {
+      var a = Math.random() * 6.283, v = (0.2 + Math.random()) * speed;
+      particles.push({ x: x, y: y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t0: now, life: 700 + Math.random() * 700, color: color, size: 1 + Math.random() * 1.6 });
+    }
+  }
+  function ring(x, y, color, maxR, dur) { rings.push({ x: x, y: y, color: color, maxR: maxR, t0: now, dur: dur }); }
+
+  /* ---------- events ---------- */
+  session.on(function (ev) {
+    var t = now;
+    if (ev.type === 'say') {
+      var ms = ev.ms || 1800;
+      speak[ev.from] = t + ms;
+      var hatc = ev.hat && CAST[ev.hat] ? CAST[ev.hat].color : GOLD;
+      if (ev.from === 'coach') {
+        wisp.color = hatc;
+        if (ev.to !== 'all') { var n = nearStar(ev.to); wisp.tx = n.x; wisp.ty = n.y; }
+        else { wisp.tx = cx; wisp.ty = cy - R * 0.1; }
+        if (ev.channel === 'private' && ev.to !== 'all') beams.push({ a: 'wisp', b: ev.to, color: hatc, t0: t, dur: ms });
+        else {
+          ring(wisp.tx, wisp.ty, hatc, Math.max(W, H) * 0.62, Math.min(2600, ms + 600));
+          PEOPLE.forEach(function (id, i) { flash[id] = t + i * 120; });
+        }
+      } else {
+        if (ev.channel === 'private') {
+          var m = nearStar(ev.from); wisp.tx = m.x; wisp.ty = m.y;
+          beams.push({ a: ev.from, b: 'wisp', color: CAST[ev.from].color, t0: t, dur: ms });
+        } else {
+          var sp = spos(ev.from); ring(sp.x, sp.y, CAST[ev.from].color, Math.max(W, H) * 0.55, Math.min(2400, ms + 400));
+          wisp.tx = cx; wisp.ty = cy - R * 0.1;
+        }
+        burst(spos(ev.from).x, spos(ev.from).y, CAST[ev.from].color, 8, 0.05);
+      }
+    } else if (ev.type === 'set') {
+      var pt = pts[ev.section];
+      if (ev.status === 'amber' && ev.by.length) {
+        var from = ev.by[ev.by.length - 1];
+        pulses.push({ from: from, to: ev.section, t0: t, dur: 900, color: AMBER });
+      } else if (ev.status === 'green') {
+        ring(pt.x, pt.y, GOLD, 70, 1200); burst(pt.x, pt.y, GOLD, 22, 0.12);
+        var c = conflicts[ev.section]; if (c && !c.resolvedAt) c.resolvedAt = t;
+      }
+    } else if (ev.type === 'conflict') {
+      conflicts[ev.section] = { a: ev.a, b: ev.b, aText: ev.aText, bText: ev.bText, t0: t, resolvedAt: 0 };
+      var pa = spos(ev.a), pb = spos(ev.b), mx = (pa.x + pb.x) / 2, my = (pa.y + pb.y) / 2;
+      ring(mx, my, RED, 120, 1400); burst(mx, my, RED, 26, 0.16);
+    } else if (ev.type === 'resolved') {
+      var bend = ev.index - 1; bends[ev.section] = bend; if (ev.section === 'budget') bends.scope = bend;
+      var q = pts[ev.section]; ring(q.x, q.y, GOLD, ev.fromViewer ? 220 : 130, 1800); burst(q.x, q.y, GOLD, ev.fromViewer ? 40 : 18, 0.14);
+    } else if (ev.type === 'done') {
+      finished = true; doneAt = t; ring(cx, cy, GOLD, Math.max(W, H) * 0.7, 3200); burst(cx, cy, GOLD, 60, 0.18);
+    } else if (ev.type === 'reset') {
+      resetFx();
+    }
+    if (ev.type === 'set' || ev.type === 'reset') { renderLore(); renderPts(); }
+  });
+
+  /* ---------- drawing helpers ---------- */
+  function rgba(hex, a) {
+    var n = parseInt(hex.slice(1), 16);
+    return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + Math.max(0, Math.min(1, a)) + ')';
+  }
+  function glow(x, y, r, color, a) {
+    if (r <= 0 || a <= 0) return;
+    var g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, rgba(color, a)); g.addColorStop(1, rgba(color, 0));
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill();
+  }
+  function sparkle(x, y, r, color, a) {
+    if (a <= 0 || r <= 0) return;
+    ctx.save(); ctx.translate(x, y); ctx.fillStyle = rgba(color, a);
+    ctx.beginPath(); ctx.moveTo(0, -r); ctx.quadraticCurveTo(0, 0, r, 0); ctx.quadraticCurveTo(0, 0, 0, r); ctx.quadraticCurveTo(0, 0, -r, 0); ctx.quadraticCurveTo(0, 0, 0, -r); ctx.fill();
+    ctx.restore();
+  }
+  function rrect(x, y, w, h, r) {
+    ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+  function pill(x, y, text, color, alpha) {
+    if (alpha <= 0) return;
+    ctx.font = 'italic 13px Spectral, Georgia, serif';
+    var max = Math.max(120, W * 0.4);
+    while (text.length > 6 && ctx.measureText(text).width > max) text = text.slice(0, -2);
+    var w = ctx.measureText(text).width + 20, h = 25;
+    ctx.globalAlpha = alpha; ctx.fillStyle = 'rgba(7,11,20,0.85)'; rrect(x - w / 2, y - h / 2, w, h, 12); ctx.fill();
+    ctx.strokeStyle = rgba(color, 0.75); ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, x, y + 1); ctx.globalAlpha = 1;
+  }
+  function curveAt(a, b, bend, t) {
+    var mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1;
+    var k = (0.05 + bend * 0.22) * len, qx = mx - dy / len * k, qy = my + dx / len * k, u = 1 - t;
+    return { x: u * u * a.x + 2 * u * t * qx + t * t * b.x, y: u * u * a.y + 2 * u * t * qy + t * t * b.y };
+  }
+  function strokeCurve(a, b, bend, p, w, color) {
+    ctx.beginPath(); var n = 28, m = Math.max(1, Math.ceil(n * p));
+    for (var i = 0; i <= m; i++) { var c = curveAt(a, b, bend, Math.min(p, i / n)); if (i === 0) ctx.moveTo(c.x, c.y); else ctx.lineTo(c.x, c.y); }
+    ctx.lineWidth = w; ctx.strokeStyle = color; ctx.lineCap = 'round'; ctx.stroke();
+  }
+  function ease(x) { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); }
+
+  /* ---------- frame ---------- */
+  var last = 0;
+  function frame(ts) {
+    var dt = Math.min(48, last ? ts - last : 16); last = ts; now = ts;
+    update(dt); draw(); requestAnimationFrame(frame);
+  }
+
+  function update(dt) {
+    var k = Math.min(1, dt / 16);
+    var moved;
+    if (reduce) { wisp.x = wisp.tx; wisp.y = wisp.ty; moved = 0; }
+    else {
+      wisp.x += (wisp.tx - wisp.x) * 0.045 * k; wisp.y += (wisp.ty - wisp.y) * 0.045 * k;
+      moved = Math.hypot(wisp.x - wisp.px, wisp.y - wisp.py);
+    }
+    if (moved > 0.4 || (!reduce && Math.random() < 0.25)) {
+      var count = Math.min(4, 1 + Math.floor(moved / 1.5));
+      for (var i = 0; i < count && particles.length < 420; i++) {
+        particles.push({ x: wisp.x + (Math.random() - 0.5) * 4, y: wisp.y + (Math.random() - 0.5) * 4, vx: (Math.random() - 0.5) * 0.03, vy: 0.012 + Math.random() * 0.02,
+          t0: now, life: 700 + Math.random() * 600, color: Math.random() < 0.5 ? GOLD : wisp.color, size: 0.8 + Math.random() * 1.6 });
+      }
+    }
+    wisp.px = wisp.x; wisp.py = wisp.y;
+
+    // conflict stars pull apart
+    var tgt = {}; PEOPLE.forEach(function (id) { tgt[id] = { x: 0, y: 0 }; });
+    Object.keys(conflicts).forEach(function (s) {
+      var c = conflicts[s];
+      if (c.resolvedAt) return;
+      var a = base[c.a], b = base[c.b], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1;
+      tgt[c.a].x -= dx / d * 26; tgt[c.a].y -= dy / d * 26; tgt[c.b].x += dx / d * 26; tgt[c.b].y += dy / d * 26;
+    });
+    PEOPLE.forEach(function (id) { off[id].x += (tgt[id].x - off[id].x) * 0.06 * k; off[id].y += (tgt[id].y - off[id].y) * 0.06 * k; });
+
+    // point glow factors
+    SECTIONS.forEach(function (s) {
+      var st = session.state.sections[s.id].status, f = pf[s.id];
+      f.g += ((st === 'green' ? 1 : 0) - f.g) * 0.07 * k;
+      f.a += ((st === 'amber' ? 1 : 0) - f.a) * 0.08 * k;
+      f.r += ((st === 'conflict' ? 1 : 0) - f.r) * 0.1 * k;
+    });
+
+    // constellation segments from the sorted greens
+    var greens = [], keys = {};
+    SECTIONS.forEach(function (s, i) { if (session.state.sections[s.id].status === 'green') greens.push(i); });
+    for (var j = 1; j < greens.length; j++) { var key = greens[j - 1] + '-' + greens[j]; keys[key] = 1; if (!seg[key]) seg[key] = { p: 0, a: greens[j - 1], b: greens[j] }; }
+    if (finished && greens.length === SECTIONS.length) { keys['0-11'] = 1; if (!seg['0-11']) seg['0-11'] = { p: 0, a: 11, b: 0 }; }
+    Object.keys(seg).forEach(function (key) { if (!keys[key]) delete seg[key]; else seg[key].p = Math.min(1, seg[key].p + (reduce ? 1 : dt / 650)); });
+
+    // age effects
+    particles = particles.filter(function (p) { return now - p.t0 < p.life; });
+    particles.forEach(function (p) { p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.992; p.vy *= 0.992; });
+    rings = rings.filter(function (r) { return now - r.t0 < r.dur; });
+    beams = beams.filter(function (b) { return now - b.t0 < b.dur; });
+    pulses = pulses.filter(function (p) { return now - p.t0 < p.dur; });
+    Object.keys(conflicts).forEach(function (s) { var c = conflicts[s]; if (c.resolvedAt && now - c.resolvedAt > 1500) delete conflicts[s]; });
+  }
+
+  function draw() {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+    var bg = ctx.createRadialGradient(cx, cy * 0.9, 0, cx, cy * 0.9, Math.max(W, H) * 0.75);
+    bg.addColorStop(0, '#0d1424'); bg.addColorStop(1, '#070b14');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    glow(cx, cy, R * 1.5, '#2a3a6a', 0.16);
+
+    // starfield with parallax and twinkle
+    var drift = reduce ? 0 : now * 0.004;
+    stars.forEach(function (s) {
+      var depth = (s.l + 1) / 3, x = ((s.x * W + drift * depth + (mouse.x - 0.5) * -18 * depth) % W + W) % W, y = s.y * H + (mouse.y - 0.5) * -12 * depth;
+      var a = (0.25 + 0.2 * depth) + (reduce ? 0.1 : 0.3 * Math.sin(now * 0.001 * s.sp + s.ph));
+      ctx.fillStyle = 'rgba(226,232,255,' + Math.max(0.05, Math.min(0.9, a)) + ')'; ctx.fillRect(x, y, s.sz * (0.6 + depth * 0.6), s.sz * (0.6 + depth * 0.6));
+    });
+
+    // faint hint of the final shape
+    ctx.beginPath(); ctx.setLineDash([2, 7]);
+    SECTIONS.forEach(function (s, i) { var p = pts[s.id]; if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); });
+    ctx.closePath(); ctx.strokeStyle = 'rgba(138,150,176,0.10)'; ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]);
+
+    // finished: soft fill and title
+    if (finished) {
+      var fa = ease((now - doneAt) / 2200);
+      ctx.beginPath(); SECTIONS.forEach(function (s, i) { var p = pts[s.id]; if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); }); ctx.closePath();
+      ctx.fillStyle = rgba(GOLD, 0.07 * fa); ctx.fill();
+      glow(cx, cy, R * 0.55, GOLD, 0.16 * fa);
+      ctx.font = 'italic 500 ' + Math.round(Math.max(15, R * 0.15)) + 'px "Cormorant Garamond", Georgia, serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = rgba(LIT, 0.9 * fa); ctx.fillText('project truth', cx, cy);
+    }
+
+    // amber threads
+    SECTIONS.forEach(function (s) {
+      var sec = session.state.sections[s.id];
+      if (sec.status !== 'amber' || !sec.by.length) return;
+      var from = spos(sec.by[sec.by.length - 1]), to = pts[s.id], f = pf[s.id].a;
+      ctx.setLineDash([3, 6]); ctx.lineDashOffset = reduce ? 0 : -now * 0.01;
+      ctx.strokeStyle = rgba(AMBER, 0.38 * f); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke(); ctx.setLineDash([]);
+    });
+
+    // constellation lines
+    Object.keys(seg).forEach(function (key) {
+      var sg = seg[key], a = pts[SECTIONS[sg.a].id], b = pts[SECTIONS[sg.b].id];
+      var bd = bends[SECTIONS[Math.max(sg.a, sg.b)].id]; if (bd === undefined) bd = bends[SECTIONS[Math.min(sg.a, sg.b)].id]; if (bd === undefined) bd = 0;
+      var p = ease(sg.p);
+      strokeCurve(a, b, bd, p, 6, rgba(GOLD, 0.12));
+      strokeCurve(a, b, bd, p, 1.6, rgba('#ffe9b0', 0.9));
+    });
+
+    // section points
+    SECTIONS.forEach(function (s, i) {
+      var p = pts[s.id], f = pf[s.id], tw = reduce ? 0 : Math.sin(now * 0.002 + i) * 0.15;
+      ctx.fillStyle = rgba(DIM, 0.85 + tw); ctx.beginPath(); ctx.arc(p.x, p.y, 2.4, 0, 6.2832); ctx.fill();
+      if (f.a > 0.02) { glow(p.x, p.y, 15 * f.a + 3, AMBER, 0.55 * f.a); ctx.fillStyle = rgba(AMBER, f.a); ctx.beginPath(); ctx.arc(p.x, p.y, 3.2, 0, 6.2832); ctx.fill(); }
+      if (f.r > 0.02) {
+        var pz = reduce ? 1 : 0.75 + 0.25 * Math.sin(now * 0.008);
+        glow(p.x, p.y, 20 * f.r * pz + 3, RED, 0.6 * f.r); ctx.fillStyle = rgba(RED, f.r); ctx.beginPath(); ctx.arc(p.x, p.y, 3.4, 0, 6.2832); ctx.fill();
+      }
+      if (f.g > 0.02) {
+        glow(p.x, p.y, 24 * f.g + 4, GOLD, 0.5 * f.g);
+        sparkle(p.x, p.y, 11 * f.g, '#fff4d0', 0.95 * f.g);
+        ctx.fillStyle = rgba('#fff4d0', f.g); ctx.beginPath(); ctx.arc(p.x, p.y, 3.2, 0, 6.2832); ctx.fill();
+      }
+      if (hover && hover.kind === 'sec' && hover.id === s.id) { ctx.strokeStyle = rgba(LIT, 0.7); ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(p.x, p.y, 13, 0, 6.2832); ctx.stroke(); }
+    });
+
+    // pulses travelling on amber threads
+    pulses.forEach(function (pu) {
+      var u = ease((now - pu.t0) / pu.dur), a = spos(pu.from), b = pts[pu.to];
+      var x = a.x + (b.x - a.x) * u, y = a.y + (b.y - a.y) * u; glow(x, y, 10, pu.color, 0.9 * (1 - u * 0.4)); ctx.fillStyle = rgba('#ffe2a0', 1); ctx.beginPath(); ctx.arc(x, y, 2, 0, 6.2832); ctx.fill();
+    });
+
+    // conflict flares and text clouds
+    Object.keys(conflicts).forEach(function (s) {
+      var c = conflicts[s], pa = spos(c.a), pb = spos(c.b), mx = (pa.x + pb.x) / 2, my = (pa.y + pb.y) / 2, target = pts[s];
+      if (!c.resolvedAt) {
+        var fl = reduce ? 1 : 0.7 + 0.3 * Math.sin(now * 0.012);
+        ctx.setLineDash([2, 5]); ctx.strokeStyle = rgba(RED, 0.4); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y); ctx.stroke(); ctx.setLineDash([]);
+        glow(mx, my, 34 * fl, RED, 0.5);
+        sparkle(mx, my, 14 * fl, '#ffd1d6', 0.9);
+        var u = ease((now - c.t0) / 5200) * 0.42, bob = reduce ? 0 : Math.sin(now * 0.002) * 4;
+        pill(pa.x + (mx - pa.x) * u * 2, pa.y + (my - pa.y) * u * 2 - 22 + bob, c.aText, CAST[c.a].color, 0.95);
+        pill(pb.x + (mx - pb.x) * u * 2, pb.y + (my - pb.y) * u * 2 + 22 - bob, c.bText, CAST[c.b].color, 0.95);
+      } else {
+        var v = ease((now - c.resolvedAt) / 1400);
+        var ua = ease((now - c.t0) / 5200) * 0.42 * 2;
+        var ax = pa.x + (mx - pa.x) * ua, ay = pa.y + (my - pa.y) * ua - 22, bx = pb.x + (mx - pb.x) * ua, by = pb.y + (my - pb.y) * ua + 22;
+        pill(ax + (target.x - ax) * v, ay + (target.y - ay) * v, c.aText, CAST[c.a].color, 1 - v);
+        pill(bx + (target.x - bx) * v, by + (target.y - by) * v, c.bText, CAST[c.b].color, 1 - v);
+      }
+    });
+
+    // beams
+    beams.forEach(function (b) {
+      var p = (now - b.t0) / b.dur, a = Math.min(1, (now - b.t0) / 220) * (1 - Math.max(0, (p - 0.8) / 0.2)), A = posOf(b.a), B = posOf(b.b);
+      ctx.strokeStyle = rgba(b.color, 0.6 * a); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.stroke();
+      glow(B.x, B.y, 16, b.color, 0.3 * a);
+    });
+
+    // rings
+    rings.forEach(function (r) {
+      var p = (now - r.t0) / r.dur;
+      ctx.strokeStyle = rgba(r.color, 0.5 * (1 - p)); ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(r.x, r.y, r.maxR * ease(p), 0, 6.2832); ctx.stroke();
+    });
+
+    // stakeholder stars
+    PEOPLE.forEach(function (id) {
+      var c = CAST[id], p = spos(id), spk = speak[id] && now < speak[id], fl = flash[id] && now - flash[id] > 0 && now - flash[id] < 700 ? 1 - (now - flash[id]) / 700 : 0;
+      var tw = reduce ? 0 : Math.sin(now * 0.003 + id.length * 1.7) * 0.12, boost = (spk ? 0.5 : 0) + fl * 0.4;
+      glow(p.x, p.y, 34 + boost * 22, c.color, 0.34 + tw + boost * 0.3);
+      sparkle(p.x, p.y, 15 + boost * 8, c.color, 0.85);
+      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(p.x, p.y, 3.4 + boost * 1.5, 0, 6.2832); ctx.fill();
+      ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+      ctx.font = '400 16px Spectral, Georgia, serif'; ctx.fillStyle = spk ? '#ffffff' : rgba(LIT, 0.88); ctx.fillText(c.name, p.x, p.y + 30);
+      ctx.font = '300 11px Spectral, Georgia, serif'; ctx.fillStyle = rgba('#8a96b0', 1); ctx.fillText(c.tag, p.x, p.y + 44);
+      if (hover && hover.kind === 'star' && hover.id === id) { ctx.strokeStyle = rgba(c.color, 0.7); ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(p.x, p.y, 26, 0, 6.2832); ctx.stroke(); }
+    });
+
+    // particles
+    particles.forEach(function (p) {
+      var a = 1 - (now - p.t0) / p.life; ctx.fillStyle = rgba(p.color, a * 0.85);
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (0.4 + a * 0.6), 0, 6.2832); ctx.fill();
+    });
+
+    // Wisp
+    var bobw = reduce ? 0 : Math.sin(now * 0.004) * 2;
+    glow(wisp.x, wisp.y + bobw, 30, wisp.color, 0.4); glow(wisp.x, wisp.y + bobw, 14, GOLD, 0.6);
+    sparkle(wisp.x, wisp.y + bobw, 14, '#fff4d0', 0.95);
+    ctx.fillStyle = '#fffaf0'; ctx.beginPath(); ctx.arc(wisp.x, wisp.y + bobw, 3.2, 0, 6.2832); ctx.fill();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.font = 'italic 300 13px Spectral, Georgia, serif'; ctx.fillStyle = rgba(GOLD, 0.95); ctx.fillText('Wisp', wisp.x, wisp.y + bobw - 16);
+  }
+
+  /* ---------- hover / tap tooltip ---------- */
+  function hit(x, y) {
+    var best = null, bd = 26;
+    SECTIONS.forEach(function (s) { var p = pts[s.id], d = Math.hypot(p.x - x, p.y - y); if (d < bd) { bd = d; best = { kind: 'sec', id: s.id, x: p.x, y: p.y }; } });
+    PEOPLE.forEach(function (id) { var p = spos(id), d = Math.hypot(p.x - x, p.y - y); if (d < bd) { bd = d; best = { kind: 'star', id: id, x: p.x, y: p.y }; } });
+    return best;
+  }
+  function showTip(h) {
+    hover = h;
+    if (!h) { tip.hidden = true; return; }
+    tip.innerHTML = '';
+    var b = document.createElement('b'), sm = document.createElement('small'), tx = document.createElement('span');
+    if (h.kind === 'sec') {
+      var sec = session.state.sections[h.id];
+      b.textContent = sec.label; sm.textContent = EMx.STATUS_TEXT[sec.status]; tx.textContent = sec.value || 'Not yet asked. Wisp will get to it.';
+    } else {
+      var c = CAST[h.id]; b.textContent = c.name + ', ' + c.role; sm.textContent = 'Protects'; tx.textContent = c.protects;
+    }
+    tip.appendChild(b); tip.appendChild(sm); tip.appendChild(tx); tip.hidden = false;
+    var w = tip.offsetWidth || 200, hh = tip.offsetHeight || 60;
+    tip.style.left = Math.max(8, Math.min(W - w - 8, h.x + 16)) + 'px';
+    tip.style.top = Math.max(8, Math.min(H - hh - 8, h.y - hh - 10)) + 'px';
+  }
+  cv.addEventListener('pointermove', function (e) {
+    var r = cv.getBoundingClientRect(); var x = e.clientX - r.left, y = e.clientY - r.top;
+    mouse.x = x / r.width; mouse.y = y / r.height;
+    if (e.pointerType === 'touch' || sticky) return;
+    showTip(hit(x, y));
+  });
+  cv.addEventListener('pointerdown', function (e) {
+    var r = cv.getBoundingClientRect(); var h = hit(e.clientX - r.left, e.clientY - r.top);
+    sticky = e.pointerType === 'touch' && !!h; showTip(h);
+  });
+  cv.addEventListener('pointerleave', function () { if (!sticky) showTip(null); });
+
+  /* ---------- boot ---------- */
+  layout(); resetFx(); wisp.x = wisp.px = wisp.tx; wisp.y = wisp.py = wisp.ty; renderLore(); renderPts();
+  if (typeof ResizeObserver !== 'undefined') { new ResizeObserver(function () { layout(); }).observe(sky); } else { window.addEventListener('resize', layout); }
+  requestAnimationFrame(frame);
+  window.__constellation = { session: session };
+})();
+</script>

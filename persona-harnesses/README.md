@@ -33,6 +33,8 @@ The matrix and the reading are kept in the room but are not part of the room sna
 
 The file follows Samira's "A-line: Mother, agent instructions (draft v1)" card on Superthread: who Mother is, mediator not adviser, the four phases (interrogate, sort, find the cause, escalate), the four tools, tone of voice and what she produces.
 
+[`milestones-reference.md`](milestones-reference.md) is the list the mother agent works through: 134 items across ten artifacts and nine milestones, with who answers each and which 56 are core. It comes from the "Milestones" page on Superthread and is loaded as reference beside `coach-reference.md`. It is a list for the coach to read: nothing in the room tracks an item's or a milestone's state yet.
+
 ## A draft that is not wired in
 
 [`personas/delivery-procurement-finance.md`](personas/delivery-procurement-finance.md) is one persona covering what `cfo.md`, `delivery.md` and `procurement.md` cover between them, for a version with three lenses and not five. Nothing loads it.

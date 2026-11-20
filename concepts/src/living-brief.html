@@ -1,0 +1,508 @@
+<title>Living Brief</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..600&family=Public+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: a sticky progress bar over a paper brief. Sections are rows: the agreed text on the sheet, the conversation in the margin beside it (beneath it on phones). */
+:root{
+  --paper:#e6ebf2; --sheet:#fcfdfe; --sheet-2:#f1f4f9; --ink:#17202e; --mut:#5a6577; --line:#d3dae5;
+  --accent:#2447b8; --on-accent:#ffffff;
+  --green:#1f9d5c; --amberc:#d98e00; --redc:#d62f47;
+  --green-bg:#d8f3e4; --green-fg:#0f6a3d; --amber-bg:#fff0cc; --amber-fg:#7a5200; --red-bg:#ffdfe3; --red-fg:#a0132a;
+  --gold-bg:#fff4d3; --gold-line:#e3bd55; --gold-ink:#4a3a07;
+  --serif:'Newsreader',Georgia,'Times New Roman',serif;
+  --sans:'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+  --hh:64px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#0d121a; --sheet:#161d29; --sheet-2:#1c2533; --ink:#e7ebf3; --mut:#9aa5b8; --line:#2a3548;
+  --accent:#8ea6ff; --on-accent:#0d121a;
+  --green:#34d27b; --amberc:#ffb020; --redc:#ff4d5e;
+  --green-bg:#12342a; --green-fg:#6fe0a3; --amber-bg:#3a2d0f; --amber-fg:#ffcf6b; --red-bg:#3d1820; --red-fg:#ff8d9c;
+  --gold-bg:#2b2410; --gold-line:#6b5a22; --gold-ink:#f2dc96; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0d121a; --sheet:#161d29; --sheet-2:#1c2533; --ink:#e7ebf3; --mut:#9aa5b8; --line:#2a3548;
+  --accent:#8ea6ff; --on-accent:#0d121a;
+  --green:#34d27b; --amberc:#ffb020; --redc:#ff4d5e;
+  --green-bg:#12342a; --green-fg:#6fe0a3; --amber-bg:#3a2d0f; --amber-fg:#ffcf6b; --red-bg:#3d1820; --red-fg:#ff8d9c;
+  --gold-bg:#2b2410; --gold-line:#6b5a22; --gold-ink:#f2dc96; color-scheme:dark}
+
+*{box-sizing:border-box}
+html{scroll-behavior:auto}
+body{background:var(--paper);color:var(--ink);font:400 14px/1.5 var(--sans);margin:0}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--sheet)}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1260px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* top bar */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--sheet);border-bottom:1px solid var(--line)}
+.top-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;padding-block:10px}
+.brand{display:flex;align-items:center;gap:9px;font:600 18px/1 var(--serif);min-width:0}
+.brand svg{flex:none;color:var(--accent)}
+.brand small{font:400 12px var(--sans);color:var(--mut);white-space:nowrap}
+.truth{flex:1;min-width:200px;display:grid;gap:5px}
+.truth-t{font:600 12px var(--mono);letter-spacing:.02em}
+.segs{display:grid;grid-template-columns:repeat(12,1fr);gap:3px}
+.segs i{height:6px;border-radius:2px;background:var(--line);transition:background .4s}
+.segs i[data-status=amber]{background:var(--amberc)}.segs i[data-status=green]{background:var(--green)}.segs i[data-status=conflict]{background:var(--redc)}
+.top-act{display:flex;gap:8px;margin-left:auto}
+.btn{cursor:pointer;border:1px solid var(--line);background:var(--sheet-2);border-radius:7px;padding:7px 11px;font:600 12px/1 var(--mono);letter-spacing:.02em}
+.btn:hover{border-color:var(--accent)}
+.btn[aria-pressed=true],.btn[aria-expanded=true]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn .n{opacity:.8;margin-left:4px}
+.drawer{position:absolute;right:max(16px,env(safe-area-inset-right,0px));top:100%;width:min(440px,calc(100% - 32px));max-height:60vh;overflow:auto;background:var(--sheet);border:1px solid var(--line);border-radius:0 0 10px 10px;box-shadow:0 14px 30px rgba(10,20,40,.18);padding:14px 16px}
+.drawer h3{margin:0 0 8px;font:600 19px var(--serif)}
+.drawer ol{margin:0;padding:0;list-style:none;display:grid;gap:9px}
+.drawer li{display:grid;gap:2px;font:400 15px/1.4 var(--serif)}
+.drawer .tg{font:600 10px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
+.drawer .none{color:var(--mut);margin:0}
+
+/* page */
+.stage{display:grid;gap:18px;padding-block:20px 18px;align-items:start}
+.rail{display:grid;gap:18px;min-width:0}
+.lbl{font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mut);margin:0 0 6px}
+.presence{display:flex;flex-wrap:wrap;gap:4px 12px}
+.pr{display:flex;align-items:center;gap:8px;min-width:0}
+.pr .nm{font-weight:600;font-size:13px}
+.pr small{color:var(--mut);font-size:11px}
+.pr .info{display:flex;flex-direction:column;line-height:1.2;min-width:0}
+.typ{display:none;gap:3px;align-items:center;height:10px}
+.pr.typing .typ{display:inline-flex}
+.typ i{width:4px;height:4px;border-radius:50%;background:var(--mut);animation:bob 1s ease-in-out infinite}
+.typ i:nth-child(2){animation-delay:.15s}.typ i:nth-child(3){animation-delay:.3s}
+@keyframes bob{50%{transform:translateY(-3px);opacity:.5}}
+.toc{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
+.tb{all:unset;cursor:pointer;display:flex;gap:8px;align-items:center;padding:5px 9px 5px 7px;border-radius:7px;border:1px solid var(--line);font:500 12.5px var(--sans);white-space:nowrap;background:var(--sheet)}
+.tb:hover,.tb:focus-visible{border-color:var(--accent)}
+.tb.on{background:var(--sheet-2);border-color:var(--accent)}
+.mk{flex:none;width:13px;height:13px;border-radius:50%;border:1.5px solid var(--mut);display:inline-grid;place-items:center;font:700 8px/1 var(--mono);color:var(--sheet)}
+.tb[data-status=amber] .mk{background:var(--amberc);border-color:var(--amberc)}
+.tb[data-status=green] .mk{background:var(--green);border-color:var(--green)}
+.tb[data-status=green] .mk::after{content:"\2713"}
+.tb[data-status=conflict] .mk{background:var(--redc);border-color:var(--redc)}
+.tb[data-status=conflict] .mk::after{content:"!"}
+
+.av{flex:none;display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--c);color:#10131c;font:700 12px/1 var(--mono)}
+.av.sm{width:19px;height:19px;font-size:9px;border:2px solid var(--sheet);margin-left:-6px}
+.av.sm:first-child{margin-left:0}
+
+.doc{min-width:0}
+.sec{display:grid;grid-template-columns:minmax(0,1fr);scroll-margin-top:calc(var(--hh) + 14px)}
+.sec-main,.dochead{background:var(--sheet);padding:18px 20px 20px;border-left:1px solid var(--line);border-right:1px solid var(--line);border-top:1px solid var(--line);min-width:0}
+.dochead{border-radius:6px 6px 0 0;padding-block:26px 22px}
+.sec:last-child .sec-main{border-bottom:1px solid var(--line);border-radius:0 0 6px 6px}
+.dochead .k{font:600 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+.dochead h1{font:600 clamp(28px,4.6vw,40px)/1.08 var(--serif);margin:8px 0 8px;text-wrap:balance;letter-spacing:-.01em}
+.dochead p{margin:0;color:var(--mut);font-size:13px}
+.sec.active .sec-main{box-shadow:inset 3px 0 0 var(--accent)}
+.sec.deciding .sec-main{animation:decide 1.6s ease-in-out infinite}
+@keyframes decide{50%{box-shadow:inset 3px 0 0 var(--accent),inset 0 0 0 2px color-mix(in srgb,var(--accent) 35%,transparent)}}
+.sec-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-bottom:10px}
+.sec-head h2{font:600 22px/1.2 var(--serif);margin:0;text-wrap:balance;letter-spacing:-.005em}
+.pill{margin-left:auto;font:600 10.5px/1 var(--mono);text-transform:uppercase;letter-spacing:.07em;padding:5px 9px;border-radius:99px;background:var(--sheet-2);color:var(--mut);border:1px solid var(--line);white-space:nowrap}
+.sec[data-status=amber] .pill{background:var(--amber-bg);color:var(--amber-fg);border-color:transparent}
+.sec[data-status=green] .pill{background:var(--green-bg);color:var(--green-fg);border-color:transparent}
+.sec[data-status=conflict] .pill{background:var(--red-bg);color:var(--red-fg);border-color:transparent}
+.dots{display:inline-flex;padding-left:6px;min-height:19px}
+.ph{margin:0;border:1.5px dashed var(--line);border-radius:6px;padding:14px 14px;color:var(--mut);font:italic 400 15px/1.4 var(--serif)}
+.ph.writing{border-color:var(--accent);color:var(--accent)}
+.sec[data-status=green]{--tint:color-mix(in srgb,var(--green) 17%,transparent)}
+.sec[data-status=amber]{--tint:color-mix(in srgb,var(--amberc) 22%,transparent)}
+.sec[data-status=conflict]{--tint:color-mix(in srgb,var(--redc) 15%,transparent)}
+.val{margin:0;font:400 18px/1.55 var(--serif);padding:3px 4px;margin-inline:-4px;border-radius:3px;background:linear-gradient(var(--tint,transparent),var(--tint,transparent)) no-repeat left center/100% 100%;text-wrap:pretty}
+.val.sweep{animation:sweep 1.1s ease-out}
+@keyframes sweep{from{background-size:0 100%}}
+.val.typing::after{content:"";display:inline-block;width:2px;height:1em;background:var(--accent);margin-left:2px;vertical-align:-2px;animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
+.ghost{display:grid;gap:8px;margin-top:10px}
+.ghost-h{font:600 12px var(--mono);color:var(--accent)}
+.gopts{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px}
+.gopt{all:unset;box-sizing:border-box;cursor:pointer;border:1.5px dashed color-mix(in srgb,var(--accent) 55%,var(--line));border-radius:7px;padding:10px 11px;font:italic 400 15px/1.35 var(--serif);color:var(--mut);display:grid;gap:3px}
+.gopt:hover,.gopt:focus-visible{border-style:solid;border-color:var(--accent);color:var(--ink)}
+.gopt small{font:400 12px var(--sans);font-style:normal}
+.gopt .rec{font:600 10px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--accent);font-style:normal}
+.cd{font:12px var(--mono);color:var(--mut)}
+
+/* margin comments */
+.thread{padding:4px 20px 18px;min-width:0;background:color-mix(in srgb,var(--sheet-2) 70%,var(--paper));border-left:1px solid var(--line);border-right:1px solid var(--line)}
+.thread:has(.thread-list:empty){display:none}
+.thread-h{font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mut);padding-top:12px}
+.cm{display:grid;grid-template-columns:28px minmax(0,1fr);gap:9px;padding:8px 0;animation:rise .35s ease-out}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}}
+.cm-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 7px;font-size:12.5px}
+.cm-h b{font-weight:700}.cm-h .to{color:var(--mut)}
+.cm-h .tag{font:600 9px var(--mono);letter-spacing:.07em;text-transform:uppercase;border:1px solid var(--line);border-radius:4px;padding:2px 4px;color:var(--mut)}
+.cm p{margin:2px 0 0;font-size:14px;line-height:1.45;text-wrap:pretty}
+.cm.wisp{background:var(--gold-bg);color:var(--gold-ink);border-radius:8px;padding:9px 10px;margin:4px 0;border:1px solid var(--gold-line)}
+.cm.wisp .cm-h .to{color:inherit;opacity:.7}.cm.wisp .tag{border-color:var(--gold-line);color:inherit}
+.thread-act{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding-top:6px;border-top:1px solid var(--line);margin-top:6px}
+.thread-act .btn{padding:6px 9px}
+.dnote{font-size:12px;color:var(--mut);margin:0}
+
+.conflict{border:1px solid color-mix(in srgb,var(--redc) 45%,var(--line));border-radius:9px;background:var(--sheet);padding:10px;margin:8px 0;display:grid;gap:8px;animation:rise .35s ease-out}
+.conflict.resolved{border-color:var(--gold-line)}
+.cf-h{font:600 10px var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--red-fg)}
+.conflict.resolved .cf-h{color:var(--green-fg)}
+.cf-pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+.cf-card{background:var(--sheet-2);border-radius:7px;padding:8px 9px;display:grid;gap:4px;align-content:start;font-size:13px}
+.cf-card .who{display:flex;gap:6px;align-items:center}
+.cf-card .av{width:20px;height:20px;font-size:9px}
+.cf-card b{font-size:12px}.cf-card p{margin:0;font:italic 400 15px/1.35 var(--serif)}
+.cf-bridge{border:1px dashed var(--line);border-radius:7px;padding:8px 10px;color:var(--mut);font-size:13px;position:relative}
+.cf-bridge.gold{background:var(--gold-bg);border:1px solid var(--gold-line);color:var(--gold-ink)}
+.cf-bridge b{display:block;font:600 10px var(--mono);letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px}
+.cf-bridge p{margin:0;font:400 15px/1.4 var(--serif)}
+
+@media (min-width:900px){
+  .stage{grid-template-columns:190px minmax(0,1fr);gap:26px}
+  .rail{position:sticky;top:calc(var(--hh) + env(safe-area-inset-top,0px) + 14px);max-height:calc(100vh - var(--hh) - 28px);overflow-y:auto;overflow-x:hidden;padding-right:4px}
+  .presence{flex-direction:column;gap:7px}
+  .toc{flex-direction:column;overflow:visible;gap:1px}
+  .tb{border-color:transparent;background:transparent;white-space:normal;padding:5px 6px}
+  .tb.on{background:var(--sheet);border-color:var(--line)}
+}
+@media (min-width:1120px){
+  .sec{grid-template-columns:minmax(0,1fr) minmax(270px,340px)}
+  .sec-main,.dochead{border-right:1px solid var(--line)}
+  .thread{background:transparent;border:0;padding:16px 0 18px 22px}
+  .thread:has(.thread-list:empty){display:block}
+  .thread-h{padding-top:0}
+  .margin-note{display:block}
+}
+.margin-note{display:none;padding:28px 0 0 22px;color:var(--mut);font:italic 400 15px/1.4 var(--serif)}
+@media (max-width:520px){
+  .sec-main,.dochead{padding:16px 15px 18px}
+  .thread{padding-inline:15px}
+  .sec-head h2{font-size:20px}
+  .val{font-size:17px}
+  .pr small{display:none}
+}
+#dockhost{padding-block:6px 14px}
+#dockhost .emd,#dockhost .emx{--em-bg:var(--sheet);--em-panel:var(--sheet-2);--em-fg:var(--ink);--em-mut:var(--mut);--em-line:var(--line);--em-acc:var(--accent);--em-ok:var(--green);--em-warn:var(--amberc);--em-bad:var(--redc);--em-font:var(--sans);--em-mono:var(--mono)}
+#dockhost .emd-btn[aria-pressed=true]{color:var(--on-accent)}
+#dockhost .emd-opt{color:var(--ink)}
+.foot{padding-block:8px 28px;color:var(--mut);font:12px var(--mono)}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+</style>
+
+<header class="top" id="top">
+  <div class="wrap">
+    <div class="top-row">
+      <div class="brand">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="M9 12h6M9 16h4"/></svg>
+        <span>Living Brief</span><small>Northwind and Halcyon</small>
+      </div>
+      <div class="truth">
+        <span class="truth-t" id="truthTxt" aria-live="polite">Project truth: 0 of 12 agreed</span>
+        <div class="segs" id="segs" aria-hidden="true"></div>
+      </div>
+      <div class="top-act">
+        <button class="btn" id="followBtn" aria-pressed="true" title="Scroll to wherever the conversation is">Follow</button>
+        <button class="btn" id="axBtn" aria-expanded="false" aria-controls="drawer">Axioms<span class="n" id="axCount">0</span></button>
+      </div>
+    </div>
+  </div>
+  <div class="drawer" id="drawer" hidden>
+    <h3>Axioms so far</h3>
+    <ol id="axList"></ol>
+  </div>
+</header>
+
+<div class="wrap stage">
+  <aside class="rail" aria-label="Who is here and what is covered">
+    <div>
+      <p class="lbl">Online</p>
+      <div class="presence" id="presence"></div>
+    </div>
+    <div>
+      <p class="lbl">Contents</p>
+      <nav class="toc" id="toc"></nav>
+    </div>
+  </aside>
+  <main class="doc" id="doc">
+    <div class="sec">
+      <div class="dochead">
+        <div class="k">Project brief <span id="ver">Draft v0.0</span></div>
+        <h1>Spring trail-season campaign</h1>
+        <p>Northwind Outfitters and Studio Halcyon. This page fills in as people answer. Nothing on it is typed by hand.</p>
+      </div>
+      <div class="margin-note">Comments land in the margin as people talk. Wisp turns each side&rsquo;s words into something the other can use.</div>
+    </div>
+  </main>
+</div>
+
+<div class="wrap" id="dockhost"></div>
+<div class="wrap foot">Concept for Expectation Manager, Day 15</div>
+
+<!--ENGINE-->
+<script>
+(function () {
+  'use strict';
+  var EMx = window.EM, el = EMx.el, CAST = EMx.CAST, SECS = EMx.SECTIONS;
+  var reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  var session = EMx.createSession();
+  var gen = 0, follow = true, lastSec = null, resolvedSec = null, activeId = null, curGhost = null;
+  var ui = {}, pres = {}, tocBtns = {};
+  var PILL = { empty: 'Not asked', amber: 'One side', green: '✓ Agreed', conflict: 'In conflict' };
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* Which section does each spoken line belong to? Read the script ahead of time. */
+  var anchor = {};
+  EMx.BEATS.forEach(function (b, i) {
+    if (b.t !== 'say') return;
+    var sec = null;
+    if (b.set && b.set.length) sec = b.set[0].s;
+    else for (var j = i + 1; j < EMx.BEATS.length; j++) {
+      var n = EMx.BEATS[j];
+      if (n.set && n.set.length) { sec = n.set[0].s; break; }
+      if (n.section) { sec = n.section; break; }
+    }
+    anchor[b.text] = sec;
+  });
+
+  function avatar(id, cls) {
+    return el('span', { class: 'av' + (cls ? ' ' + cls : ''), style: '--c:' + CAST[id].color, title: CAST[id].name + ' (' + CAST[id].tag + ')', text: CAST[id].name.charAt(0) });
+  }
+  function headerH() { var h = $('top'); return h ? h.offsetHeight : 64; }
+  function syncHH() { document.documentElement.style.setProperty('--hh', headerH() + 'px'); }
+
+  /* ---- presence ---- */
+  var presHost = $('presence');
+  ['coach', 'client', 'agency', 'cfo', 'procurement', 'delivery'].forEach(function (id) {
+    var c = CAST[id];
+    var typ = el('span', { class: 'typ', 'aria-hidden': 'true' }, [el('i'), el('i'), el('i')]);
+    var row = el('div', { class: 'pr' }, [avatar(id), el('span', { class: 'info' }, [el('span', { class: 'nm', text: c.name }), el('small', { text: c.tag })]), typ]);
+    pres[id] = row; presHost.appendChild(row);
+  });
+
+  /* ---- sections, contents, segments ---- */
+  var doc = $('doc'), toc = $('toc'), segs = $('segs'), segEls = [];
+  SECS.forEach(function (sec) {
+    var owner = CAST[sec.lens];
+    var pill = el('span', { class: 'pill' });
+    var dots = el('span', { class: 'dots', 'aria-label': 'Agreed by' });
+    var body = el('div', { class: 'body' });
+    var list = el('div', { class: 'thread-list' });
+    var tcount = el('span', { text: '' });
+    var dnote = el('p', { class: 'dnote', hidden: '' });
+    var approve = el('button', { class: 'btn', 'aria-pressed': 'false', text: 'Approve' });
+    var discuss = el('button', { class: 'btn', 'aria-pressed': 'false', text: 'Discuss' });
+    var act = el('div', { class: 'thread-act', hidden: '' }, [discuss, approve, dnote]);
+    var head = el('div', { class: 'sec-head' }, [el('h2', { text: sec.label }), dots, pill]);
+    var main = el('div', { class: 'sec-main' }, [head, body]);
+    var thread = el('div', { class: 'thread', 'aria-label': 'Comments on ' + sec.label }, [el('div', { class: 'thread-h' }, [tcount]), list, act]);
+    var root = el('section', { class: 'sec', id: 's-' + sec.id, 'data-status': 'empty' }, [main, thread]);
+    doc.appendChild(root);
+    var u = ui[sec.id] = { el: root, pill: pill, dots: dots, body: body, list: list, act: act, tcount: tcount, dnote: dnote, approve: approve, discuss: discuss, owner: owner, label: sec.label,
+      val: null, ph: null, ghost: null, shown: '', typer: null, conflict: null, count: 0 };
+    approve.addEventListener('click', function () {
+      var on = approve.getAttribute('aria-pressed') !== 'true';
+      approve.setAttribute('aria-pressed', String(on)); approve.textContent = on ? '✓ Approved' : 'Approve';
+    });
+    discuss.addEventListener('click', function () {
+      var on = discuss.getAttribute('aria-pressed') !== 'true';
+      discuss.setAttribute('aria-pressed', String(on));
+      dnote.hidden = !on; dnote.textContent = 'Discussion open. Wisp will bring this back to the room.';
+    });
+    var tb = el('button', { class: 'tb', 'data-status': 'empty', onclick: function () { stopFollow(); root.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' }); } }, [el('span', { class: 'mk' }), sec.label]);
+    toc.appendChild(tb); tocBtns[sec.id] = tb;
+    var seg = el('i', { 'data-status': 'empty', title: sec.label }); segs.appendChild(seg); segEls.push(seg);
+  });
+
+  function placeholder(id) {
+    var u = ui[id];
+    u.ph = el('p', { class: 'ph', text: 'Not asked yet. Wisp will ask ' + u.owner.name + ' (' + u.owner.tag + ').' });
+    u.body.appendChild(u.ph);
+  }
+  function resetSec(id) {
+    var u = ui[id];
+    clearTimeout(u.typer);
+    u.body.innerHTML = ''; u.list.innerHTML = '';
+    u.val = null; u.ph = null; u.ghost = null; u.shown = ''; u.conflict = null; u.count = 0;
+    u.tcount.textContent = ''; u.act.hidden = true; u.dnote.hidden = true;
+    u.approve.setAttribute('aria-pressed', 'false'); u.approve.textContent = 'Approve';
+    u.discuss.setAttribute('aria-pressed', 'false');
+    u.el.classList.remove('active', 'deciding');
+    placeholder(id); paint(id);
+  }
+
+  /* ---- painting from state ---- */
+  function paint(id) {
+    var s = session.state.sections[id], u = ui[id];
+    u.el.setAttribute('data-status', s.status);
+    u.pill.textContent = PILL[s.status];
+    u.dots.innerHTML = '';
+    s.by.forEach(function (p) { u.dots.appendChild(avatar(p, 'sm')); });
+    tocBtns[id].setAttribute('data-status', s.status);
+    var i = SECS.map(function (x) { return x.id; }).indexOf(id);
+    segEls[i].setAttribute('data-status', s.status);
+  }
+  function meter() {
+    var p = session.progress();
+    $('truthTxt').textContent = 'Project truth: ' + p.green + ' of ' + p.total + ' agreed' + (p.conflicts ? ' · ' + p.conflicts + ' in conflict' : '');
+    $('ver').textContent = 'Draft v0.' + p.green;
+  }
+  function renderAxioms() {
+    var list = $('axList'), ax = session.state.axioms;
+    list.innerHTML = '';
+    $('axCount').textContent = String(ax.length);
+    if (!ax.length) { list.appendChild(el('li', { class: 'none', text: 'None yet. An axiom is written each time two sides agree.' })); return; }
+    ax.forEach(function (a) {
+      var lab = SECS.filter(function (x) { return x.id === a.section; })[0].label;
+      list.appendChild(el('li', {}, [el('span', { class: 'tg', text: lab }), el('span', { text: a.text })]));
+    });
+  }
+  function fill(id) {
+    var u = ui[id], s = session.state.sections[id], text = s.value;
+    if (!text || u.shown === text) return;
+    u.shown = text; clearTimeout(u.typer);
+    if (u.ph && u.ph.parentNode) u.ph.parentNode.removeChild(u.ph);
+    u.ph = null;
+    if (!u.val) { u.val = el('p', { class: 'val' }); u.body.insertBefore(u.val, u.body.firstChild); }
+    var p = u.val, g = gen;
+    p.classList.remove('sweep');
+    if (reduce) { p.textContent = text; return; }
+    p.textContent = ''; p.classList.add('typing');
+    var i = 0;
+    (function tick() {
+      if (g !== gen) return;
+      i += 2; p.textContent = text.slice(0, i);
+      if (i < text.length) u.typer = setTimeout(tick, Math.max(6, 18 / session.speed));
+      else { p.textContent = text; p.classList.remove('typing'); p.classList.add('sweep'); }
+    })();
+  }
+
+  /* ---- comments ---- */
+  function addComment(id, ev) {
+    var u = ui[id], c = CAST[ev.from];
+    var head = el('div', { class: 'cm-h' }, [el('b', { text: c.name }), el('span', { class: 'to', text: ev.to === 'all' ? 'to everyone' : 'to ' + CAST[ev.to].name }), ev.channel === 'private' ? el('span', { class: 'tag', text: 'one to one' }) : null]);
+    var node = el('article', { class: 'cm' + (ev.from === 'coach' ? ' wisp' : '') }, [avatar(ev.from), el('div', {}, [head, el('p', { text: ev.text })])]);
+    u.list.appendChild(node);
+    u.count++; u.tcount.textContent = 'Comments · ' + u.count;
+    u.act.hidden = false;
+  }
+  function cfCard(id, text) {
+    var c = CAST[id];
+    return el('div', { class: 'cf-card' }, [el('div', { class: 'who' }, [avatar(id), el('b', { text: c.name + ' says' })]), el('p', { text: '“' + text + '”' })]);
+  }
+  function addConflict(ev) {
+    var u = ui[ev.section];
+    var bridge = el('div', { class: 'cf-bridge', text: 'Wisp is looking for the overlap…' });
+    var blk = el('div', { class: 'conflict' }, [el('div', { class: 'cf-h', text: 'Two readings of the same line' }), el('div', { class: 'cf-pair' }, [cfCard(ev.a, ev.aText), cfCard(ev.b, ev.bText)]), bridge]);
+    u.list.appendChild(blk); u.conflict = { node: blk, bridge: bridge };
+    u.act.hidden = false;
+  }
+  function resolveConflict(id) {
+    var u = ui[id], s = session.state.sections[id];
+    if (!u.conflict) return;
+    var b = u.conflict.bridge;
+    b.className = 'cf-bridge gold'; b.innerHTML = '';
+    b.appendChild(el('b', { text: 'Wisp, in other words' }));
+    b.appendChild(el('p', { text: s.value }));
+    u.conflict.node.classList.add('resolved');
+    u.conflict.node.firstChild.textContent = 'Resolved together';
+    u.conflict = null;
+  }
+
+  /* ---- ghost options for a decision ---- */
+  function showGhost(ev) {
+    var u = ui[ev.section];
+    if (u.ph && u.ph.parentNode) { u.ph.parentNode.removeChild(u.ph); u.ph = null; }
+    var cd = el('span', { class: 'cd', text: '' });
+    var opts = el('div', { class: 'gopts' });
+    ev.options.forEach(function (o, i) {
+      opts.appendChild(el('button', { class: 'gopt', onclick: function () { session.choose(i); } }, [
+        i === ev.rec ? el('span', { class: 'rec', text: 'Wisp suggests' }) : null, o.label, el('small', { text: o.note })]));
+    });
+    var g = el('div', { class: 'ghost' }, [el('div', { class: 'ghost-h', text: 'Wisp is asking the room. Pick one to write it in.' }), opts, cd]);
+    u.ghost = g; u.cd = cd; curGhost = u; u.body.appendChild(g);
+    u.el.classList.add('deciding');
+  }
+  function clearGhost() {
+    if (!curGhost) return;
+    var u = curGhost;
+    if (u.ghost && u.ghost.parentNode) u.ghost.parentNode.removeChild(u.ghost);
+    u.ghost = null; u.el.classList.remove('deciding'); curGhost = null;
+    if (!u.val) { u.ph = el('p', { class: 'ph writing', text: 'Wisp is writing this up…' }); u.body.appendChild(u.ph); }
+  }
+
+  /* ---- following the action ---- */
+  function stopFollow() { follow = false; $('followBtn').setAttribute('aria-pressed', 'false'); }
+  function touch(id) {
+    if (!id) return;
+    lastSec = id;
+    if (activeId && activeId !== id) { ui[activeId].el.classList.remove('active'); tocBtns[activeId].classList.remove('on'); }
+    activeId = id; ui[id].el.classList.add('active'); tocBtns[id].classList.add('on');
+    if (!follow) return;
+    var r = ui[id].el.getBoundingClientRect(), h = headerH();
+    if (r.top < h + 6 || r.top > window.innerHeight * 0.5) {
+      window.scrollTo({ top: Math.max(0, window.pageYOffset + r.top - h - 18), behavior: reduce ? 'auto' : 'smooth' });
+    }
+  }
+  ['wheel', 'touchstart'].forEach(function (n) { window.addEventListener(n, stopFollow, { passive: true }); });
+  window.addEventListener('keydown', function (e) {
+    if (['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End', ' '].indexOf(e.key) >= 0) stopFollow();
+    if (e.key === 'Escape') closeDrawer();
+  });
+  $('followBtn').addEventListener('click', function () {
+    follow = !follow; $('followBtn').setAttribute('aria-pressed', String(follow));
+    if (follow && lastSec) { var id = lastSec; lastSec = null; touch(id); }
+  });
+  function closeDrawer() { $('drawer').hidden = true; $('axBtn').setAttribute('aria-expanded', 'false'); }
+  $('axBtn').addEventListener('click', function () {
+    var open = $('drawer').hidden; $('drawer').hidden = !open; $('axBtn').setAttribute('aria-expanded', String(open));
+  });
+  window.addEventListener('resize', syncHH);
+
+  /* ---- events ---- */
+  function typing(id, on) { if (pres[id]) pres[id].classList[on ? 'add' : 'remove']('typing'); }
+
+  session.on(function (ev) {
+    var t = ev.type;
+    if (t === 'say') {
+      var g = gen, sec = anchor[ev.text];
+      if (sec === undefined) sec = resolvedSec || lastSec;
+      typing(ev.from, true);
+      var d = Math.min(800, (ev.ms || 1500) * 0.35);
+      setTimeout(function () {
+        if (g !== gen) return;
+        typing(ev.from, false);
+        if (sec) { addComment(sec, ev); touch(sec); }
+      }, d);
+    } else if (t === 'set') {
+      var id = ev.section;
+      paint(id); meter();
+      if (ev.value) fill(id);
+      if (ev.status === 'green') resolveConflict(id);
+      if (ev.axiom) renderAxioms();
+      touch(id);
+    } else if (t === 'conflict') {
+      paint(ev.section); meter(); addConflict(ev); touch(ev.section);
+    } else if (t === 'choice') {
+      showGhost(ev); touch(ev.section);
+    } else if (t === 'countdown') {
+      if (curGhost && curGhost.cd) curGhost.cd.textContent = 'Wisp picks the suggestion in ' + ev.value + 's.';
+    } else if (t === 'resolved') {
+      resolvedSec = ev.section; clearGhost();
+    } else if (t === 'done') {
+      if (follow) { var dh = $('dockhost'); if (dh) dh.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'end' }); }
+    } else if (t === 'reset') {
+      gen++; lastSec = null; resolvedSec = null; activeId = null; curGhost = null;
+      Object.keys(pres).forEach(function (k) { typing(k, false); });
+      SECS.forEach(function (s) { resetSec(s.id); tocBtns[s.id].classList.remove('on'); });
+      meter(); renderAxioms(); window.scrollTo(0, 0);
+    }
+  });
+
+  /* ---- start ---- */
+  SECS.forEach(function (s) { placeholder(s.id); paint(s.id); });
+  meter(); renderAxioms(); syncHH();
+  EMx.mountDock($('dockhost'), session);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(syncHH);
+})();
+</script>

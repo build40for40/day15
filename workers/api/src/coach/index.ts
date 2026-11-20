@@ -13,6 +13,7 @@ import {
 } from '@day15/shared/schema'
 import type { CoachReply, CoachTurn, Env, OpeningBrief, OpeningBriefFn, RoomStub } from '../contracts'
 import { anthropicModel, logModelError, ModelUnavailableError, PROVIDER_OPTIONS } from '../model'
+import { withFirstVisit } from './first-visit'
 import { composeReply, planNextAsk, planTurn, type NextAskPlan } from './plan'
 import { coachInstructions, openingPrompt, turnPrompt } from './prompt'
 import { coachTurnOutputSchema, openingOutputSchema } from './schema'
@@ -183,7 +184,7 @@ export async function runOpeningBrief(generate: Generate, room: RoomStub, partic
 
   const plan = planNextAsk(output.next_ask, { room: snapshot, participant, candidates, answered: [] })
   const { next } = await writeNextAsk(room, participant, plan)
-  return { reply: composeReply(output.reply, plan.text, plan.explain), ask: next }
+  return { reply: withFirstVisit(snapshot, participant, composeReply(output.reply, plan.text, plan.explain)), ask: next }
 }
 
 export const coachTurn: CoachTurn = (env, room, participant, message) =>
