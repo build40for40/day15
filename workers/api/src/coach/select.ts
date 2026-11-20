@@ -1,3 +1,5 @@
+import type { AlignmentAreaId } from '@day15/shared/alignment'
+import { areaRank, TOPIC_AREA } from '@day15/shared/areas'
 import { LENS_IDS, type LensId } from '@day15/shared/lenses'
 import {
   OTHER_SIDE,
@@ -19,6 +21,7 @@ export interface AskCandidate {
   questionId: number | null
   priority: number | null
   severity: OpenQuestion['severity']
+  area: AlignmentAreaId
   lens: LensId | null
   topic: string
   /** What the coach needs to learn, for the model to phrase. */
@@ -90,11 +93,6 @@ export function routedTo(room: RoomSnapshot, participant: Participant, lens: Len
   )
 }
 
-/** This person's own lenses first, then the rest in their usual order. */
-function lensOrder(participant: Participant): LensId[] {
-  return [...participant.lenses, ...LENS_IDS.filter((lens) => !participant.lenses.includes(lens))]
-}
-
 /** How many asks this person has had from each lens. */
 export function heardFrom(room: RoomSnapshot, participant: Participant): Record<LensId, number> {
   const counts = Object.fromEntries(LENS_IDS.map((lens) => [lens, 0])) as Record<LensId, number>
@@ -103,7 +101,14 @@ export function heardFrom(room: RoomSnapshot, participant: Participant): Record<
 }
 
 function fromQuestion(question: OpenQuestion): Found {
-  const base = { questionId: question.id, priority: question.priority, severity: question.severity, lens: question.lens, topic: question.topic }
+  const base = {
+    questionId: question.id,
+    priority: question.priority,
+    severity: question.severity,
+    area: question.area,
+    lens: question.lens,
+    topic: question.topic,
+  }
   if (question.kind === 'gap') {
     return { ...base, kind: 'gap', findOut: question.statement, because: question.because, question: askAbout(question.statement) }
   }
@@ -113,13 +118,14 @@ function fromQuestion(question: OpenQuestion): Found {
     kind: 'conflict',
     findOut: `where they land on "${topic}": the agency said "${question.agencySaid}" and the client said "${question.clientSaid}"`,
     because: question.statement,
-    question:
-      `The two sides seem to see "${sentence(topic)}" differently: the agency said "${question.agencySaid}" ` +
-      `and the client said "${question.clientSaid}". Where do you land on it?`,
+    question: `Where do you land on "${sentence(topic)}"?`,
   }
 }
 
-/** Open questions for this person's side from lenses routed to them, in the room's most urgent first order. */
+/**
+ * Open questions for this person's side from lenses routed to them, in the room's order: priority, then the area's
+ * rank in the matrix, then conflicts before gaps, then oldest.
+ */
 function openQuestionsFor(room: RoomSnapshot, participant: Participant): Found[] {
   return room.openQuestions
     .filter(
@@ -130,21 +136,21 @@ function openQuestionsFor(room: RoomSnapshot, participant: Participant): Found[]
     .map(fromQuestion)
 }
 
-/** Brief topics nobody on this person's side has a standing fact on, their own lens's topics first. */
+/** Brief topics nobody on this person's side has a standing fact on, in the order of their areas in the matrix. */
 function missingTopics(room: RoomSnapshot, participant: Participant): Found[] {
   const covered = new Set(
     room.facts
       .filter((fact) => fact.status !== 'superseded' && fact.side === participant.side)
       .map((fact) => fact.topic),
   )
-  const order = lensOrder(participant)
   return BRIEF_TOPICS.filter((topic) => !covered.has(topic) && routedTo(room, participant, TOPIC_LENS[topic]))
-    .sort((a, b) => order.indexOf(TOPIC_LENS[a]) - order.indexOf(TOPIC_LENS[b]))
+    .sort((a, b) => areaRank(TOPIC_AREA[a]) - areaRank(TOPIC_AREA[b]))
     .map((topic) => ({
       kind: 'missing_topic' as const,
       questionId: null,
       priority: null,
       severity: null,
+      area: TOPIC_AREA[topic],
       lens: TOPIC_LENS[topic],
       topic,
       findOut: `their side's view on ${topic.replace('_', ' ')}`,
@@ -154,10 +160,10 @@ function missingTopics(room: RoomSnapshot, participant: Participant): Found[] {
 }
 
 /**
- * What the coach could ask this person next, best first: the open questions for their side, most urgent first
- * (by priority, conflicts before gaps, then oldest), then brief topics their side has said nothing about, so a room
- * with no lens reports yet still has something to ask. Only lenses routed to this person count: ones they speak
- * for, and ones nobody on their side speaks for.
+ * What the coach could ask this person next, best first: the open questions for their side, most urgent first (by
+ * priority, then the area's rank in the matrix, then conflicts before gaps, then oldest), then brief topics their
+ * side has said nothing about, in area order, so a room with no lens reports yet still has something to ask. Only
+ * lenses routed to this person count: ones they speak for, and ones nobody on their side speaks for.
  */
 export function askCandidates(room: RoomSnapshot, participant: Participant): AskCandidate[] {
   if (LENS_IDS.every((lens) => room.latestRuns[lens]?.report?.done)) return []

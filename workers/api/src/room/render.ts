@@ -1,3 +1,4 @@
+import { areaName } from '@day15/shared/areas'
 import { LENS_NAMES } from '@day15/shared/lenses'
 import { PRIORITY_MEANINGS, priorityLabel } from '@day15/shared/priorities'
 import { ref } from '@day15/shared/refs'
@@ -52,7 +53,8 @@ export function renderQuestion(question: OpenQuestion): string {
   const topic = oneLine(question.topic) ? ` on "${oneLine(question.topic)}"` : ''
   const side = question.askSide === 'both' ? 'both sides' : `the ${question.askSide} side`
   const head =
-    `${ref('question', question.id)} [${priorityLabel(question.priority)} priority] ${what}${topic}, for ${side}, raised by the ` +
+    `${ref('question', question.id)} [${priorityLabel(question.priority)} priority] ${what}${topic} in ` +
+    `${areaName(question.area)}, for ${side}, raised by the ` +
     `${LENS_NAMES[question.lens]} lens in ${ref('lensRun', question.raisedByRun)}`
   const body =
     question.kind === 'conflict'

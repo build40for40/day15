@@ -1,12 +1,9 @@
+import { ALIGNMENT_AREAS, type AlignmentAreaId } from '@day15/shared/alignment'
+import { areaRank, LENS_AREA, TOPIC_AREA } from '@day15/shared/areas'
 import type { LensId } from '@day15/shared/lenses'
 import { toPriority } from '@day15/shared/priorities'
 import { parseRef } from '@day15/shared/refs'
-import {
-  type LensReport,
-  type LensRun,
-  type OpenQuestion,
-  type Severity,
-} from '@day15/shared/schema'
+import { type LensReport, type LensRun, type OpenQuestion, type Severity, type Topic } from '@day15/shared/schema'
 import { all, first, type Sql } from './sql'
 
 type QuestionRow = {
@@ -14,6 +11,7 @@ type QuestionRow = {
   kind: string
   lens: string
   topic: string
+  area: string
   statement: string
   because: string
   agency_said: string | null
@@ -36,6 +34,7 @@ const toQuestion = (row: QuestionRow): OpenQuestion => ({
   kind: row.kind as OpenQuestion['kind'],
   lens: row.lens as LensId,
   topic: row.topic,
+  area: row.area as AlignmentAreaId,
   statement: row.statement,
   because: row.because,
   agencySaid: row.agency_said,
@@ -53,10 +52,15 @@ const toQuestion = (row: QuestionRow): OpenQuestion => ({
   closedAt: row.closed_at,
 })
 
-const MOST_URGENT_FIRST = `ORDER BY priority, CASE kind WHEN 'conflict' THEN 0 ELSE 1 END, id`
+const AREA_ORDER = `CASE area ${ALIGNMENT_AREAS.map((area, rank) => `WHEN '${area.id}' THEN ${rank}`).join(' ')} ELSE ${ALIGNMENT_AREAS.length} END`
+
+/** Priority first, then the area's rank in the mother agent's matrix, then conflicts before gaps, then oldest. */
+const MOST_URGENT_FIRST = `ORDER BY priority, ${AREA_ORDER}, CASE kind WHEN 'conflict' THEN 0 ELSE 1 END, id`
 
 export function listOpenQuestions(sql: Sql): OpenQuestion[] {
-  return all<QuestionRow>(sql, `SELECT * FROM open_questions WHERE status = 'open' ${MOST_URGENT_FIRST}`).map(toQuestion)
+  return all<QuestionRow>(sql, `SELECT * FROM open_questions WHERE status = 'open' ${MOST_URGENT_FIRST}`).map(
+    toQuestion,
+  )
 }
 
 export function getQuestion(sql: Sql, id: number): OpenQuestion | null {
@@ -68,7 +72,10 @@ const SEVERITY_PRIORITY: Record<Severity, number> = { fundamental: 1, workable: 
 
 const normalise = (text: string) => text.replace(/\s+/g, ' ').trim().toLowerCase()
 
-type Raised = Omit<OpenQuestion, 'id' | 'lens' | 'status' | 'raisedByRun' | 'resolvedByRun' | 'resolvedByItem' | 'createdAt' | 'updatedAt' | 'closedAt'> & {
+type Raised = Omit<
+  OpenQuestion,
+  'id' | 'lens' | 'status' | 'raisedByRun' | 'resolvedByRun' | 'resolvedByItem' | 'createdAt' | 'updatedAt' | 'closedAt'
+> & {
   sameAs: number | null
 }
 
@@ -78,40 +85,74 @@ const sameThing = (a: Pick<OpenQuestion, 'kind' | 'topic' | 'statement' | 'agenc
     ? ['conflict', a.topic, a.agencySaid ?? '', a.clientSaid ?? ''].map(normalise).join('|')
     : ['gap', a.askSide, a.statement].map(normalise).join('|')
 
-function citedFacts(texts: string[], facts: Set<number>): number[] {
+function citedFacts(texts: string[], facts: Map<number, Topic>): number[] {
   const ids = texts.flatMap((text) => text.match(/\bf\d+\b/gi) ?? []).map((value) => parseRef('fact', value))
   return [...new Set(ids)].filter((id): id is number => id !== null && facts.has(id))
 }
 
-function raisedBy(report: LensReport, facts: Set<number>): Raised[] {
+/**
+ * The lens's own area, else the area most of the facts it cites belong to (the higher ranked on a tie), else the
+ * area its lens mostly speaks to.
+ */
+export function areaFor(
+  given: AlignmentAreaId | undefined,
+  basedOn: number[],
+  facts: Map<number, Topic>,
+  lens: LensId,
+): AlignmentAreaId {
+  if (given) return given
+  const counts = new Map<AlignmentAreaId, number>()
+  for (const id of basedOn) {
+    const area = TOPIC_AREA[facts.get(id)!]
+    counts.set(area, (counts.get(area) ?? 0) + 1)
+  }
+  const [best] = [...counts].sort(([a, x], [b, y]) => y - x || areaRank(a) - areaRank(b))
+  return best?.[0] ?? LENS_AREA[lens]
+}
+
+function raisedBy(report: LensReport, facts: Map<number, Topic>, lens: LensId): Raised[] {
   const sameAs = (value: string | null | undefined) => (value ? parseRef('question', value) : null)
+  const withArea = (raised: Omit<Raised, 'area'>, given: AlignmentAreaId | undefined): Raised => ({
+    ...raised,
+    area: areaFor(given, raised.basedOn, facts, lens),
+  })
   return [
-    ...report.conflicts.map((conflict) => ({
-      kind: 'conflict' as const,
-      topic: conflict.topic.trim(),
-      statement: conflict.note.trim(),
-      because: '',
-      agencySaid: conflict.agency_said.trim(),
-      clientSaid: conflict.client_said.trim(),
-      severity: conflict.severity,
-      askSide: 'both' as const,
-      priority: SEVERITY_PRIORITY[conflict.severity],
-      basedOn: citedFacts([conflict.agency_said, conflict.client_said, conflict.note], facts),
-      sameAs: sameAs(conflict.same_as),
-    })),
-    ...report.questions.map((question) => ({
-      kind: 'gap' as const,
-      topic: (question.topic ?? '').trim(),
-      statement: question.find_out.trim(),
-      because: question.because.trim(),
-      agencySaid: null,
-      clientSaid: null,
-      severity: null,
-      askSide: question.ask,
-      priority: toPriority(question.priority),
-      basedOn: citedFacts([question.find_out, question.because], facts),
-      sameAs: sameAs(question.same_as),
-    })),
+    ...report.conflicts.map((conflict) =>
+      withArea(
+        {
+          kind: 'conflict' as const,
+          topic: conflict.topic.trim(),
+          statement: conflict.note.trim(),
+          because: '',
+          agencySaid: conflict.agency_said.trim(),
+          clientSaid: conflict.client_said.trim(),
+          severity: conflict.severity,
+          askSide: 'both' as const,
+          priority: SEVERITY_PRIORITY[conflict.severity],
+          basedOn: citedFacts([conflict.agency_said, conflict.client_said, conflict.note], facts),
+          sameAs: sameAs(conflict.same_as),
+        },
+        conflict.area,
+      ),
+    ),
+    ...report.questions.map((question) =>
+      withArea(
+        {
+          kind: 'gap' as const,
+          topic: (question.topic ?? '').trim(),
+          statement: question.find_out.trim(),
+          because: question.because.trim(),
+          agencySaid: null,
+          clientSaid: null,
+          severity: null,
+          askSide: question.ask,
+          priority: toPriority(question.priority),
+          basedOn: citedFacts([question.find_out, question.because], facts),
+          sameAs: sameAs(question.same_as),
+        },
+        question.area,
+      ),
+    ),
   ]
 }
 
@@ -125,17 +166,22 @@ export function recordLensReport(sql: Sql, run: LensRun, now: Date): void {
   const report = run.report
   if (run.status !== 'done' || !report) return
   const at = now.toISOString()
-  const facts = new Set(all<{ id: number }>(sql, 'SELECT id FROM facts').map((row) => row.id))
-  const open = all<QuestionRow>(sql, `SELECT * FROM open_questions WHERE status = 'open' AND lens = ?`, run.lens).map(toQuestion)
+  const facts = new Map(
+    all<{ id: number; topic: string }>(sql, 'SELECT id, topic FROM facts').map((row) => [row.id, row.topic as Topic]),
+  )
+  const open = all<QuestionRow>(sql, `SELECT * FROM open_questions WHERE status = 'open' AND lens = ?`, run.lens).map(
+    toQuestion,
+  )
   const touched = new Set<number>()
 
-  for (const raised of raisedBy(report, facts)) {
+  for (const raised of raisedBy(report, facts, run.lens)) {
     const key = sameThing(raised)
     const existing = open.find(
       (row) => !touched.has(row.id) && row.kind === raised.kind && (row.id === raised.sameAs || sameThing(row) === key),
     )
     const values = [
       raised.topic,
+      raised.area,
       raised.statement,
       raised.because,
       raised.agencySaid,
@@ -147,7 +193,7 @@ export function recordLensReport(sql: Sql, run: LensRun, now: Date): void {
     ]
     if (existing) {
       sql.exec(
-        `UPDATE open_questions SET topic = ?, statement = ?, because = ?, agency_said = ?, client_said = ?, severity = ?,
+        `UPDATE open_questions SET topic = ?, area = ?, statement = ?, because = ?, agency_said = ?, client_said = ?, severity = ?,
            ask_side = ?, priority = MIN(priority, ?), based_on = ?, updated_at = ? WHERE id = ?`,
         ...values,
         at,
@@ -156,9 +202,9 @@ export function recordLensReport(sql: Sql, run: LensRun, now: Date): void {
       touched.add(existing.id)
     } else {
       sql.exec(
-        `INSERT INTO open_questions (topic, statement, because, agency_said, client_said, severity, ask_side, priority,
-           based_on, kind, lens, raised_by_run, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO open_questions (topic, area, statement, because, agency_said, client_said, severity, ask_side,
+           priority, based_on, kind, lens, raised_by_run, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         ...values,
         raised.kind,
         run.lens,
@@ -183,7 +229,11 @@ export function recordLensReport(sql: Sql, run: LensRun, now: Date): void {
 }
 
 /** Moves open questions to a new priority. Closed ones and unknown ids are skipped. */
-export function setQuestionPriorities(sql: Sql, changes: { id: number; priority: number }[], now: Date): OpenQuestion[] {
+export function setQuestionPriorities(
+  sql: Sql,
+  changes: { id: number; priority: number }[],
+  now: Date,
+): OpenQuestion[] {
   const at = now.toISOString()
   return changes.flatMap(({ id, priority }) => {
     sql.exec(

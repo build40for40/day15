@@ -69,6 +69,15 @@ What the words in the report mean:
 - **fundamental** means the project should not start until it is sorted (the two sides want different things, or one cannot give what the other needs). **workable** means a trade-off will fix it. **minor** means it only needs writing down.
 - **priority** is a number with a label: high (1) for "ask this next", medium (2) for "soon", low (3) for "when there is a gap". Give the number.
 - **done** is true when every topic is settled on both sides and there are no open conflicts.
+- **area** on a conflict or a question is the one of these seven it belongs to, by its id, most important first.
+  Leave it out only if you cannot tell.
+  - `goal_and_success`: the outcome both sides want and how they will check it.
+  - `scope`: what is and is not being made, and what "done" means.
+  - `dependencies_and_ownership`: anything outside the contract that has to hold, and who owns it.
+  - `budget`: what the money covers, how firm it is and who pays if it changes.
+  - `timeline`: the dates, which one cannot move, and who supplies what by when.
+  - `ways_of_working`: who gives feedback, who signs off and how changes are handled.
+  - `procurement_and_contract`: approvals, who owns the work and how a disagreement is raised.
 - **same_as** on a conflict or a question is the id of your open question it updates, like q7. Leave it out for a new one.
 - **topic** on a question is the persona topic it is about.
 - **resolved** lists the ids of your open questions that the room now settles. Saying you are done resolves all of them.

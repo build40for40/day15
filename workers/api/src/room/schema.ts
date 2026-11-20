@@ -77,6 +77,7 @@ const STATEMENTS = [
     kind TEXT NOT NULL CHECK (kind IN ('conflict', 'gap')),
     lens TEXT NOT NULL,
     topic TEXT NOT NULL,
+    area TEXT NOT NULL DEFAULT 'scope',
     statement TEXT NOT NULL,
     because TEXT NOT NULL DEFAULT '',
     agency_said TEXT,
@@ -115,6 +116,7 @@ const ADDED_COLUMNS: Record<string, [name: string, definition: string][]> = {
   ['removed_at', 'TEXT'],
   ],
   asks: [['question_id', 'INTEGER REFERENCES open_questions(id)']],
+  open_questions: [['area', `TEXT NOT NULL DEFAULT 'scope'`]],
 }
 
 function addColumns(sql: Sql, table: string) {

@@ -79,6 +79,7 @@ A lens never addresses a person. It writes only for the coach, which is the one 
       "client_said": "their words (f9)",
       "severity": "fundamental | workable | minor",
       "note": "one sentence on why it matters",
+      "area": "one of the seven alignment areas",
       "same_as": "q7, only when this updates one of your open questions"
     }
   ],
@@ -89,6 +90,7 @@ A lens never addresses a person. It writes only for the coach, which is the one 
       "because": "one sentence",
       "priority": 1,
       "topic": "one of the persona's topics",
+      "area": "one of the seven alignment areas",
       "same_as": "q8, only when this updates one of your open questions"
     }
   ],
@@ -104,6 +106,7 @@ A lens never addresses a person. It writes only for the coach, which is the one 
 - **fundamental** means the project should not start until it is sorted (the two sides want different things, or one cannot give what the other needs). **workable** means a trade-off will fix it. **minor** means it only needs writing down.
 - **priority** is a number with a label: high (1) for "ask this next", medium (2) for "soon", low (3) for "when there is a gap". Give the number.
 - **done** is true when every topic is settled on both sides and there are no open conflicts.
+- **area** is optional: one of the seven areas of the mother agent's priority matrix (`packages/shared/src/alignment.ts`), which the wrapper lists. When a lens leaves it out, the Worker takes the area most of the cited facts' topics map to (`TOPIC_AREA` in `packages/shared/src/areas.ts`), else the lens's usual area. Dependencies and ownership has no topic of its own, so only a lens that says so puts a question there.
 - **same_as**, **topic** and **resolved** are optional. `same_as` names the lens's own open question that a conflict or question updates, and `resolved` lists the ones the room now settles. A report that says `done` resolves all of that lens's open questions.
 - **proposed_facts** is optional, and most reports leave it empty. A lens proposes a fact only when it follows from facts in the room, which it cites in `based_on`, or when it is safe general knowledge it labels as an estimate. It may set `supersedes` only to replace an earlier lens fact, never what a person said.
 
@@ -127,4 +130,4 @@ Every conflict and question a lens raises becomes a row in the room's open quest
 - A conflict or question updates the lens's own open question it names in `same_as`, or one it already has for the same thing, and is added as a new row otherwise. An update can make a row more urgent, never less.
 - A lens resolves its own open questions with `resolved`, or all of them by saying it is done. The coach resolves one when a person's answer settles it.
 
-The coach works down the open questions for the person in front of it, most urgent first (by priority, conflicts before gaps, then oldest), from the lenses that person speaks for and the ones nobody on their side speaks for, and turns the first that fits into its one next ask. Only the coach asks people things.
+The coach works down the open questions for the person in front of it, most urgent first (by priority, then the area's rank in the matrix, then conflicts before gaps, then oldest), from the lenses that person speaks for and the ones nobody on their side speaks for, and turns the first that fits into its one next ask. Only the coach asks people things.

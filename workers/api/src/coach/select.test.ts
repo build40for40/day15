@@ -43,6 +43,25 @@ describe('askCandidates', () => {
     ])
   })
 
+  it('breaks a priority tie by the area rank before conflicts come before gaps', async () => {
+    const { room, people } = await fixtureRoom()
+    await room.saveLensRun({
+      lens: 'cfo',
+      round: 2,
+      watermark: 1,
+      status: 'done',
+      report: report({
+        questions: [{ ask: 'client', find_out: 'what success looks like a year on', because: 'b', priority: 1, area: 'goal_and_success' }],
+      }),
+    })
+    const open = askCandidates((await room.read())!, people.robin.participant).filter((c) => c.kind !== 'missing_topic')
+    expect(open.map((c) => [c.kind, c.area, c.priority])).toEqual([
+      ['gap', 'goal_and_success', 1],
+      ['conflict', 'budget', 1],
+      ['gap', 'budget', 1],
+    ])
+  })
+
   it('routes a lens to the people on a side who speak for it, and to anyone there when nobody does', async () => {
     const { room, people } = await fixtureRoom()
     const snapshot = (await room.read())!
@@ -58,14 +77,25 @@ describe('askCandidates', () => {
     expect(askCandidates(snapshot, people.robin.participant).find((c) => c.lens === 'cfo')?.unowned).toBe(false)
   })
 
-  it('falls back to brief topics nobody on this side has covered, own lens topics first', async () => {
+  it('falls back to brief topics nobody on this side has covered, in the order of their areas', async () => {
     const room = memoryRoom()
     await room.create({ id: 'p', name: 'Empty', ownerId: 'o' })
     const { participant } = await room.addParticipant({ name: 'Fake Person', persona: 'cfo', side: 'client' })
     const candidates = askCandidates((await room.read())!, participant)
     expect(candidates.every((c) => c.kind === 'missing_topic')).toBe(true)
-    expect(candidates[0]).toMatchObject({ topic: 'budget', lens: 'cfo', question: 'What do you understand the budget to cover?' })
-    expect(candidates).toHaveLength(10)
+    expect(candidates.map((c) => c.topic)).toEqual([
+      'background',
+      'objective',
+      'audience',
+      'insight',
+      'kpis',
+      'deliverables',
+      'budget',
+      'timeline',
+      'sign_off',
+      'legal_ip',
+    ])
+    expect(candidates[6]).toMatchObject({ lens: 'cfo', question: 'What do you understand the budget to cover?' })
   })
 
   it('has nothing to ask once every lens says it is done', async () => {

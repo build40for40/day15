@@ -105,7 +105,7 @@ describe('renderRoom', () => {
     const text = renderRoom((await room.read())!)
     const open = text.slice(text.indexOf('## Open questions'), text.indexOf('## Open asks'))
     expect(text.indexOf('## Open questions')).toBeGreaterThan(text.indexOf('## People'))
-    expect(open.indexOf('q2 [high (1) priority] gap, for the client side, raised by the CFO lens in r1')).toBeGreaterThan(0)
+    expect(open.indexOf('q2 [high (1) priority] gap in Budget, for the client side, raised by the CFO lens in r1')).toBeGreaterThan(0)
     expect(open.indexOf('q2 ')).toBeLessThan(open.indexOf('q1 [medium (2) priority] fundamental conflict on "What the price covers"'))
   })
 })

@@ -33,6 +33,17 @@ const summary = (sql: ReturnType<typeof room>['sql']) =>
   listOpenQuestions(sql).map((question) => [question.id, question.kind, question.lens, question.priority])
 
 describe('open questions', () => {
+  it('takes the area a lens gives, else the area of the facts it cites, else its lens default', () => {
+    const { sql, report } = room()
+    report('cfo', { conflicts: [price], questions: [{ ...gap, area: 'dependencies_and_ownership' }] })
+    report('procurement', { questions: [{ ...gap, find_out: 'who signs' }] })
+    expect(listOpenQuestions(sql).map((question) => [question.id, question.area])).toEqual([
+      [2, 'dependencies_and_ownership'],
+      [1, 'budget'],
+      [3, 'procurement_and_contract'],
+    ])
+  })
+
   it('turns a report into rows, with the priority its severity or question gives and the facts it cites', () => {
     const { sql, report, fact } = room()
     const run = report('cfo', { conflicts: [{ ...price, severity: 'fundamental' }], questions: [{ ...gap, topic: 'Contingency' }] })

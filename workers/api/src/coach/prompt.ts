@@ -1,6 +1,7 @@
 import type { SystemModelMessage } from 'ai'
 
 import { ALIGNMENT_AREAS, type Assessment } from '@day15/shared/alignment'
+import { areaName } from '@day15/shared/areas'
 import { LENS_IDS, LENS_NAMES, type LensId } from '@day15/shared/lenses'
 import { PRIORITY_MEANINGS, priorityLabel } from '@day15/shared/priorities'
 import { ref } from '@day15/shared/refs'
@@ -159,6 +160,7 @@ function candidateLabel(candidate: AskCandidate): string {
     candidate.questionId ? ref('question', candidate.questionId) : null,
     candidate.priority ? `${priorityLabel(candidate.priority)} priority` : null,
     kind,
+    areaName(candidate.area),
     candidate.lens,
     candidate.unowned ? 'nobody on their side speaks for this' : null,
   ]
@@ -196,6 +198,25 @@ function renderPerson(room: RoomSnapshot, participant: Participant, candidates: 
   ].join('\n\n')
 }
 
+/** The advisers' open questions under each area of the matrix: evidence for the coach's ratings, not the ratings. */
+export function renderQuestionsByArea(room: RoomSnapshot): string {
+  const lines = ALIGNMENT_AREAS.map((area) => {
+    const open = room.openQuestions.filter((question) => question.area === area.id)
+    const listed = open.map(
+      (question) =>
+        `${ref('question', question.id)} ${priorityLabel(question.priority)} ` +
+        `${question.kind === 'conflict' ? `${question.severity} conflict` : 'gap'}`,
+    )
+    return `- ${area.name}: ${listed.length ? listed.join('; ') : 'none open'}`
+  })
+  return [
+    '## Open questions by area',
+    'What the advisers still have open, under each area of your matrix, from the room above. It is evidence for ' +
+      'your ratings, not the rating: that is your judgement.',
+    ...lines,
+  ].join('\n')
+}
+
 /** What this person just said, and what to do with it. */
 export function turnPrompt(
   room: RoomSnapshot,
@@ -207,6 +228,7 @@ export function turnPrompt(
   return [
     renderPerson(room, participant, candidates),
     renderAssessment(previous),
+    renderQuestionsByArea(room),
     `## What they just said (${ref('item', item.id)})\n<message>\n${item.text}\n</message>`,
     'Take facts only from this message, quoting its exact words. Use ids exactly as they appear in the room ' +
       '(f12, a4, q7). If it names someone involved in the project who is not in the people list, add them to ' +

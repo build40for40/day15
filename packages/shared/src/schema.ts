@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { alignmentAreaSchema } from './areas'
 import { LENS_IDS, type LensId } from './lenses'
 
 export const SIDES = ['agency', 'client'] as const
@@ -192,6 +193,7 @@ export const personaReportSchema = z.object({
       client_said: z.string(),
       severity: z.enum(SEVERITIES),
       note: z.string(),
+      area: alignmentAreaSchema.optional(),
       same_as: sameAs,
     }),
   ),
@@ -202,6 +204,7 @@ export const personaReportSchema = z.object({
       because: z.string(),
       priority: z.number(),
       topic: z.string().optional(),
+      area: alignmentAreaSchema.optional(),
       same_as: sameAs,
     }),
   ),
@@ -245,6 +248,8 @@ export const openQuestionSchema = z.object({
   kind: z.enum(QUESTION_KINDS),
   lens: lensSchema,
   topic: z.string(),
+  /** The alignment area from the mother agent's matrix it belongs to. */
+  area: alignmentAreaSchema,
   /** What is unresolved: a conflict's note, or what a gap needs to find out. */
   statement: z.string(),
   /** Why a gap matters. Empty for a conflict, whose statement says it. */
