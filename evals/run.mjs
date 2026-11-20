@@ -42,7 +42,8 @@ async function patiently(what, url, init) {
   }
 }
 
-async function claude(system, messages, maxTokens = 400) {
+// The limits are generous on purpose: a reply cut off halfway is a failed run, and the prompts ask for short answers.
+async function claude(system, messages, maxTokens = 2000) {
   const response = await patiently('Claude', 'https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -198,7 +199,7 @@ async function judge(story, room) {
         ].join('\n\n'),
       },
     ],
-    900,
+    6000,
   )
   try {
     return JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1))
