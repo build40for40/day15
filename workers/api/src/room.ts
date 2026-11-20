@@ -1,4 +1,4 @@
-import { MAX_TURNS, OTHER_SIDE, type BrainReply, type MySide, type Party, type Turn } from '../src/coach/schema'
+import { MAX_TURNS, OTHER_SIDE, type BrainReply, type MySide, type Party, type Turn } from '@day15/shared/schema'
 
 /** A question the coach has asked and is waiting on, with the brain's private reasoning. */
 export type Pending = Pick<BrainReply, 'lens' | 'question' | 'rationale'>

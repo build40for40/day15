@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
 
-import type { LensId } from './lenses'
-import { brainViewSchema, PARTIES, type BrainView } from './schema'
+import type { LensId } from '@day15/shared/lenses'
+import { brainViewSchema, PARTIES, type BrainView } from '@day15/shared/schema'
 
 const props = defineProps<{ projectId: string }>()
 

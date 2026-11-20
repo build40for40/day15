@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 
 import BrainView from './coach/BrainView.vue'
 import CoachChat from './coach/CoachChat.vue'
-import { OTHER_SIDE, PARTIES, type Party } from './coach/schema'
+import { OTHER_SIDE, PARTIES, type Party } from '@day15/shared/schema'
 
 const params = new URLSearchParams(window.location.search)
 const projectId = ref(params.get('p') ?? '')

@@ -1,6 +1,6 @@
 # Day 15
 
-A 40 for 40 app: Expectation Manager, which helps an agency and a client find the holes in a project before the budget is spent. Built with Vue 3, TypeScript and Vite, and served by a Cloudflare Worker.
+A 40 for 40 app: Expectation Manager, which helps an agency and a client find the holes in a project before the budget is spent. Built with Vue 3, TypeScript and Vite, and served by a Cloudflare Worker. It's a pnpm workspace: the app is in `apps/web/`, the Worker in `workers/api/`, and the schemas they share in `packages/shared/`.
 
 ## Today: Day 15
 
@@ -17,17 +17,17 @@ Not built yet: spotting where the two sides disagree, and the project truth docu
 ## Develop
 
 ```sh
-npm install
-cp .dev.vars.example .dev.vars   # then add your ANTHROPIC_API_KEY
-npm run dev                      # Vite and the Worker API together, at http://localhost:5173/day15/
-npm run fake                     # or the page with a fake API, no key needed
+pnpm install
+cp workers/api/.dev.vars.example workers/api/.dev.vars   # then add your ANTHROPIC_API_KEY
+pnpm dev    # Vite and the Worker API together, at http://localhost:5173/day15/
+pnpm fake   # or the page with a fake API, no key needed
 ```
 
 ## Check
 
 ```sh
-npm test          # unit tests, colocated as *.test.ts
-npm run build     # type-check and production build
+pnpm test    # unit tests, colocated as *.test.ts
+pnpm build   # type-check and production build
 ```
 
 ## Deploy

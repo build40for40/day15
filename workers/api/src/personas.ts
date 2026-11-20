@@ -1,5 +1,5 @@
-import type { LensId } from '../src/coach/lenses'
-import type { Party } from '../src/coach/schema'
+import type { LensId } from '@day15/shared/lenses'
+import type { Party } from '@day15/shared/schema'
 
 export interface Persona {
   /** Internal name, used only in prompts. */

@@ -3,7 +3,7 @@ import type { IncomingMessage } from 'node:http'
 
 import type { Plugin } from 'vite'
 
-import { LENS_IDS } from '../src/coach/lenses'
+import { LENS_IDS } from '@day15/shared/lenses'
 
 const API = '/day15/api'
 
