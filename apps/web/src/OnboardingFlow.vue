@@ -1,13 +1,17 @@
 <script setup lang="ts">
+import { LENS_IDS, LENS_NAMES, type LensId } from '@day15/shared/lenses'
 import {
+  MAX_JOB_TITLE_LENGTH,
   MAX_NAME_LENGTH,
+  MAX_NOTES_LENGTH,
   MAX_ORGANISATION_LENGTH,
+  PERSONA_LENS,
   PERSONA_NAMES,
   PERSONAS,
   type Persona,
   type Side,
 } from '@day15/shared/schema'
-import { computed, nextTick, onMounted, reactive, ref, useTemplateRef } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, useTemplateRef, watch } from 'vue'
 
 import { addPerson, createProject, createTeam, type Project, type Team } from './api'
 import { inviteMessage, whatsappUrl } from './invite'
@@ -32,8 +36,27 @@ const phase = ref<'asking' | 'working' | 'done'>('asking')
 const error = ref('')
 const stage = useTemplateRef<HTMLElement>('stage')
 
-const draft = reactive<Draft>({ yourName: '', agencyName: '', projectName: '', clientName: '', guests: [] })
-const next = reactive({ name: '', persona: 'marketing_lead' as Persona, side: 'client' as Side, link: true })
+const draft = reactive<Draft>({ yourName: '', yourJobTitle: '', agencyName: '', projectName: '', clientName: '', guests: [] })
+const blank = () => ({
+  name: '',
+  persona: 'marketing_lead' as Persona,
+  side: 'client' as Side,
+  link: true,
+  jobTitle: '',
+  organisation: '',
+  lenses: [PERSONA_LENS.marketing_lead] as LensId[],
+  notes: '',
+})
+const next = reactive(blank())
+// Until they tick one by hand, the advisers who speak for someone follow their role.
+const lensesTouched = ref(false)
+watch(
+  () => next.persona,
+  (persona) => {
+    if (!lensesTouched.value) next.lenses = [PERSONA_LENS[persona]]
+  },
+)
+const sideOrganisation = (side: Side) => (side === 'agency' ? agencyName.value : draft.clientName.trim())
 let guestKey = 0
 
 // What has been made so far, so a retry after a failure carries on instead of starting again.
@@ -80,8 +103,20 @@ function back() {
 function addGuest() {
   const name = next.name.trim()
   if (!name) return
-  draft.guests.push({ key: ++guestKey, name, persona: next.persona, side: next.side, link: next.link })
-  next.name = ''
+  draft.guests.push({
+    key: ++guestKey,
+    name,
+    persona: next.persona,
+    side: next.side,
+    link: next.link,
+    jobTitle: next.jobTitle,
+    organisation: next.organisation,
+    lenses: [...next.lenses],
+    notes: next.notes,
+  })
+  // Keep the side and role, since people usually add a few from the same place.
+  Object.assign(next, { name: '', jobTitle: '', organisation: '', notes: '', lenses: [PERSONA_LENS[next.persona]] })
+  lensesTouched.value = false
   nextTick(focusFirst)
 }
 
@@ -156,6 +191,11 @@ const finish = () => emit('finish', madeTeam.value!, madeProject.value!)
               <span class="q">What should I call you?</span>
               <input v-model="draft.yourName" data-focus :maxlength="MAX_NAME_LENGTH" autocomplete="name" placeholder="Your name" />
             </label>
+            <label>
+              <span class="q">What's your job title?</span>
+              <input v-model="draft.yourJobTitle" :maxlength="MAX_JOB_TITLE_LENGTH" autocomplete="organization-title" placeholder="Managing Director" />
+              <span class="hint">Optional. It helps the coach know how to talk to you.</span>
+            </label>
             <label v-if="needsAgencyName">
               <span class="q">And your agency?</span>
               <input v-model="draft.agencyName" :maxlength="MAX_NAME_LENGTH" autocomplete="organization" placeholder="Your agency" />
@@ -225,6 +265,48 @@ const finish = () => emit('finish', madeTeam.value!, madeProject.value!)
                 </div>
               </fieldset>
 
+              <details class="more">
+                <summary>More about them <span class="hint">(optional, but it makes the coach sharper)</span></summary>
+                <div class="more-body">
+                  <label>
+                    <span class="q">Job title</span>
+                    <input v-model="next.jobTitle" :maxlength="MAX_JOB_TITLE_LENGTH" autocomplete="off" placeholder="Head of Making Things Happen" />
+                  </label>
+                  <label>
+                    <span class="q">Company</span>
+                    <input
+                      v-model="next.organisation"
+                      :maxlength="MAX_ORGANISATION_LENGTH"
+                      autocomplete="off"
+                      :placeholder="sideOrganisation(next.side) || 'Their company'"
+                    />
+                    <span class="hint">Only if it's not {{ sideOrganisation(next.side) || 'their side' }}, like a freelancer or a parent company.</span>
+                  </label>
+                  <fieldset>
+                    <legend class="q">What do they care about most?</legend>
+                    <p class="hint">
+                      The coach has five advisers: money, delivery, agency, client and procurement. Tick whichever speak for
+                      what this person cares about. I've started you off from their role.
+                    </p>
+                    <div class="pills">
+                      <label v-for="lens in LENS_IDS" :key="lens" class="pill">
+                        <input v-model="next.lenses" type="checkbox" :value="lens" class="sr-only" @change="lensesTouched = true" />
+                        <span>{{ LENS_NAMES[lens] }}</span>
+                      </label>
+                    </div>
+                  </fieldset>
+                  <label>
+                    <span class="q">Anything the coach should know?</span>
+                    <textarea
+                      v-model="next.notes"
+                      rows="3"
+                      :maxlength="MAX_NOTES_LENGTH"
+                      placeholder="Who they report to, what they sign off, how they like their feedback"
+                    />
+                  </label>
+                </div>
+              </details>
+
               <label class="check">
                 <input v-model="next.link" type="checkbox" />
                 Give them a link to talk to the coach
@@ -236,7 +318,10 @@ const finish = () => emit('finish', madeTeam.value!, madeProject.value!)
               <li v-for="guest in draft.guests" :key="guest.key">
                 <span>
                   <strong>{{ guest.name }}</strong>
-                  <small>{{ PERSONA_NAMES[guest.persona] }}, {{ guest.side }}{{ guest.link ? '' : ', no link' }}</small>
+                  <small>
+                    {{ guest.jobTitle.trim() || PERSONA_NAMES[guest.persona] }}, {{ guest.organisation.trim() || sideOrganisation(guest.side) || guest.side
+                    }}{{ guest.link ? '' : ', no link' }}
+                  </small>
                 </span>
                 <button type="button" class="quiet small" :aria-label="`Remove ${guest.name}`" @click="dropGuest(guest.key)">Remove</button>
               </li>
@@ -265,7 +350,10 @@ const finish = () => emit('finish', madeTeam.value!, madeProject.value!)
               <li v-for="seat in plan" :key="seat.key">
                 <span>
                   <strong>{{ seat.details.name }}<template v-if="seat.you"> (you)</template></strong>
-                  <small>{{ PERSONA_NAMES[seat.details.persona] }}, {{ seat.details.organisation || seat.details.side }}</small>
+                  <small>
+                    {{ seat.details.jobTitle || PERSONA_NAMES[seat.details.persona] }}, {{ seat.details.organisation || seat.details.side }}
+                    <template v-if="seat.details.notes">, with notes for the coach</template>
+                  </small>
                 </span>
                 <small>{{ seat.link ? 'Gets a link' : 'No link' }}</small>
               </li>
@@ -510,6 +598,63 @@ button.small {
   background: var(--card);
 }
 
+.more {
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  background: var(--card);
+}
+
+.more summary {
+  cursor: pointer;
+  padding: 0.75rem;
+  min-height: 2.75rem;
+  font-weight: 600;
+  list-style-position: inside;
+}
+
+.more summary .hint {
+  font-weight: 400;
+}
+
+.more-body {
+  display: grid;
+  gap: 1rem;
+  padding: 0 0.75rem 0.75rem;
+}
+
+.more-body input,
+.more-body textarea {
+  background: var(--paper);
+  font-size: 1rem;
+}
+
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.pill span {
+  display: inline-block;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.pill input:checked + span {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1c1d22;
+  font-weight: 600;
+}
+
+.pill input:focus-visible + span {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .segmented {
   display: inline-flex;
   max-width: 100%;
@@ -685,6 +830,7 @@ button.small {
   .step-leave-active,
   .dot,
   .segmented span,
+  .pill span,
   .chip span {
     transition: none;
   }

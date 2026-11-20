@@ -94,6 +94,7 @@ describe('App', () => {
     await wrapper.get('form').trigger('submit')
     expect(wrapper.text()).toContain('What is your agency called?')
     await wrapper.get('input[placeholder="Your agency"]').setValue('Fake Agency')
+    await wrapper.get('input[placeholder="Managing Director"]').setValue('Managing Director')
     await wrapper.get('form').trigger('submit')
     await flushPromises()
 
@@ -110,6 +111,11 @@ describe('App', () => {
     expect(wrapper.text()).toContain('Nobody on the Make-Believe Foods side yet')
     await wrapper.get('input[placeholder="Someone on the project"]').setValue('Robin Fakeworth')
     await wrapper.get('input[value="cfo"]').setValue(true)
+    // The advisers follow the role until someone ticks one by hand.
+    expect((wrapper.get('.pill input[value="cfo"]').element as HTMLInputElement).checked).toBe(true)
+    await wrapper.get('input[placeholder="Head of Making Things Happen"]').setValue('Finance Director')
+    await wrapper.get('.pill input[value="procurement"]').setValue(true)
+    await wrapper.get('textarea').setValue('Reports to the CEO. Signs off the budget.')
     await wrapper.get('form.adder').trigger('submit')
     await flushPromises()
     expect(wrapper.text()).not.toContain('Nobody on the Make-Believe Foods side yet')
@@ -126,8 +132,17 @@ describe('App', () => {
     const bodies = posts().map(([url, init]) => [new URL(String(url), 'https://day15.test').pathname, JSON.parse(String(init!.body))])
     expect(bodies[0]).toEqual(['/api/team', { name: 'Fake Agency' }])
     expect(bodies[1]).toEqual(['/api/projects', { name: 'Orchard Dash' }])
-    expect(bodies[2]![1]).toMatchObject({ name: 'Alex Example', side: 'agency', persona: 'agency_lead', organisation: 'Fake Agency', link: true })
-    expect(bodies[3]![1]).toMatchObject({ name: 'Robin Fakeworth', side: 'client', persona: 'cfo', organisation: 'Make-Believe Foods', lenses: ['cfo'], link: true })
+    expect(bodies[2]![1]).toMatchObject({ name: 'Alex Example', jobTitle: 'Managing Director', side: 'agency', persona: 'agency_lead', organisation: 'Fake Agency', link: true })
+    expect(bodies[3]![1]).toMatchObject({
+      name: 'Robin Fakeworth',
+      jobTitle: 'Finance Director',
+      side: 'client',
+      persona: 'cfo',
+      organisation: 'Make-Believe Foods',
+      lenses: ['cfo', 'procurement'],
+      notes: 'Reports to the CEO. Signs off the budget.',
+      link: true,
+    })
 
     // Done: each link shown once, then on to the workspace.
     expect(wrapper.text()).toContain('Orchard Dash is open.')

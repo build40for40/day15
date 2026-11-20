@@ -40,7 +40,7 @@ const waiting = (side: Side) => (side === 'agency' ? 'Just you so far' : 'Waitin
             <span class="avatar" aria-hidden="true">{{ seat.details.name.charAt(0).toUpperCase() }}</span>
             <span class="who">
               <span class="name">{{ seat.details.name }}</span>
-              <span class="role">{{ PERSONA_NAMES[seat.details.persona] }}{{ seat.you ? ', you' : '' }}</span>
+              <span class="role">{{ seat.details.jobTitle || PERSONA_NAMES[seat.details.persona] }}{{ seat.you ? ', you' : '' }}</span>
             </span>
           </li>
         </TransitionGroup>

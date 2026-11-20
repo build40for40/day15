@@ -1,4 +1,5 @@
-import { PERSONA_LENS, PERSONA_NAMES, type Persona, type Side } from '@day15/shared/schema'
+import type { LensId } from '@day15/shared/lenses'
+import { PERSONA_LENS, type Persona, type Side } from '@day15/shared/schema'
 
 import type { PersonDetails } from './api'
 
@@ -29,10 +30,17 @@ export interface Guest {
   side: Side
   /** Whether they get their own link to the coach. */
   link: boolean
+  jobTitle: string
+  /** Blank means the side's organisation. */
+  organisation: string
+  /** Which of the coach's advisers speak for them. Empty means the persona's own. */
+  lenses: LensId[]
+  notes: string
 }
 
 export interface Draft {
   yourName: string
+  yourJobTitle: string
   agencyName: string
   projectName: string
   clientName: string
@@ -55,24 +63,32 @@ export const YOU_KEY = 0
  */
 export function seats(draft: Draft, agencyName: string): Seat[] {
   const organisation = (side: Side) => (side === 'agency' ? agencyName : draft.clientName).trim()
-  const seat = (key: number, name: string, persona: Persona, side: Side, link: boolean, you: boolean): Seat => ({
+  const seat = (key: number, you: boolean, guest: Guest): Seat => ({
     key,
-    link,
     you,
+    link: guest.link,
     details: {
-      name: name.trim(),
-      jobTitle: '',
-      organisation: organisation(side),
-      side,
-      persona,
-      lenses: [PERSONA_LENS[persona]],
-      notes: '',
+      name: guest.name.trim(),
+      jobTitle: guest.jobTitle.trim(),
+      organisation: guest.organisation.trim() || organisation(guest.side),
+      side: guest.side,
+      persona: guest.persona,
+      lenses: guest.lenses.length ? guest.lenses : [PERSONA_LENS[guest.persona]],
+      notes: guest.notes.trim(),
     },
   })
-  return [
-    seat(YOU_KEY, draft.yourName, 'agency_lead', 'agency', true, true),
-    ...draft.guests.map((guest) => seat(guest.key, guest.name, guest.persona, guest.side, guest.link, false)),
-  ]
+  const me: Guest = {
+    key: YOU_KEY,
+    name: draft.yourName,
+    persona: 'agency_lead',
+    side: 'agency',
+    link: true,
+    jobTitle: draft.yourJobTitle,
+    organisation: '',
+    lenses: [],
+    notes: '',
+  }
+  return [seat(YOU_KEY, true, me), ...draft.guests.map((guest) => seat(guest.key, false, guest))]
 }
 
 /** What stops someone moving on from a step, or null when they can go. */
