@@ -82,6 +82,7 @@ describe('mother agent prompt', () => {
     expect(text).toContain('Running costs: They decide whether it lasts. Arguments they could use: Hosting is a yearly bill.')
     expect(text).not.toContain('It ends the job.')
     expect(text).toContain('### Educating, discreetly')
+    expect(text).toContain('### Signals to listen for')
   })
 
   it('keeps the persona agents and the other side secret', () => {
