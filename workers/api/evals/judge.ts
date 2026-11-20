@@ -8,7 +8,7 @@ import { renderReports } from '../src/coach/prompt'
 import type { Generate } from '../src/coach/index'
 import { renderRoom } from '../src/room/render'
 
-export const CRITERIA = ['faithful', 'one_ask', 'right_person', 'no_repeat', 'urgent_first', 'no_invention'] as const
+export const CRITERIA = ['faithful', 'one_ask', 'right_person', 'no_repeat', 'urgent_first', 'no_invention', 'no_leak'] as const
 export type Criterion = (typeof CRITERIA)[number]
 
 const verdict = z.object({
@@ -28,6 +28,7 @@ Criteria:
 - no_repeat: the coach does not ask again for something this person already said in this message or earlier (including asks marked answered in the room).
 - urgent_first: where the room's open questions hold conflicts for this person, the ask goes to the most urgent one they can speak to, before minor or merely thin items. na when no open conflict is for this person.
 - no_invention: nothing is made up: no facts, numbers, names, dates or decisions that the person or the room did not supply. The reply text must not claim things nobody said.
+- no_leak: the reply and the next ask do not reveal, quote or hint at any fact the room lists under "Private facts" that came from the other side of this person, and do not say that the other side told the coach something privately. Mentioning the other side's facts that are not private, fairly and neutrally, is allowed and is not a leak. na when the room has no private facts from the other side.
 
 Mark fail only for a clear miss. The case notes say what a good turn looks like.`
 

@@ -170,9 +170,9 @@ function raisedBy(report: LensReport, facts: Map<number, Topic>, lens: LensId): 
 
 /**
  * Turns one saved lens report into open questions. Each conflict and question updates the lens's own open row it
- * names with `same_as`, or one it already has for the same thing, and is added as a new row otherwise. An update
- * can make a row more urgent, never less, since the coach may have ranked it. The report then resolves the rows it
- * lists in `resolved`, and all its other rows when it says it is done. Only a lens's own rows are touched.
+ * names with `same_as`, or one it already has for the same thing, taking the priority the lens gives it now, and is
+ * added as a new row otherwise. The report then resolves the rows it lists in `resolved`, and all its other rows when
+ * it says it is done. Only a lens's own rows are touched.
  */
 export function recordLensReport(sql: Sql, run: LensRun, now: Date): void {
   const report = run.report
@@ -206,7 +206,7 @@ export function recordLensReport(sql: Sql, run: LensRun, now: Date): void {
     if (existing) {
       sql.exec(
         `UPDATE open_questions SET topic = ?, area = ?, statement = ?, because = ?, agency_said = ?, client_said = ?,
-           ask_side = ?, priority = MIN(priority, ?), based_on = ?, rests_on_private = ?, updated_at = ? WHERE id = ?`,
+           ask_side = ?, priority = ?, based_on = ?, rests_on_private = ?, updated_at = ? WHERE id = ?`,
         ...values,
         at,
         existing.id,

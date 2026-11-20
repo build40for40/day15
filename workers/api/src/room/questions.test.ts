@@ -53,7 +53,7 @@ describe('open questions', () => {
     ])
   })
 
-  it('updates the row a lens names or repeats instead of adding it twice, and never makes it less urgent', () => {
+  it('updates the row a lens names or repeats instead of adding it twice, taking the priority it gives now', () => {
     const { sql, report } = room()
     report('cfo', { conflicts: [price], questions: [gap] })
     report('cfo', { conflicts: [{ ...price, priority: 1, note: 'Worse now.' }], questions: [{ ...gap, priority: 3 }] })

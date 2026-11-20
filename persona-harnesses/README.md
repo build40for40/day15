@@ -79,10 +79,11 @@ A lens never addresses a person. It writes only for the coach, which is the one 
       "topic": "",
       "agency_said": "their words (f3)",
       "client_said": "their words (f9)",
-      "severity": "fundamental | workable | minor",
+      "priority": 1,
       "note": "one sentence on why it matters",
       "area": "one of the seven alignment areas",
-      "same_as": "q7, only when this updates one of your open questions"
+      "same_as": "q7, only when this updates one of your open questions",
+      "rests_on_private": false
     }
   ],
   "questions": [
@@ -93,7 +94,8 @@ A lens never addresses a person. It writes only for the coach, which is the one 
       "priority": 1,
       "topic": "one of the persona's topics",
       "area": "one of the seven alignment areas",
-      "same_as": "q8, only when this updates one of your open questions"
+      "same_as": "q8, only when this updates one of your open questions",
+      "rests_on_private": false
     }
   ],
   "resolved": ["q3"],
@@ -105,8 +107,8 @@ A lens never addresses a person. It writes only for the coach, which is the one 
 ```
 
 - **settled** means a stranger could read the answer and know what was meant. **thin** means it was touched but is vague, or uses a word the other side might read differently. **missing** means nobody has said it.
-- **fundamental** means the project should not start until it is sorted (the two sides want different things, or one cannot give what the other needs). **workable** means a trade-off will fix it. **minor** means it only needs writing down.
-- **priority** is a number with a label: high (1) for "ask this next", medium (2) for "soon", low (3) for "when there is a gap". Give the number.
+- **priority**, on every conflict and question, is the one scale, defined once in `packages/shared/src/priorities.ts` and always shown with its label. High (1): the two sides want different things, or one cannot give what the other needs, and the project should not start until it is sorted. Medium (2): they differ, but a trade-off or a decision would fix it. Low (3): they agree in substance and it only needs writing down, or one detail is loose. These are the meanings the mother agent gives her ratings. The old words fundamental, workable and minor are read as 1, 2 and 3 wherever they turn up, including in reports stored before this scale, and only the number is stored.
+- **rests_on_private** is optional: true when a conflict or question rests on a private fact, which the lens then leaves out of its wording.
 - **done** is true when every topic is settled on both sides and there are no open conflicts.
 - **area** is optional: one of the seven areas of the mother agent's priority matrix (`packages/shared/src/alignment.ts`), which the wrapper lists. When a lens leaves it out, the Worker takes the area most of the cited facts' topics map to (`TOPIC_AREA` in `packages/shared/src/areas.ts`), else the lens's usual area. Dependencies and ownership has no topic of its own, so only a lens that says so puts a question there.
 - **same_as**, **topic** and **resolved** are optional. `same_as` names the lens's own open question that a conflict or question updates, and `resolved` lists the ones the room now settles. A report that says `done` resolves all of that lens's open questions.
@@ -127,9 +129,16 @@ After each coach turn, the coach's reply goes back to the person at once, and th
 
 Every conflict and question a lens raises becomes a row in the room's open questions, with an id like `q7`, and stays open until it is resolved, whichever report it came from.
 
-- Priority has three levels, stored as a number and shown with its label: high (1) "ask this next", medium (2) "soon", low (3) "when there is a gap". The mapping lives in `packages/shared/src/priorities.ts`.
-- A fundamental conflict starts high (1), a workable one medium (2) and a minor one low (3). A question keeps the priority its lens gave it. The coach may move any open question to another level.
-- A conflict or question updates the lens's own open question it names in `same_as`, or one it already has for the same thing, and is added as a new row otherwise. An update can make a row more urgent, never less.
+- Each open question has the priority its lens gave it, and takes the new one whenever the lens updates it. The coach may move any open question to another level, resolve one, or raise one of its own when it hears a signal no lens has raised (a gap with no lens, routed like any other).
+- A conflict or question updates the lens's own open question it names in `same_as`, or one it already has for the same thing, and is added as a new row otherwise.
 - A lens resolves its own open questions with `resolved`, or all of them by saying it is done. The coach resolves one when a person's answer settles it.
 
 The coach works down the open questions for the person in front of it, most urgent first (by priority, then the area's rank in the matrix, then conflicts before gaps, then oldest), from the lenses that person speaks for and the ones nobody on their side speaks for, and turns the first that fits into its one next ask. Only the coach asks people things.
+
+### The matrix and health, worked out
+
+The mother agent's area matrix is a rollup of the open questions, not a second judgement. An area stands at the priority of its most urgent open question. With nothing open it is aligned when both sides have said something in it, and unknown when one side or both has not. The health reading comes from that rollup with the weights and rules in `packages/shared/src/alignment.ts`, counting unknown as low, and there is none until both sides have said something. Facts keep their topic, what a statement is about. Questions are filed by area, what needs aligning. `TOPIC_AREA` is the only bridge between the two.
+
+### Private facts
+
+What a person tells the coach is shared with both sides by default. When they ask for something to be kept private, the coach marks those facts private: only that person's side, the coach and the lenses see them. A lens never puts a private fact's content in its wording, and flags anything resting on one with `rests_on_private`. People see the room through one side view that leaves out the other side's private facts, any lens fact resting on one, and the wording of any open question resting on one.

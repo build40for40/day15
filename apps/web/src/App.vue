@@ -58,8 +58,8 @@ async function makeTeam(name: string) {
 
     <template v-else>
       <p class="warning">
-        Heads up: everything added to a project is visible to everyone in it, both sides. Keep anything confidential
-        out of it.
+        Heads up: what people tell the coach is shared with both sides by default. Tell the coach "keep this
+        private" and it stays on your side. It's an experiment, so keep anything truly confidential out of it.
       </p>
 
       <NameForm

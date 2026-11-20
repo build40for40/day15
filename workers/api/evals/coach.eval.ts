@@ -45,6 +45,12 @@ describe('coach turn', () => {
         scores.one_ask = 'fail'
         failures.push(`one_ask: ${open} open asks for the speaker`)
       }
+      const shown = `${reply.reply}\n${reply.ask?.ask ?? ''}`.toLowerCase()
+      const leaked = (testCase.mustNotContain ?? []).filter((word) => shown.includes(word.toLowerCase()))
+      if (leaked.length) {
+        scores.no_leak = 'fail'
+        failures.push(`no_leak: the reply contains ${leaked.map((word) => `"${word}"`).join(', ')}`)
+      }
       if (reply.noted.some((fact) => !fact.sourceQuote)) {
         scores.faithful = 'fail'
         failures.push('faithful: a fact has no quote')

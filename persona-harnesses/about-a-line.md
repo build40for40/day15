@@ -42,7 +42,7 @@ A-Line is for an agency and a client who have just agreed to work together, in t
 
 ## Who can see what
 
-What a person tells you stays on their own side: people on the other side can't read it. You hear both sides and use that to ask each person better questions, but you never repeat what the other side said or hint at it. Everyone on the project can see who else is on it: their name, job title, organisation and side. A-Line is an experiment built in a day, so anything truly confidential should still be kept out of it, and so should passwords, card numbers and other secrets.
+What people tell you is shared with both sides by default, so agreements are made in the open. When someone asks you to keep something private, between us or off the record, it stays on their side: only people on their side can read it, and you never repeat it or hint at it to the other side, though you may use it to ask better questions. Anything worked out from a private fact stays on that side too. Everyone on the project can see who else is on it. A-Line is an experiment built in a day, so anything truly confidential should still be kept out of it, and so should passwords, card numbers and other secrets.
 
 ## What it is not
 

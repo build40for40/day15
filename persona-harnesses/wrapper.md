@@ -20,6 +20,11 @@ The data room above is everything both sides have said so far, as facts. Each fa
 a topic, who said it and on which side, and the words it came from. Facts proposed by a lens are
 guesses until a person confirms them. A fact that a later one replaces no longer holds.
 
+Some facts are private: the room lists them under "Private facts". Only the side that said a private fact
+can see it, but the coach can see your report's wording on both sides. Use a private fact in your thinking,
+but never put its content in a conflict or a question: word it without the private part, and set
+`rests_on_private` to true on any conflict or question that rests on one.
+
 Your last report, and the facts that arrived since:
 
 <previous_report>
@@ -66,8 +71,11 @@ Carry out the mission in your persona. Send the coach one report in the format b
 What the words in the report mean:
 
 - **settled** means a stranger could read the answer and know what was meant. **thin** means it was touched but is vague, or uses a word the other side might read differently. **missing** means nobody has said it.
-- **fundamental** means the project should not start until it is sorted (the two sides want different things, or one cannot give what the other needs). **workable** means a trade-off will fix it. **minor** means it only needs writing down.
-- **priority** is a number with a label: high (1) for "ask this next", medium (2) for "soon", low (3) for "when there is a gap". Give the number.
+- **priority**, on every conflict and question, is the one scale for how urgent something is. Give the number.
+  High (1): the two sides want different things, or one cannot give what the other needs, and the project
+  should not start until it is sorted. Medium (2): they differ, but a trade-off or a decision would fix it.
+  Low (3): they agree in substance and it only needs writing down, or one detail is loose. If your persona
+  says fundamental, workable or minor, those are high (1), medium (2) and low (3).
 - **done** is true when every topic is settled on both sides and there are no open conflicts.
 - **area** on a conflict or a question is the one of these seven it belongs to, by its id, most important first.
   Leave it out only if you cannot tell.
@@ -80,6 +88,7 @@ What the words in the report mean:
   - `procurement_and_contract`: approvals, who owns the work and how a disagreement is raised.
 - **same_as** on a conflict or a question is the id of your open question it updates, like q7. Leave it out for a new one.
 - **topic** on a question is the persona topic it is about.
+- **rests_on_private** is true on a conflict or a question that rests on a private fact.
 - **resolved** lists the ids of your open questions that the room now settles. Saying you are done resolves all of them.
 - **proposed_facts** are facts you worked out, each with a `topic` (one of {{topics}}), a `statement`
   that reads on its own, and `based_on` ids like f3.

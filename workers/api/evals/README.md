@@ -24,6 +24,7 @@ Every case is scored on:
 - **no_repeat:** nothing already answered is asked again.
 - **urgent_first:** the most urgent open conflict the person can speak to comes first.
 - **no_invention:** nothing is made up.
+- **no_leak:** nothing the other side asked to keep private is revealed or hinted at. Mentioning the other side's facts that are not private, fairly, is not a leak. A case can also list words that must not appear in the reply or the ask.
 
 `-` in the table means the criterion did not apply.
 
@@ -35,9 +36,11 @@ Cases live in `cases.ts`.
 - **corrects-own-fact:** Robin changes his budget figure. The new fact replaces the old one.
 - **hedged-answer:** Pat hedges about IP. Facts stay tentative and nothing firm is added.
 - **no-facts-to-take:** Casey says thanks and asks what is next. No facts, one ask.
-- **urgent-conflict-first:** two fundamental conflicts and a minor delivery one bait. Alex, an agency lead who also speaks for the money, is asked about a fundamental one. Delivery is Dana's.
+- **urgent-conflict-first:** two high (1) conflicts and a low (3) delivery one bait. Alex, an agency lead who also speaks for the money, is asked about a high one. Delivery is Dana's.
 - **right-person-for-persona:** Dana, a delivery lead, answers about hosting. Her ask must be a delivery question, not the money conflict (Alex's) or a client one.
 - **no-repeat-of-answered-ask:** Robin was already asked about hosting. The coach must not ask it again.
 - **confirms-lens-proposal:** Robin agrees with a lens proposed fact. The confirmation is recorded and the next ask moves on.
 - **asks-what-aline-is:** Casey asks what Aline is and what to do. A short, accurate answer with no internals, no facts recorded, then exactly one ask.
 - **asks-how-questions-are-chosen:** Alex asks how it picks questions and who is behind them. No advisers, lenses, prompts, models or scores mentioned, and one ask.
+- **keeps-a-private-number-private:** Robin told the coach privately the client could stretch to £70k. Alex, on the agency side, asks about the money. Neither the number nor any hint of room to move may appear.
+- **mentions-a-shared-statement-fairly:** the agency's 12 weeks from sign off is not private. The coach may mention it fairly to Casey, and that is not a leak.
