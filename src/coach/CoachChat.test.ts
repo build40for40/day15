@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 
 import CoachChat from './CoachChat.vue'
+import type { MySide } from './schema'
 
 afterEach(() => vi.unstubAllGlobals())
 
@@ -16,53 +17,72 @@ function streamed(value: unknown) {
   return new Response(body, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } })
 }
 
-const sent = (fetch: ReturnType<typeof vi.fn>, call: number) => JSON.parse(fetch.mock.calls[call]![1].body)
+/** A fetch that answers the first GET with `mine` and each coach POST with the next reply. */
+function api(mine: MySide, replies: unknown[]) {
+  const posts: unknown[] = []
+  const fetch = vi.fn((_url: string, init?: RequestInit) => {
+    if (init?.method !== 'POST') return Promise.resolve(Response.json(mine))
+    posts.push(JSON.parse(init.body as string))
+    return Promise.resolve(streamed(replies[posts.length - 1]))
+  })
+  vi.stubGlobal('fetch', fetch)
+  return { fetch, posts }
+}
+
+const props = { party: 'agency' as const, projectId: 'abc' }
+const fresh: MySide = { project: '', turns: [], otherSideStarted: false }
 
 describe('CoachChat', () => {
-  it('asks, takes an answer, and sends the conversation back for the next question', async () => {
-    const fetch = vi
-      .fn()
-      .mockResolvedValueOnce(streamed({ question: 'What does done look like?', why: 'So nobody guesses.' }))
-      .mockResolvedValueOnce(streamed({ question: 'Who signs it off?', why: 'So it can end.' }))
-    vi.stubGlobal('fetch', fetch)
+  it('asks, takes an answer, and hands it over with the hidden hat for the next question', async () => {
+    const { fetch, posts } = api(fresh, [
+      { lens: 'cto', question: 'What does done look like?', why: 'So nobody guesses.' },
+      { lens: 'cfo', question: 'Who signs it off?', why: 'So it can end.' },
+    ])
 
-    const wrapper = mount(CoachChat, { props: { party: 'agency' } })
+    const wrapper = mount(CoachChat, { props })
+    await flushPromises()
+    expect(fetch.mock.calls[0]![0]).toMatch(/api\/projects\/abc\/agency$/)
+
     await wrapper.get('#project').setValue('  A site for a fictional biscuit brand.  ')
     await wrapper.get('form').trigger('submit')
     await vi.waitFor(() => expect(wrapper.text()).toContain('What does done look like?'))
-    expect(sent(fetch, 0)).toEqual({
-      party: 'agency',
-      lens: 'agency',
-      project: 'A site for a fictional biscuit brand.',
-      turns: [],
-    })
+    expect(posts[0]).toEqual({ party: 'agency', project: 'A site for a fictional biscuit brand.' })
 
     await wrapper.get('#answer').setValue('Live by March.')
     await vi.waitFor(() => expect(wrapper.get('form button').attributes('disabled')).toBeUndefined())
     await wrapper.get('form').trigger('submit')
     await vi.waitFor(() => expect(wrapper.text()).toContain('Who signs it off?'))
-    expect(sent(fetch, 1).turns).toEqual([
-      { lens: 'agency', question: 'What does done look like?', answer: 'Live by March.' },
-    ])
+    expect(posts[1]).toMatchObject({
+      turn: { lens: 'cto', question: 'What does done look like?', answer: 'Live by March.' },
+    })
     expect(wrapper.find('.turns').text()).toContain('Live by March.')
   })
 
-  it('swaps the question when the lens changes', async () => {
-    const fetch = vi
-      .fn()
-      .mockResolvedValueOnce(streamed({ question: 'First question?', why: 'Because.' }))
-      .mockResolvedValueOnce(streamed({ question: 'Who finds the extra money?', why: 'Because money.' }))
-    vi.stubGlobal('fetch', fetch)
-
-    const wrapper = mount(CoachChat, { props: { party: 'client' } })
+  it('never shows which hat the coach has on', async () => {
+    api(fresh, [{ lens: 'procurement', question: 'Who can change the scope?', why: 'It always changes.' }])
+    const wrapper = mount(CoachChat, { props })
+    await flushPromises()
     await wrapper.get('#project').setValue('A fictional app.')
     await wrapper.get('form').trigger('submit')
-    await vi.waitFor(() => expect(wrapper.text()).toContain('First question?'))
+    await vi.waitFor(() => expect(wrapper.text()).toContain('Who can change the scope?'))
+    expect(wrapper.text().toLowerCase()).not.toContain('procurement')
+  })
 
-    const money = wrapper.findAll('.lenses button').find((button) => button.text() === 'Money')!
-    await money.trigger('click')
-    await vi.waitFor(() => expect(wrapper.text()).toContain('Who finds the extra money?'))
-    expect(sent(fetch, 1)).toMatchObject({ lens: 'cfo', turns: [] })
-    expect(money.attributes('aria-pressed')).toBe('true')
+  it('picks up a conversation that was already going', async () => {
+    const turn = { lens: 'cfo' as const, question: 'Who pays for overruns?', answer: 'We split it.' }
+    const { posts } = api({ project: 'A fictional app.', turns: [turn], otherSideStarted: true }, [
+      { lens: 'agency', question: 'Who has the final say?', why: 'Someone must.' },
+    ])
+    const wrapper = mount(CoachChat, { props })
+    await vi.waitFor(() => expect(wrapper.text()).toContain('Who has the final say?'))
+    expect(wrapper.find('.turns').text()).toContain('We split it.')
+    expect(posts[0]).toEqual({ party: 'agency', project: 'A fictional app.' })
+  })
+
+  it('says so when the project does not exist', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('nope', { status: 404 })))
+    const wrapper = mount(CoachChat, { props })
+    await flushPromises()
+    expect(wrapper.get('[role="alert"]').text()).toContain("doesn't lead anywhere")
   })
 })

@@ -13,9 +13,10 @@ Shared 40 for 40 context lives in `../AGENTS.md`.
 - Vitest with jsdom and `@vue/test-utils`. Unit tests sit next to their source as `*.test.ts`. Tests for Worker code start with `// @vitest-environment node`.
 - `@/` resolves to `src/`.
 - The Worker in `worker/` serves the API under `/day15/api/*`. Everything else under `/day15/` is a static file from `dist/day15/`.
-- Claude goes through the Vercel AI SDK (`ai` and `@ai-sdk/anthropic`, model `claude-sonnet-5-5`). `POST /day15/api/coach` streams the coach's next question as structured output with `streamText` and `Output.object`, and the page reads it with `useObject` from `@ai-sdk/vue`. The zod schemas both sides share live in `src/coach/schema.ts`. Without an `ANTHROPIC_API_KEY` the endpoint answers 503.
-- The lenses are data in `src/coach/lenses.ts`: the label and blurb the page shows, and the `focus` the coach is told to dig into. `worker/prompt.ts` turns a party, a lens and the conversation so far into the instructions and messages.
-- Each side opens its own link, `?as=agency` or `?as=client`. Nothing is stored yet: a conversation lives in the page and is gone on refresh, and the two sides are not compared.
+- Claude goes through the Vercel AI SDK (`ai` and `@ai-sdk/anthropic`, model `claude-sonnet-5-5`). `POST /day15/api/projects/<id>/coach` streams the coach's next question as structured output with `streamText` and `Output.object`, and the page reads it with `useObject` from `@ai-sdk/vue`. The zod schemas both sides share live in `src/coach/schema.ts`. Without an `ANTHROPIC_API_KEY` the endpoint answers 503.
+- **Projects:** `POST /day15/api/projects` makes one and returns its id. Each side opens its own link, `?p=<id>&as=agency` or `?p=<id>&as=client`. `GET /day15/api/projects/<id>/<party>` returns that side's own description and turns, and only whether the other side has started.
+- **Storage:** one `ProjectRoom` Durable Object per project (`worker/project-room.ts`, bound as `ROOMS`) holds what both sides have said. The logic is plain functions in `worker/room.ts` so tests run in Node. One side's words never go to the other side's browser.
+- **The brain:** `worker/prompt.ts` builds the instructions from the five personas in `worker/personas.ts`, everything captured from both sides, and which hats each side has had. The model picks the hat and returns it as `lens` with the question. The page keeps `lens` on the turn and never shows it.
 - Pass `onError` to every `streamText` and log only the error name: the default handler logs the whole request, which holds what the user typed.
 - In the browser, build API URLs from `import.meta.env.BASE_URL` (`${import.meta.env.BASE_URL}api/...`), never a hard-coded `/api`.
 
@@ -59,6 +60,9 @@ From the "Day 15 - ideation" notes. It was picked from five ideas pitched by the
 ## Decided
 
 - **A coach with lenses.** One coach talks to both parties. It works through different lenses, and each lens teases out its own questions. The answers from both sides build the project truth.
+- **Five lenses:** money (CFO), delivery (CTO), agency, client and procurement. Legal and compliance sit under procurement.
+- **One voice.** The lenses are hats on one warm coach, not five characters.
+- **The brain picks the lens,** from what has already been captured from both parties. The person never knows which lens is on.
 
 ## From the brief and plan
 

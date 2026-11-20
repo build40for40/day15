@@ -8,11 +8,11 @@ Special guest day. Agency plans are full of holes at the start, and the blind sp
 
 What's here so far:
 
-1. **Pick your side.** Agency or client, each with its own link.
+1. **Start a project and pick your side.** Agency or client. You get a link to send to the other side.
 2. **Describe the project.** A few sentences in your own words.
-3. **Answer the coach.** It asks one question at a time through a lens you choose (money, delivery, agency, client or procurement).
+3. **Answer the coach.** It asks one question at a time. Behind the scenes it picks an angle (money, delivery, agency, client or procurement) from what both sides have said so far, and never tells you which.
 
-Not built yet: saving anything, comparing the two sides, and the project truth document.
+Not built yet: spotting where the two sides disagree, and the project truth document.
 
 ## Develop
 

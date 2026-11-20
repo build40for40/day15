@@ -1,5 +1,5 @@
 {
-  "include": ["worker/**/*.ts", "src/ask/schema.ts"],
+  "include": ["worker/**/*.ts", "src/coach/schema.ts", "src/coach/lenses.ts"],
   "compilerOptions": {
     "target": "es2024",
     "lib": ["es2024"],

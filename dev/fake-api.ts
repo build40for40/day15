@@ -1,8 +1,19 @@
+import { randomUUID } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 
 import type { Plugin } from 'vite'
 
+import { LENS_IDS } from '../src/coach/lenses'
+
 const API = '/day15/api'
+
+interface FakeSide {
+  project: string
+  turns: unknown[]
+}
+
+/** Projects live in memory and vanish when Vite restarts. */
+const rooms = new Map<string, { agency?: FakeSide; client?: FakeSide }>()
 
 const QUESTIONS: Record<string, string[]> = {
   cfo: [
@@ -55,12 +66,36 @@ export function fakeApi(): Plugin {
         const path = req.url?.split('?')[0]
         if (!path?.startsWith(API)) return next()
 
-        if (req.method === 'POST' && path === `${API}/coach`) {
-          const body = JSON.parse(await readBody(req)) as { lens: string; turns: unknown[] }
-          const questions = QUESTIONS[body.lens] ?? QUESTIONS.client!
+        const [id, action] = path.slice(`${API}/projects`.length).split('/').filter(Boolean)
+        const json = (value: unknown) => {
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify(value))
+        }
+
+        if (req.method === 'POST' && !id) {
+          const created = randomUUID()
+          rooms.set(created, {})
+          return json({ id: created })
+        }
+
+        const room = id ? rooms.get(id) : undefined
+        if (room && req.method === 'GET' && (action === 'agency' || action === 'client')) {
+          const other = action === 'agency' ? 'client' : 'agency'
+          return json({ ...(room[action] ?? { project: '', turns: [] }), otherSideStarted: Boolean(room[other]) })
+        }
+
+        if (room && req.method === 'POST' && action === 'coach') {
+          const body = JSON.parse(await readBody(req)) as { party: 'agency' | 'client'; project: string; turn?: unknown }
+          const side = (room[body.party] ??= { project: body.project, turns: [] })
+          if (body.turn) side.turns.push(body.turn)
+          // The fake brain just takes the hats in turn, counting both sides' answers.
+          const asked = (room.agency?.turns.length ?? 0) + (room.client?.turns.length ?? 0)
+          const lens = LENS_IDS[asked % LENS_IDS.length]!
+          const questions = QUESTIONS[lens]!
           await wait(400)
           return streamJson(res, {
-            question: `[fake] ${questions[body.turns.length % questions.length]}`,
+            lens,
+            question: `[fake] ${questions[side.turns.length % questions.length]}`,
             why: 'This is the fake coach, so the reason is canned too.',
           })
         }

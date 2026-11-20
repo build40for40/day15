@@ -1,31 +1,53 @@
 <script setup lang="ts">
 import { useObject } from '@ai-sdk/vue'
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 
-import { LENSES, lensById, type LensId } from './lenses'
-import { coachReplySchema, MAX_ANSWER_LENGTH, MAX_PROJECT_LENGTH, type Party, type Turn } from './schema'
+import {
+  coachReplySchema,
+  MAX_ANSWER_LENGTH,
+  MAX_PROJECT_LENGTH,
+  mySideSchema,
+  type Party,
+  type Turn,
+} from './schema'
 
-const props = defineProps<{ party: Party }>()
+const props = defineProps<{ party: Party; projectId: string }>()
 
-const project = ref('')
+const base = `${import.meta.env.BASE_URL}api/projects/${props.projectId}`
+
+const loaded = ref(false)
+const missing = ref(false)
 const started = ref(false)
-// Start in the person's own seat, then let them move around the table.
-const lens = ref<LensId>(props.party)
-const askedLens = ref<LensId>(lens.value)
+const project = ref('')
 const turns = ref<Turn[]>([])
 const answer = ref('')
 
-const { submit, object, isLoading, error, stop } = useObject({
-  api: `${import.meta.env.BASE_URL}api/coach`,
-  schema: coachReplySchema,
-})
+const { submit, object, isLoading, error } = useObject({ api: `${base}/coach`, schema: coachReplySchema })
 
 const question = computed(() => object.value?.question ?? '')
 
-function askNext() {
-  askedLens.value = lens.value
-  submit({ party: props.party, lens: lens.value, project: project.value.trim(), turns: turns.value })
+/** Asks for the next question, handing over the answer just given, if there is one. */
+function askNext(turn?: Turn) {
+  submit({ party: props.party, project: project.value.trim(), turn })
 }
+
+// Pick up where this side left off, so a refresh or a shared link doesn't start again.
+onMounted(async () => {
+  try {
+    const response = await fetch(`${base}/${props.party}`)
+    if (!response.ok) throw new Error(`The API answered ${response.status}`)
+    const mine = mySideSchema.parse(await response.json())
+    if (mine.project) {
+      project.value = mine.project
+      turns.value = mine.turns
+      started.value = true
+      askNext()
+    }
+  } catch {
+    missing.value = true
+  }
+  loaded.value = true
+})
 
 function start() {
   if (!project.value.trim()) return
@@ -35,50 +57,29 @@ function start() {
 
 function reply() {
   const text = answer.value.trim()
-  if (!text || !question.value || isLoading.value) return
-  turns.value.push({ lens: askedLens.value, question: question.value, answer: text })
+  const lens = object.value?.lens
+  if (!text || !question.value || !lens || isLoading.value) return
+  const turn: Turn = { lens, question: question.value, answer: text }
+  turns.value.push(turn)
   answer.value = ''
-  askNext()
-}
-
-function pickLens(id: LensId) {
-  if (id === lens.value) return
-  lens.value = id
-  if (!started.value) return
-  // Swap the question on the table for one from the new seat.
-  if (isLoading.value) stop()
-  askNext()
+  askNext(turn)
 }
 </script>
 
 <template>
-  <form v-if="!started" class="stack" @submit.prevent="start">
+  <p v-if="!loaded">Finding your seat…</p>
+  <p v-else-if="missing" role="alert">That project link doesn't lead anywhere. Check it, or start a new one.</p>
+
+  <form v-else-if="!started" class="stack" @submit.prevent="start">
     <label for="project">First, what's the project? A few sentences in your own words will do.</label>
     <textarea id="project" v-model="project" rows="5" :maxlength="MAX_PROJECT_LENGTH" required />
     <button type="submit">Start</button>
   </form>
 
   <template v-else>
-    <fieldset class="lenses">
-      <legend>Whose chair is the coach sitting in?</legend>
-      <button
-        v-for="option in LENSES"
-        :key="option.id"
-        type="button"
-        :aria-pressed="option.id === lens"
-        @click="pickLens(option.id)"
-      >
-        {{ option.name }}
-      </button>
-      <p class="blurb">{{ lensById(lens).blurb }}</p>
-    </fieldset>
-
     <ol v-if="turns.length" class="turns">
       <li v-for="(turn, index) in turns" :key="index">
-        <p class="asked">
-          <span class="tag">{{ lensById(turn.lens).name }}</span>
-          {{ turn.question }}
-        </p>
+        <p class="asked">{{ turn.question }}</p>
         <p class="said">{{ turn.answer }}</p>
       </li>
     </ol>
@@ -86,10 +87,7 @@ function pickLens(id: LensId) {
     <section class="now" aria-live="polite">
       <p v-if="error" role="alert">{{ error.message }}</p>
       <template v-else-if="question">
-        <p class="asked">
-          <span class="tag">{{ lensById(askedLens).name }}</span>
-          {{ question }}
-        </p>
+        <p class="asked">{{ question }}</p>
         <p v-if="object?.why" class="why">{{ object.why }}</p>
       </template>
       <p v-else>The coach is thinking…</p>
@@ -120,49 +118,20 @@ textarea {
 }
 
 button {
+  justify-self: start;
   min-height: 44px;
   padding: 0 1.25rem;
   font: inherit;
   border: 1px solid var(--ink);
   border-radius: 999px;
-  background: var(--card);
-  color: var(--ink);
-  cursor: pointer;
-}
-
-button[type='submit'],
-button[aria-pressed='true'] {
   background: var(--ink);
   color: var(--paper);
+  cursor: pointer;
 }
 
 button:disabled {
   opacity: 0.5;
   cursor: default;
-}
-
-.stack button {
-  justify-self: start;
-}
-
-.lenses {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin: 0 0 1.5rem;
-  padding: 0;
-  border: 0;
-}
-
-.lenses legend {
-  margin-bottom: 0.5rem;
-  padding: 0;
-}
-
-.blurb {
-  flex-basis: 100%;
-  margin: 0;
-  color: var(--muted);
 }
 
 .turns {
@@ -205,16 +174,5 @@ p {
   margin-top: 0.5rem;
   color: var(--muted);
   font-size: 0.9rem;
-}
-
-.tag {
-  display: inline-block;
-  margin-right: 0.25rem;
-  padding: 0 0.5rem;
-  border-radius: 999px;
-  background: var(--accent);
-  color: var(--ink);
-  font-size: 0.8rem;
-  vertical-align: 0.1em;
 }
 </style>

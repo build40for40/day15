@@ -1,21 +1,66 @@
 <script setup lang="ts">
-import CoachChat from './coach/CoachChat.vue'
-import { PARTIES, type Party } from './coach/schema'
+import { computed, ref } from 'vue'
 
-const asked = new URLSearchParams(window.location.search).get('as')
-const party = PARTIES.find((option) => option === asked) as Party | undefined
+import CoachChat from './coach/CoachChat.vue'
+import { OTHER_SIDE, PARTIES, type Party } from './coach/schema'
+
+const params = new URLSearchParams(window.location.search)
+const projectId = ref(params.get('p') ?? '')
+const party = ref(PARTIES.find((option) => option === params.get('as')))
+const failed = ref(false)
+const copied = ref(false)
+
+const linkFor = (side: Party) => `?p=${projectId.value}&as=${side}`
+
+const otherSide = computed(() => (party.value ? OTHER_SIDE[party.value] : undefined))
+const otherLink = computed(() =>
+  otherSide.value ? new URL(linkFor(otherSide.value), window.location.href).href : '',
+)
+
+/** Starts a new project and sits this person down on their side of it. */
+async function begin(side: Party) {
+  failed.value = false
+  try {
+    const response = await fetch(`${import.meta.env.BASE_URL}api/projects`, { method: 'POST' })
+    if (!response.ok) throw new Error(`The API answered ${response.status}`)
+    projectId.value = ((await response.json()) as { id: string }).id
+    party.value = side
+    window.history.replaceState(null, '', linkFor(side))
+  } catch {
+    failed.value = true
+  }
+}
+
+async function copyLink() {
+  await navigator.clipboard.writeText(otherLink.value)
+  copied.value = true
+}
 </script>
 
 <template>
   <main>
     <h1>Expectation Manager</h1>
 
-    <template v-if="party">
+    <template v-if="projectId && party && otherSide">
       <p class="lede">
-        You're here for the <strong>{{ party }}</strong> side. The coach will ask you things the other lot would
-        want to know, before anyone spends the budget finding out the hard way.
+        You're here for the <strong>{{ party }}</strong> side. The coach asks you things worth settling now, before
+        anyone spends the budget finding out the hard way.
       </p>
-      <CoachChat :party="party" />
+      <aside>
+        <p>
+          The {{ otherSide }} gets their own quiet chat. Send them this link:
+          <a :href="otherLink">{{ otherLink }}</a>
+        </p>
+        <button type="button" @click="copyLink">{{ copied ? 'Copied' : 'Copy link' }}</button>
+      </aside>
+      <CoachChat :key="party" :party="party" :project-id="projectId" />
+    </template>
+
+    <template v-else-if="projectId">
+      <p class="lede">You've been sent a project. Which side are you on?</p>
+      <nav>
+        <a v-for="side in PARTIES" :key="side" :href="linkFor(side)">I'm the {{ side }}</a>
+      </nav>
     </template>
 
     <template v-else>
@@ -23,11 +68,11 @@ const party = PARTIES.find((option) => option === asked) as Party | undefined
         A coach has a quiet word with each side of a project, one at a time, and finds the holes while they're
         still cheap to fill.
       </p>
-      <p>Which side are you on?</p>
+      <p>Start a project. Which side are you on?</p>
       <nav>
-        <a href="?as=agency">I'm the agency</a>
-        <a href="?as=client">I'm the client</a>
+        <button v-for="side in PARTIES" :key="side" type="button" @click="begin(side)">I'm the {{ side }}</button>
       </nav>
+      <p v-if="failed" role="alert">That didn't work. Is the API running?</p>
     </template>
   </main>
 </template>
@@ -55,7 +100,8 @@ nav {
   gap: 0.75rem;
 }
 
-a {
+nav a,
+nav button {
   display: flex;
   align-items: center;
   min-height: 56px;
@@ -64,7 +110,40 @@ a {
   border-radius: 0.75rem;
   background: var(--card);
   color: var(--ink);
+  font: inherit;
   font-weight: 600;
   text-decoration: none;
+  cursor: pointer;
+}
+
+aside {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  padding: 0.75rem 1rem;
+  border: 1px dashed var(--line);
+  border-radius: 0.75rem;
+  font-size: 0.9rem;
+}
+
+aside p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+aside a {
+  color: inherit;
+}
+
+aside button {
+  justify-self: start;
+  min-height: 44px;
+  padding: 0 1rem;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
 }
 </style>

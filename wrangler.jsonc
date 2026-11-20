@@ -12,6 +12,10 @@
     { "pattern": "build40for40.com/day15", "zone_name": "build40for40.com" },
     { "pattern": "build40for40.com/day15/*", "zone_name": "build40for40.com" }
   ],
+  "durable_objects": {
+    "bindings": [{ "name": "ROOMS", "class_name": "ProjectRoom" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ProjectRoom"] }],
   "workers_dev": true,
   "preview_urls": true,
   "observability": { "enabled": true }
