@@ -52,7 +52,7 @@ export async function privateAgencyRoom() {
   const { room, facts } = fixture
   await room.setFactPrivacy([facts.quoteCovers!.id], true, 'agency')
   await room.saveLensRun({
-    lens: 'cfo',
+    lens: 'procurement',
     round: 2,
     watermark: facts.budgetGap!.id,
     status: 'done',

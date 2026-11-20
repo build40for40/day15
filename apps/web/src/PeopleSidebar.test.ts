@@ -10,7 +10,7 @@ const person = (id: number, name: string, overrides: Record<string, unknown> = {
   side: 'client',
   jobTitle: '',
   organisation: '',
-  lenses: ['cfo'],
+  lenses: ['procurement'],
   notes: '',
   hasLink: true,
   addedBy: 'owner',

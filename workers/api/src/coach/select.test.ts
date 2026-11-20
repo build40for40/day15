@@ -18,35 +18,33 @@ describe('askCandidates', () => {
   it('puts the fundamental conflict first, then the priority 1 gap for this side', async () => {
     const { room, people } = await fixtureRoom()
     const candidates = askCandidates((await room.read())!, people.robin.participant)
-    expect(candidates[0]).toMatchObject({ kind: 'conflict', questionId: 1, priority: 1, lens: 'cfo', topic: 'What the price covers' })
-    expect(candidates[1]).toMatchObject({ kind: 'gap', questionId: 2, priority: 1, lens: 'cfo' })
+    expect(candidates[0]).toMatchObject({ kind: 'conflict', questionId: 1, priority: 1, lens: 'procurement', topic: 'What the price covers' })
+    expect(candidates[1]).toMatchObject({ kind: 'gap', questionId: 2, priority: 1, lens: 'procurement' })
   })
 
   it('orders open questions by priority, conflicts before gaps, then oldest, keeping only this side and routed lenses', async () => {
     const { room, people } = await fixtureRoom()
-    const gap = (ask: 'agency' | 'client', find_out: string, priority: number) => ({ ask, find_out, because: 'b', priority })
-    const lensRun = (lens: 'agency' | 'client' | 'procurement' | 'cto', overrides: Partial<LensReport>) =>
+    const gap = (ask: 'agency' | 'client', find_out: string, priority: number) => ({ ask, find_out, because: 'b', priority, area: 'budget' as const })
+    const lensRun = (lens: 'agency' | 'client' | 'procurement', overrides: Partial<LensReport>) =>
       room.saveLensRun({ lens, round: 1, watermark: 1, status: 'done', report: report(overrides) })
     await lensRun('agency', {
-      questions: [gap('agency', 'how many feedback rounds the team can absorb', 2)],
-      conflicts: [{ topic: 'Feedback rounds', agency_said: 'a', client_said: 'b', priority: 2, note: 'n' }],
+      questions: [gap('agency', 'how many feedback rounds the team can absorb', 1)],
+      conflicts: [{ topic: 'Feedback rounds', agency_said: 'a', client_said: 'b', priority: 1, note: 'n', area: 'budget' }],
     })
-    await lensRun('procurement', { questions: [gap('agency', 'the engine licence terms', 1)] })
+    await lensRun('procurement', { questions: [gap('agency', 'the engine licence terms', 1), gap('agency', 'the first demo week', 2)] })
     await lensRun('client', { questions: [gap('client', 'the launch date', 1)] })
-    await lensRun('cto', { questions: [gap('agency', 'the first demo week', 1)] })
-    const open = askCandidates((await room.read())!, people.alex.participant).filter((c) => c.kind !== 'missing_topic')
-    expect(open.map((c) => [c.kind, c.lens, c.priority])).toEqual([
-      ['conflict', 'cfo', 1],
-      ['gap', 'procurement', 1],
-      ['conflict', 'agency', 2],
-      ['gap', 'agency', 2],
+    const open = askCandidates((await room.read())!, people.dana.participant).filter((c) => c.kind !== 'missing_topic')
+    expect(open.map((c) => [c.kind, c.lens, c.priority, c.findOut])).toEqual([
+      ['conflict', 'procurement', 1, expect.stringContaining('What the price covers')],
+      ['gap', 'procurement', 1, 'the engine licence terms'],
+      ['gap', 'procurement', 2, 'the first demo week'],
     ])
   })
 
   it('breaks a priority tie by the area rank before conflicts come before gaps', async () => {
     const { room, people } = await fixtureRoom()
     await room.saveLensRun({
-      lens: 'cfo',
+      lens: 'procurement',
       round: 2,
       watermark: 1,
       status: 'done',
@@ -67,14 +65,18 @@ describe('askCandidates', () => {
     const snapshot = (await room.read())!
     const conflictFor = (person: keyof typeof people) =>
       askCandidates(snapshot, people[person].participant).some((c) => c.kind === 'conflict')
-    expect(conflictFor('robin')).toBe(true)
-    expect(conflictFor('alex')).toBe(true)
-    expect(conflictFor('casey')).toBe(false)
-    expect(conflictFor('dana')).toBe(false)
+    expect(['robin', 'alex', 'dana', 'casey', 'pat'].map((person) => conflictFor(person as keyof typeof people))).toEqual([
+      true,
+      true,
+      true,
+      false,
+      true,
+    ])
+    expect(askCandidates(snapshot, people.robin.participant).find((c) => c.lens === 'procurement')?.unowned).toBe(false)
 
-    const delivery = askCandidates(snapshot, people.casey.participant).find((c) => c.lens === 'cto')
-    expect(delivery).toMatchObject({ kind: 'missing_topic', unowned: true })
-    expect(askCandidates(snapshot, people.robin.participant).find((c) => c.lens === 'cfo')?.unowned).toBe(false)
+    for (const person of [people.robin, people.pat]) await room.removeParticipant(person.participant.id)
+    const unowned = askCandidates((await room.read())!, people.casey.participant).find((c) => c.lens === 'procurement')
+    expect(unowned).toMatchObject({ kind: 'conflict', unowned: true })
   })
 
   it('falls back to brief topics nobody on this side has covered, in the order of their areas', async () => {
@@ -95,7 +97,7 @@ describe('askCandidates', () => {
       'sign_off',
       'legal_ip',
     ])
-    expect(candidates[6]).toMatchObject({ lens: 'cfo', question: 'What do you understand the budget to cover?' })
+    expect(candidates[6]).toMatchObject({ lens: 'procurement', question: 'What do you understand the budget to cover?' })
   })
 
   it('has nothing to ask once every lens says it is done', async () => {

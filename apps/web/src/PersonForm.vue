@@ -67,7 +67,7 @@ const submit = () => emit('submit', { ...draft, lenses: [...draft.lenses] })
     </div>
     <fieldset>
       <legend>Speaks for</legend>
-      <p class="hint">Which of the coach's five advisers carry what this person cares about. Tick as many as fit.</p>
+      <p class="hint">Which of the coach's three advisers carry what this person cares about. Tick as many as fit.</p>
       <label v-for="lens in LENS_IDS" :key="lens" class="check">
         <input v-model="draft.lenses" type="checkbox" :value="lens" @change="lensesTouched = true" />
         {{ LENS_NAMES[lens] }}

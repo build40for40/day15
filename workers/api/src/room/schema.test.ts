@@ -48,7 +48,7 @@ describe('migrate', () => {
         side: 'client',
         jobTitle: '',
         organisation: '',
-        lenses: ['cfo'],
+        lenses: ['procurement'],
         notes: '',
         hasLink: true,
         addedBy: 'owner',

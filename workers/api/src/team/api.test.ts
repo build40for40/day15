@@ -96,14 +96,14 @@ describe('team API', () => {
       side: 'client',
       jobTitle: 'Finance Director',
       organisation: 'Fake Juice Co',
-      lenses: ['procurement', 'cfo'],
+      lenses: ['procurement', 'client'],
       notes: 'Signs anything over £10k.',
       link: false,
     })
     expect(res.status).toBe(201)
     const { participant, address } = await data(res)
     expect(address).toBeNull()
-    expect(participant).toMatchObject({ jobTitle: 'Finance Director', lenses: ['cfo', 'procurement'], hasLink: false })
+    expect(participant).toMatchObject({ jobTitle: 'Finance Director', lenses: ['client', 'procurement'], hasLink: false })
 
     const linked = await data(await call('POST', `/api/projects/${projectId}/people/${participant.id}/address`))
     expect(linked.participant.hasLink).toBe(true)
@@ -113,9 +113,9 @@ describe('team API', () => {
   it('updates a person in place', async () => {
     const { call, projectId } = await teamWithProject()
     const { participant } = await data(await call('POST', `/api/projects/${projectId}/people`, { name: 'Dana', persona: 'cfo', side: 'client' }))
-    const res = await call('PATCH', `/api/projects/${projectId}/people/${participant.id}`, { jobTitle: 'CFO', lenses: ['cfo', 'cto'] })
+    const res = await call('PATCH', `/api/projects/${projectId}/people/${participant.id}`, { jobTitle: 'CFO', lenses: ['client', 'procurement'] })
     expect(res.status).toBe(200)
-    expect((await data(res)).participant).toMatchObject({ id: participant.id, name: 'Dana', jobTitle: 'CFO', lenses: ['cfo', 'cto'] })
+    expect((await data(res)).participant).toMatchObject({ id: participant.id, name: 'Dana', jobTitle: 'CFO', lenses: ['client', 'procurement'] })
     expect((await call('PATCH', `/api/projects/${projectId}/people/${participant.id}`, { side: 'neither' })).status).toBe(400)
     expect((await call('PATCH', `/api/projects/${projectId}/people/999`, { name: 'Nobody' })).status).toBe(404)
   })

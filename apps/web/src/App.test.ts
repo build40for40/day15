@@ -153,7 +153,7 @@ describe('App', () => {
       organisation: '',
       side: 'client',
       persona: 'cfo',
-      lenses: ['cfo'],
+      lenses: ['procurement'],
       notes: '',
       link: true,
     })
