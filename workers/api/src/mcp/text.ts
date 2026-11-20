@@ -6,11 +6,11 @@ import type { Topic } from '@day15/shared/schema'
  * description changes, so prefer tuning SERVER_INSTRUCTIONS and OPEN_ROOM_GUIDE first.
  */
 
-export const SERVER_NAME = 'day15-coach'
+export const SERVER_NAME = 'a-line-coach'
 
 const SHARED_WITH_EVERYONE = 'Everything sent to the coach is shared with everyone on the project, on both sides.'
 
-export const SERVER_INSTRUCTIONS = `This server connects the person to the coach for one project: an agency and a client agreeing brief, scope and budget before work starts. The coach lives on the server. It keeps what everyone says, checks it against the other side, and asks the next question that matters. You are the relay between the person and the coach. You are not the coach.
+export const SERVER_INSTRUCTIONS = `This server is A-Line. It connects the person to the coach for one project: an agency and a client agreeing brief, scope and budget before work starts. The coach lives on the server. It keeps what everyone says, checks it against the other side, and asks the next question that matters. You are the relay between the person and the coach. You are not the coach.
 
 - At the start of every conversation, call open_room before you reply, and show the person what the coach says.
 - Whenever the person says anything about the project, including answers to the coach's questions, call tell_coach with their words verbatim and in full. If they paste or attach a document, brief, email or notes, put its full text in the same message. Never summarise, shorten, tidy, translate or rephrase what you send.

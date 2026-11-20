@@ -1,6 +1,6 @@
-# Day 15
+# A-Line
 
-A 40 for 40 app: Expectation Manager, which helps an agency and a client find the holes in a project before the budget is spent. Everyone on the project talks to one coach from their own AI client (Claude, ChatGPT) through an MCP server, and the agency sets projects up on a small web page. Built with Vue 3, TypeScript and Vite, and served by a Cloudflare Worker. It's a pnpm workspace: the app is in `apps/web/`, the Worker in `workers/api/`, and the schemas they share in `packages/shared/`.
+A 40 for 40 app, built on day 15 from the "Expectation Manager" problem. A-Line helps an agency and a client find the holes in a project before the budget is spent. Everyone on the project talks to one coach from their own AI client (Claude, ChatGPT) through an MCP server, and the agency sets projects up on a small web page. Built with Vue 3, TypeScript and Vite, and served by a Cloudflare Worker. It's a pnpm workspace: the app is in `apps/web/`, the Worker in `workers/api/`, and the schemas they share in `packages/shared/`.
 
 ## Today: Day 15
 
@@ -33,4 +33,4 @@ pnpm build   # type-check and production build
 
 ## Deploy
 
-Lives at https://day15.build40for40.com/, and the old https://build40for40.com/day15/ redirects there. Merging to `main` deploys it, and every pull request gets a public preview link in a comment.
+Lives at https://a-line.build40for40.com/, and the old https://day15.build40for40.com/ and https://build40for40.com/day15/ redirect there. Merging to `main` deploys it, and every pull request gets a public preview link in a comment.

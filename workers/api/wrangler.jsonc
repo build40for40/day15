@@ -11,11 +11,12 @@
     "directory": "../../apps/web/dist",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    // The old build40for40.com/day15 addresses reach the Worker too, which redirects them to the custom domain.
-    "run_worker_first": ["/api/*", "/mcp/*", "/day15", "/day15/*"]
+    // Every request runs the Worker first, so the old addresses below redirect to a-line.build40for40.com whatever the path.
+    "run_worker_first": true
   },
   "routes": [
-    // Deploying creates the custom domain and its DNS record.
+    // Deploying creates the custom domains and their DNS records.
+    { "pattern": "a-line.build40for40.com", "custom_domain": true },
     { "pattern": "day15.build40for40.com", "custom_domain": true },
     { "pattern": "build40for40.com/day15", "zone_name": "build40for40.com" },
     { "pattern": "build40for40.com/day15/*", "zone_name": "build40for40.com" }

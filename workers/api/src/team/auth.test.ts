@@ -46,7 +46,7 @@ describe('authenticate', () => {
 
 describe('workosClientId', () => {
   it('uses production on the app host and staging elsewhere', () => {
-    expect(workosClientId('day15.build40for40.com')).not.toBe(workosClientId('localhost'))
+    expect(workosClientId('a-line.build40for40.com')).not.toBe(workosClientId('localhost'))
   })
 
   it('lets the environment override the client', () => {

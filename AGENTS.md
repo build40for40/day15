@@ -2,8 +2,8 @@
 
 Day 15 of 40 for 40, built live on Twitch on Friday 20 November 2026. It's the special guest day, so the problem comes from the guest rather than the pool. The pick is "Expectation Manager". Work is tracked on the Superthread `day15` board and the "Day 15" page.
 
-- **Form factor:** an MCP server that people reach from their own AI client (Claude, ChatGPT), plus one small web page where an agency sets projects up. It lives at `day15.build40for40.com`. The old `build40for40.com/day15` addresses redirect there.
-- **Name:** the app doesn't have one yet, so the repo is `day15` until it does.
+- **Form factor:** an MCP server that people reach from their own AI client (Claude, ChatGPT), plus one small web page where an agency sets projects up. It lives at `a-line.build40for40.com`. The old `day15.build40for40.com` and `build40for40.com/day15` addresses redirect there.
+- **Name:** the product is "A-Line", and that's what people see on the page and in their AI client. The repo, the Worker, the packages, the bindings and the Durable Object classes keep the `day15` name.
 
 Shared 40 for 40 context lives in `../AGENTS.md`.
 
@@ -118,13 +118,13 @@ All from the repo root.
 
 ## Hosting
 
-- A Cloudflare Worker named `day15` serves `day15.build40for40.com` as a custom domain: the app at the root, the team API under `/api`, the MCP server under `/mcp`. Deploying creates the custom domain and its DNS record.
-- It also keeps the `build40for40.com/day15` and `build40for40.com/day15/*` routes, and redirects them (308) to the same path on `day15.build40for40.com`.
-- Vite builds with `base: '/'` into `apps/web/dist/`. Static files are served with single-page-app fallback, and `run_worker_first` sends `/api/*`, `/mcp/*` and the old `/day15` paths to the Worker code.
+- A Cloudflare Worker named `day15` serves `a-line.build40for40.com` as a custom domain: the app at the root, the team API under `/api`, the MCP server under `/mcp`. Deploying creates the custom domain and its DNS record.
+- It also keeps the `day15.build40for40.com` custom domain and the `build40for40.com/day15` and `build40for40.com/day15/*` routes, and redirects them (308) to the same path and query on `a-line.build40for40.com` (`workers/api/src/hosts.ts`). That includes `/mcp/<key>` and `/api/*`, and the redirect logs nothing, since the path can hold a person's key.
+- Vite builds with `base: '/'` into `apps/web/dist/`. Static files are served with single-page-app fallback. `run_worker_first` is `true`, so every request reaches the Worker code first: that is what lets the old host redirect its static paths too.
 - CI (`.github/workflows/ci.yml`) tests and builds every push and PR, through the shared `build40for40/actions` (`setup`, `deploy-worker`, `preview-worker`). Pushes to `main` deploy to production. PRs upload a preview version and comment its public `workers.dev` link, which is named after the branch.
 - Deploys need the `CLOUDFLARE_API_TOKEN` secret on the repo. Without it CI still tests and builds, and skips deploying.
 - The Worker needs the `ANTHROPIC_API_KEY` Cloudflare secret, set once with `pnpm wrangler secret put ANTHROPIC_API_KEY`. Every Worker secret is listed, with an empty value, in `workers/api/.dev.vars.example`. `ANTHROPIC_WORKSPACE_ID` is optional: set it only when the key isn't scoped to a workspace, and the Worker sends it as the `anthropic-workspace-id` header.
-- Sign-in uses the shared WorkOS AuthKit application, picking the production client on `day15.build40for40.com` and the staging client elsewhere, in both `apps/web/src/auth.ts` and `workers/api/src/team/auth.ts`. Each client needs `https://day15.build40for40.com/` (and any preview origin) added as a redirect URI and origin.
+- Sign-in uses the shared WorkOS AuthKit application, picking the production client on `a-line.build40for40.com` and the staging client elsewhere, in both `apps/web/src/auth.ts` and `workers/api/src/team/auth.ts`. Each client needs `https://a-line.build40for40.com/` (and any preview origin) added as a redirect URI and origin.
 - Durable Objects: `ProjectRoom` (`ROOMS`) and `TeamDirectory` (`TEAMS`), both SQLite-backed through the `v1` and `v2` migrations in `wrangler.jsonc`. There is no D1 and no R2.
 
 ## Persona harnesses
