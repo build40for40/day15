@@ -28,15 +28,17 @@ const team = { name: 'Fake Agency', ownerId: 'user_fake', createdAt: '2026-11-20
 const project = (participants: unknown[] = []) => ({ id: PROJECT_ID, name: 'Orchard Dash', createdAt: 'x', participants })
 
 function serve(session: unknown) {
+  let nextId = 2
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     const path = new URL(url, 'https://day15.test').pathname
     const body = init?.body ? JSON.parse(String(init.body)) : undefined
     if (path === '/api/session') return Response.json(session)
+    if (path === '/api/team') return Response.json({ team }, { status: 201 })
     if (path === '/api/projects') return Response.json({ project: project() }, { status: 201 })
     if (path.endsWith('/people') && init?.method === 'POST') {
       const { link, ...details } = body
       return Response.json(
-        { participant: person({ ...details, id: 2, hasLink: link }), address: link ? ADDRESS : null },
+        { participant: person({ ...details, id: nextId++, hasLink: link }), address: link ? ADDRESS : null },
         { status: 201 },
       )
     }
@@ -74,19 +76,104 @@ describe('App', () => {
     await flushPromises()
     expect(wrapper.text()).toContain('shared with both sides by default')
     expect(wrapper.text()).toContain('it stays on your side')
-    expect(wrapper.text()).toContain('name your team')
+    expect(wrapper.text()).toContain('Welcome to A-Line')
   })
 
-  it('creates a first project and lands on adding a person', async () => {
+  it('walks a new agency through the questions, then creates everything once they say go', async () => {
     auth.currentUser.mockResolvedValue({ id: 'user_fake' })
-    serve({ team, projects: [] })
+    const fetchMock = serve({ team: null, projects: [] })
+    vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } })
     const wrapper = mount(App)
     await flushPromises()
-    await wrapper.get('input[aria-label="Project name"]').setValue('Orchard Dash')
+    const posts = () => fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST')
+
+    // Hello: needs a name and an agency before moving on.
+    await wrapper.get('form').trigger('submit')
+    expect(wrapper.text()).toContain('Tell me your name.')
+    await wrapper.get('input[placeholder="Your name"]').setValue('Alex Example')
+    await wrapper.get('form').trigger('submit')
+    expect(wrapper.text()).toContain('What is your agency called?')
+    await wrapper.get('input[placeholder="Your agency"]').setValue('Fake Agency')
     await wrapper.get('form').trigger('submit')
     await flushPromises()
-    expect(wrapper.get('nav').text()).toContain('Orchard Dash')
-    expect(wrapper.text()).toContain('Add a person')
+
+    // The win, with the sketch filling in live.
+    expect(wrapper.text()).toContain('Nice to meet you, Alex')
+    await wrapper.get('input[placeholder="Orchard Dash"]').setValue('Orchard Dash')
+    await wrapper.get('input[placeholder="The client\'s company"]').setValue('Make-Believe Foods')
+    expect(wrapper.get('aside').text()).toContain('Orchard Dash')
+    expect(wrapper.get('aside').text()).toContain('Make-Believe Foods')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    // The people: the client side is empty, so the coach says so, then a client person is added.
+    expect(wrapper.text()).toContain('Nobody on the Make-Believe Foods side yet')
+    await wrapper.get('input[placeholder="Someone on the project"]').setValue('Robin Fakeworth')
+    await wrapper.get('input[value="cfo"]').setValue(true)
+    await wrapper.get('form.adder').trigger('submit')
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('Nobody on the Make-Believe Foods side yet')
+    expect(wrapper.get('aside').text()).toContain('Robin Fakeworth')
+    await button(wrapper, 'Review').trigger('click')
+    await flushPromises()
+
+    // Review: nothing has been created yet.
+    expect(wrapper.text()).toContain('Shall I set it up?')
+    expect(posts()).toHaveLength(0)
+    await button(wrapper, 'Set it up').trigger('click')
+    await flushPromises()
+
+    const bodies = posts().map(([url, init]) => [new URL(String(url), 'https://day15.test').pathname, JSON.parse(String(init!.body))])
+    expect(bodies[0]).toEqual(['/api/team', { name: 'Fake Agency' }])
+    expect(bodies[1]).toEqual(['/api/projects', { name: 'Orchard Dash' }])
+    expect(bodies[2]![1]).toMatchObject({ name: 'Alex Example', side: 'agency', persona: 'agency_lead', organisation: 'Fake Agency', link: true })
+    expect(bodies[3]![1]).toMatchObject({ name: 'Robin Fakeworth', side: 'client', persona: 'cfo', organisation: 'Make-Believe Foods', lenses: ['cfo'], link: true })
+
+    // Done: each link shown once, then on to the workspace.
+    expect(wrapper.text()).toContain('Orchard Dash is open.')
+    expect(wrapper.findAll('.invites .message')).toHaveLength(2)
+    expect(wrapper.get('.invites .message').text()).toContain(ADDRESS)
+    await button(wrapper, 'Go to my project').trigger('click')
+    await flushPromises()
+    expect(sidebarNames(wrapper)).toEqual(['Alex Example', 'Robin Fakeworth'])
+  })
+
+  it('skips the agency question when the team already exists, and carries on after a failure without repeating itself', async () => {
+    auth.currentUser.mockResolvedValue({ id: 'user_fake' })
+    const fetchMock = serve({ team, projects: [] })
+    const wrapper = mount(App)
+    await flushPromises()
+    expect(wrapper.find('input[placeholder="Your agency"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Setting this up for Fake Agency.')
+    await wrapper.get('input[placeholder="Your name"]').setValue('Alex Example')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    await wrapper.get('input[placeholder="Orchard Dash"]').setValue('Orchard Dash')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    await button(wrapper, 'Skip for now').trigger('click')
+    await flushPromises()
+
+    // The first call to add a person fails once.
+    const original = fetchMock.getMockImplementation()!
+    let failed = false
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (!failed && new URL(url, 'https://day15.test').pathname.endsWith('/people')) {
+        failed = true
+        return Response.json({ error: 'The room is busy.' }, { status: 500 })
+      }
+      return original(url, init)
+    })
+    await button(wrapper, 'Set it up').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('[role="alert"]').text()).toBe('The room is busy.')
+    expect(button(wrapper, 'Back').attributes('disabled')).toBeDefined()
+
+    await button(wrapper, 'Try again').trigger('click')
+    await flushPromises()
+    const projectCreations = fetchMock.mock.calls.filter(([url]) => new URL(String(url), 'https://day15.test').pathname === '/api/projects')
+    expect(projectCreations).toHaveLength(1)
+    expect(wrapper.text()).toContain('Orchard Dash is open.')
   })
 
   it('adds a person from the sidebar, shows their link once, and removes them after a confirm', async () => {
