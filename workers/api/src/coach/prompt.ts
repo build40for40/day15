@@ -1,10 +1,10 @@
 import type { SystemModelMessage } from 'ai'
 
-import { LENS_IDS, LENS_NAMES } from '@day15/shared/lenses'
+import { LENS_IDS, LENS_NAMES, type LensId } from '@day15/shared/lenses'
 import { ref } from '@day15/shared/refs'
 import {
-  PERSONA_LENS,
   PERSONA_NAMES,
+  SIDES,
   type Ask,
   type Item,
   type LensRun,
@@ -14,7 +14,7 @@ import {
 import coachHarness from '../../../../persona-harnesses/coach.md'
 import coachReference from '../../../../persona-harnesses/coach-reference.md'
 import { renderRoom } from '../room/render'
-import { heardFrom, type AskCandidate } from './select'
+import { heardFrom, lensGaps, speakersFor, type AskCandidate } from './select'
 
 const MAX_CANDIDATES = 8
 const MAX_PAST_ASKS = 10
@@ -89,8 +89,42 @@ export function coachInstructions(room: RoomSnapshot): SystemModelMessage[] {
   ]
 }
 
-const describe = (participant: Participant) =>
-  `${participant.name} (${ref('participant', participant.id)}), on the ${participant.side} side as ${PERSONA_NAMES[participant.persona]}`
+function describe(participant: Participant): string {
+  const role = [participant.jobTitle, participant.organisation].filter(Boolean).join(' at ')
+  return (
+    `${participant.name} (${ref('participant', participant.id)}), ${role ? `${role}, ` : ''}on the ${participant.side} ` +
+    `side as ${PERSONA_NAMES[participant.persona]}`
+  )
+}
+
+const names = (lenses: LensId[]) => lenses.map((lens) => LENS_NAMES[lens]).join(', ')
+
+/** Who speaks for each adviser on each side, and the gaps, said the way this person's side needs it. */
+export function renderCoverage(room: RoomSnapshot, participant: Participant): string {
+  const sides = SIDES.map((side) => {
+    const who = LENS_IDS.map((lens) => {
+      const speakers = speakersFor(room, lens, side)
+      return `${LENS_NAMES[lens]}: ${speakers.length ? speakers.map((p) => `${ref('participant', p.id)} ${p.name}${p.hasLink ? '' : ' (no link)'}`).join(', ') : 'nobody'}`
+    })
+    return `- ${side === 'agency' ? 'Agency' : 'Client'} side. ${who.join('; ')}.`
+  })
+  const gaps = lensGaps(room)
+  const missing = SIDES.filter((side) => gaps[side].length).map((side) => `the ${side} side has nobody for ${names(gaps[side])}`)
+  let advice: string
+  if (!missing.length) advice = 'Every adviser has someone behind it on both sides.'
+  else if (participant.side === 'agency') {
+    advice =
+      `Gaps: ${missing.join('; ')}. This person is on the agency side, which sets up the people list. If a gap ` +
+      'matters to what is open, mention it once, in plain words about the area (money, delivery, legal and ' +
+      'procurement, the brief, the agency), and suggest they add someone. The same goes for an area whose only ' +
+      'person has no link yet. Never treat anyone as owning a gap.'
+  } else {
+    advice =
+      `Gaps: ${missing.join('; ')}. Asks for an adviser nobody on their side speaks for may come to this person, ` +
+      'marked as such. Ask only what they can answer from where they sit, and never treat them as owning it.'
+  }
+  return `## Who speaks for each adviser\n${sides.join('\n')}\n\n${advice}`
+}
 
 function renderAsk(ask: Ask): string {
   const lens = ask.lens ? ` [${LENS_NAMES[ask.lens]}]` : ''
@@ -114,8 +148,11 @@ function renderPerson(room: RoomSnapshot, participant: Participant, candidates: 
   const counts = heardFrom(room, participant)
   return [
     `# This turn`,
-    `You are talking with ${describe(participant)}. The adviser closest to their role is ` +
-      `${LENS_NAMES[PERSONA_LENS[participant.persona]]}.`,
+    `You are talking with ${describe(participant)}. ` +
+      (participant.lenses.length
+        ? `They speak for what the ${names(participant.lenses)} ${participant.lenses.length > 1 ? 'advisers care' : 'adviser cares'} about.`
+        : 'They speak for no adviser in particular.'),
+    renderCoverage(room, participant),
     `## Their open asks\n${open.length ? open.map(renderAsk).join('\n') : 'None.'}`,
     `## What they were asked before\n${past.length ? past.map(renderAsk).join('\n') : 'Nothing yet.'}`,
     `## Asks they have had from each adviser\n${LENS_IDS.map((lens) => `${LENS_NAMES[lens]} ${counts[lens]}`).join(', ')}.`,
@@ -125,11 +162,13 @@ function renderPerson(room: RoomSnapshot, participant: Participant, candidates: 
             .slice(0, MAX_CANDIDATES)
             .map(
               (candidate, index) =>
-                `${index + 1}. [${KIND_LABELS[candidate.kind]}${candidate.lens ? `, ${candidate.lens}` : ''}] ` +
+                `${index + 1}. [${KIND_LABELS[candidate.kind]}${candidate.lens ? `, ${candidate.lens}` : ''}` +
+                `${candidate.unowned ? ', nobody on their side speaks for this' : ''}] ` +
                 `Find out ${oneLine(candidate.findOut)}. Because: ${oneLine(candidate.because)}`,
             )
             .join('\n')
-        : 'None: every adviser is done. Ask nothing unless something in their message needs following up.'),
+        : 'None for this person: the advisers are done, or what they need is for someone else. Ask nothing unless ' +
+          'something in their message needs following up.'),
   ].join('\n\n')
 }
 
@@ -139,8 +178,9 @@ export function turnPrompt(room: RoomSnapshot, participant: Participant, item: I
     renderPerson(room, participant, candidates),
     `## What they just said (${ref('item', item.id)})\n<message>\n${item.text}\n</message>`,
     'Take facts only from this message, quoting its exact words. Use ids exactly as they appear in the room ' +
-      '(f12, a4). Then say what you noted and ask the one next thing, following your harness: take the first ' +
-      'candidate that still fits after this message, and skip any it has just answered.',
+      '(f12, a4). If it names someone involved in the project who is not in the people list, add them to ' +
+      'people_mentioned. Then say what you noted and ask the one next thing, following your harness: take the ' +
+      'first candidate that still fits after this message, and skip any it has just answered.',
   ].join('\n\n')
 }
 

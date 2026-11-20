@@ -132,9 +132,9 @@ describe('planNextAsk', () => {
 
     const plan = planNextAsk(null, { ...context, answered: [1] })
     expect(plan.keep).toBeNull()
-    expect(plan.ask).toMatchObject({ addressedTo: context.participant.id, lens: 'cfo' })
+    expect(plan.ask).toMatchObject({ addressedTo: context.participant.id, lens: 'client' })
     expect(plan.text).toBe(context.candidates[0]!.question)
-    expect(plan.text).toMatch(/^The two sides seem to see "What the price covers" differently/)
+    expect(plan.text).toBe('If this goes brilliantly, what has changed for the business?')
   })
 
   it('asks nothing when there is nothing left to ask', async () => {

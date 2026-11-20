@@ -15,7 +15,7 @@ describe('renderRoom', () => {
         .sort((a, b) => a - b),
     )
     expect(lines[0]).toBe(
-      `f1 [budget] said by Alex Example (p1, agency side, Agency lead) in i${items[0]!.id}: The agency's £60k quote ` +
+      `f1 [budget] said by p1 (agency side) in i${items[0]!.id}: The agency's £60k quote ` +
         'covers building the app only. Hosting and app store fees are extra. Quote: "Hosting and app store fees sit outside that."',
     )
   })
@@ -47,7 +47,7 @@ describe('renderRoom', () => {
     const after = renderRoom((await room.read())!)
     const factsEnd = before.indexOf('\n\n## People')
     expect(after.startsWith(before.slice(0, factsEnd))).toBe(true)
-    expect(after).toContain('proposed, to be confirmed by Robin Fakeworth (p4, client side, CFO) in i4: The budget includes VAT.')
+    expect(after).toContain('proposed, to be confirmed by p4 (client side) in i4: The budget includes VAT.')
     expect(after).toContain('to p4 Robin Fakeworth, for the CFO lens: Is VAT in that?')
   })
 
@@ -60,7 +60,34 @@ describe('renderRoom', () => {
     const before = await line()
     await room.addFacts([{ ...said, status: 'confirmed', topic: 'budget', statement: 'It is £40k.', supersedes: tentative!.id }])
     expect(await line()).toBe(before)
-    expect(before).toContain('proposed, to be confirmed by Pat Notreal')
+    expect(before).toContain('proposed, to be confirmed by p5 (client side)')
+  })
+
+  it('shows each current person on one line after the facts, with role, seat, lenses, link and notes', async () => {
+    const { room } = await fixtureRoom()
+    const text = renderRoom((await room.read())!)
+    const people = text.slice(text.indexOf('## People'), text.indexOf('## Open asks'))
+    expect(people).toContain(
+      "p1 Alex Example, Managing Director at Make-Believe Studio. Agency side, Agency lead. Speaks for the CFO and " +
+        "Agency lenses. Has a link. Notes: Signs off the agency's quotes.\n",
+    )
+    expect(people).toContain(
+      'p6 Morgan Madeup, Chair of the brand board at Pipsqueak Juice. Client side, Marketing lead. Speaks for the ' +
+        'Client lens. No link: mentioned in conversation. Notes: Chairs the brand board that signs off every creative change.',
+    )
+    expect(text.indexOf('## People')).toBeGreaterThan(text.indexOf('## Facts'))
+  })
+
+  it('keeps the facts the same when people are edited or removed, and drops removed people from the list', async () => {
+    const { room, people } = await fixtureRoom()
+    const before = renderRoom((await room.read())!)
+    await room.updateParticipant(people.alex.participant.id, { name: 'Alex Renamed', persona: 'cfo', side: 'client' })
+    await room.removeParticipant(people.pat.participant.id)
+    const after = renderRoom((await room.read())!)
+    const facts = (text: string) => text.slice(0, text.indexOf('## People'))
+    expect(facts(after)).toBe(facts(before))
+    expect(after).toContain('p1 Alex Renamed,')
+    expect(after).not.toContain('Pat Notreal')
   })
 
   it('renders an empty room', async () => {

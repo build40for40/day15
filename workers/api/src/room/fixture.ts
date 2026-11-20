@@ -11,13 +11,42 @@ export const FIXTURE_PROJECT = {
   ownerId: 'user_fixture_owner',
 }
 
+const AGENCY = 'Make-Believe Studio'
+const CLIENT = 'Pipsqueak Juice'
+
+/** Alex speaks for two lenses. Nobody on the client side speaks for delivery. */
 const PEOPLE = {
-  alex: { name: 'Alex Example', persona: 'agency_lead', side: 'agency' },
-  dana: { name: 'Dana Placeholder', persona: 'delivery_lead', side: 'agency' },
-  casey: { name: 'Casey Sample', persona: 'marketing_lead', side: 'client' },
-  robin: { name: 'Robin Fakeworth', persona: 'cfo', side: 'client' },
-  pat: { name: 'Pat Notreal', persona: 'procurement', side: 'client' },
-} as const satisfies Record<string, NewParticipant>
+  alex: {
+    name: 'Alex Example',
+    persona: 'agency_lead',
+    side: 'agency',
+    jobTitle: 'Managing Director',
+    organisation: AGENCY,
+    lenses: ['agency', 'cfo'],
+    notes: "Signs off the agency's quotes.",
+  },
+  dana: { name: 'Dana Placeholder', persona: 'delivery_lead', side: 'agency', jobTitle: 'Head of Delivery', organisation: AGENCY },
+  casey: {
+    name: 'Casey Sample',
+    persona: 'marketing_lead',
+    side: 'client',
+    jobTitle: 'Brand Manager',
+    organisation: CLIENT,
+    notes: 'Reports to the brand board.',
+  },
+  robin: { name: 'Robin Fakeworth', persona: 'cfo', side: 'client', jobTitle: 'Finance Director', organisation: CLIENT },
+  pat: { name: 'Pat Notreal', persona: 'procurement', side: 'client', jobTitle: 'Procurement Lead', organisation: CLIENT },
+} satisfies Record<string, NewParticipant>
+
+/** Someone the coach heard about, with no link. */
+const MENTIONED: NewParticipant = {
+  name: 'Morgan Madeup',
+  persona: 'marketing_lead',
+  side: 'client',
+  jobTitle: 'Chair of the brand board',
+  organisation: CLIENT,
+  notes: 'Chairs the brand board that signs off every creative change.',
+}
 
 export type FixturePerson = keyof typeof PEOPLE
 
@@ -143,17 +172,22 @@ const CFO_REPORT: PersonaReport = {
 
 export interface Fixture {
   people: Record<FixturePerson, { participant: Participant; secret: string }>
+  mentioned: Participant
   items: Item[]
   facts: Record<string, Fact>
 }
 
 /** Fills an empty room with the fixture project. Works on a RoomStore, or a ProjectRoom stub, since they match. */
 export async function seedFixture(
-  room: Pick<RoomStore, 'create' | 'addParticipant' | 'addItem' | 'addFacts' | 'saveLensRun' | 'addAsk'>,
+  room: Pick<RoomStore, 'create' | 'addParticipant' | 'addMentioned' | 'addItem' | 'addFacts' | 'saveLensRun' | 'addAsk'>,
 ): Promise<Fixture> {
   await room.create(FIXTURE_PROJECT)
   const people = {} as Fixture['people']
-  for (const [handle, person] of Object.entries(PEOPLE)) people[handle as FixturePerson] = await room.addParticipant(person)
+  for (const [handle, person] of Object.entries(PEOPLE)) {
+    const { participant, secret } = await room.addParticipant(person)
+    people[handle as FixturePerson] = { participant, secret: secret! }
+  }
+  const [mentioned] = await room.addMentioned([MENTIONED])
 
   const items: Item[] = []
   const facts: Record<string, Fact> = {}
@@ -195,5 +229,5 @@ export async function seedFixture(
     lens: 'client',
   })
 
-  return { people, items, facts }
+  return { people, mentioned: mentioned!, items, facts }
 }

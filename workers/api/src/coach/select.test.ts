@@ -22,48 +22,56 @@ describe('askCandidates', () => {
     expect(candidates[1]).toMatchObject({ kind: 'priority_gap', lens: 'cfo' })
   })
 
-  it('ranks workable conflicts above gaps, and this person’s own lens first within a tier', async () => {
+  it('ranks workable conflicts above gaps, and this person’s own lenses first within a tier', async () => {
     const { room, people } = await fixtureRoom()
     const workable = { agency_said: 'a', client_said: 'b', severity: 'workable' as const, note: 'n' }
-    await room.saveLensRun({
-      lens: 'procurement',
-      round: 1,
-      watermark: 1,
-      status: 'done',
-      report: report({ conflicts: [{ topic: 'Licences', ...workable }] }),
+    const lensRun = (lens: 'agency' | 'client' | 'procurement', overrides: Partial<LensReport>) =>
+      room.saveLensRun({ lens, round: 1, watermark: 1, status: 'done', report: report(overrides) })
+    await lensRun('procurement', { conflicts: [{ topic: 'Licences', ...workable }] })
+    await lensRun('client', {
+      conflicts: [{ topic: 'Launch date', ...workable }],
+      questions: [{ ask: 'agency', find_out: 'the launch date', because: 'b', priority: 1 }],
     })
-    await room.saveLensRun({
-      lens: 'client',
-      round: 1,
-      watermark: 1,
-      status: 'done',
-      report: report({
-        conflicts: [{ topic: 'Launch date', ...workable }],
-        questions: [{ ask: 'client', find_out: 'the launch date', because: 'b', priority: 1 }],
-      }),
-    })
-    const kinds = askCandidates((await room.read())!, people.casey.participant).map((c) => [c.kind, c.lens])
+    await lensRun('agency', { conflicts: [{ topic: 'Feedback rounds', ...workable }] })
+    const kinds = askCandidates((await room.read())!, people.alex.participant).map((c) => [c.kind, c.lens])
     expect(kinds.slice(0, 5)).toEqual([
       ['fundamental_conflict', 'cfo'],
+      ['workable_conflict', 'agency'],
       ['workable_conflict', 'client'],
       ['workable_conflict', 'procurement'],
       ['priority_gap', 'client'],
-      ['priority_gap', 'cfo'],
     ])
+  })
+
+  it('routes a lens to the people on a side who speak for it, and to anyone there when nobody does', async () => {
+    const { room, people } = await fixtureRoom()
+    const snapshot = (await room.read())!
+    const conflictFor = (person: keyof typeof people) =>
+      askCandidates(snapshot, people[person].participant).some((c) => c.kind === 'fundamental_conflict')
+    expect(conflictFor('robin')).toBe(true)
+    expect(conflictFor('alex')).toBe(true)
+    expect(conflictFor('casey')).toBe(false)
+    expect(conflictFor('dana')).toBe(false)
+
+    const delivery = askCandidates(snapshot, people.casey.participant).find((c) => c.lens === 'cto')
+    expect(delivery).toMatchObject({ kind: 'missing_topic', unowned: true })
+    expect(askCandidates(snapshot, people.robin.participant).find((c) => c.lens === 'cfo')?.unowned).toBe(false)
   })
 
   it('offers the lens this person has heard least from before the others', async () => {
     const { room, people } = await fixtureRoom()
     const casey = people.casey.participant
-    await room.saveLensRun({
-      lens: 'client',
-      round: 1,
-      watermark: 1,
-      status: 'done',
-      report: report({ questions: [{ ask: 'client', find_out: 'the KPI', because: 'b', priority: 2 }] }),
-    })
+    for (const lens of ['client', 'cto'] as const) {
+      await room.saveLensRun({
+        lens,
+        round: 1,
+        watermark: 1,
+        status: 'done',
+        report: report({ questions: [{ ask: 'client', find_out: `the ${lens} thing`, because: 'b', priority: 2 }] }),
+      })
+    }
     const leastHeard = askCandidates((await room.read())!, casey).filter((c) => c.kind === 'least_heard')
-    expect(leastHeard.map((c) => c.lens)).toEqual(['cfo', 'client'])
+    expect(leastHeard.map((c) => c.lens)).toEqual(['cto', 'client'])
   })
 
   it('falls back to brief topics nobody on this side has covered, own lens topics first', async () => {

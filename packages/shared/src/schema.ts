@@ -63,15 +63,55 @@ export const projectSchema = z.object({
   createdAt: timestamp,
 })
 
-export const newParticipantSchema = z.object({
+export const MAX_JOB_TITLE_LENGTH = 120
+export const MAX_ORGANISATION_LENGTH = 120
+export const MAX_NOTES_LENGTH = 1_000
+
+/** Who put a person on the list: the agency owner on the setup page, or the coach when someone was mentioned. */
+export const ADDED_BY = ['owner', 'coach'] as const
+export type AddedBy = (typeof ADDED_BY)[number]
+
+/** Sorted into the usual lens order, each lens once. */
+const lensListSchema = z
+  .array(lensSchema)
+  .max(LENS_IDS.length)
+  .transform((lenses) => LENS_IDS.filter((lens) => lenses.includes(lens)))
+
+const personDetails = {
   name: z.string().trim().min(1).max(MAX_NAME_LENGTH),
   persona: personaSchema,
   side: sideSchema,
+  jobTitle: z.string().trim().max(MAX_JOB_TITLE_LENGTH),
+  organisation: z.string().trim().max(MAX_ORGANISATION_LENGTH),
+  /** The lenses that speak for what this person cares about. Need not match the persona. */
+  lenses: lensListSchema,
+  /** Who they report to, what they sign off, anything else worth knowing. */
+  notes: z.string().trim().max(MAX_NOTES_LENGTH),
+}
+
+/** Lenses default to the persona's own lens when left out. */
+export const newParticipantSchema = z.object({
+  name: personDetails.name,
+  persona: personDetails.persona,
+  side: personDetails.side,
+  jobTitle: personDetails.jobTitle.optional(),
+  organisation: personDetails.organisation.optional(),
+  lenses: personDetails.lenses.optional(),
+  notes: personDetails.notes.optional(),
 })
 
-export const participantSchema = newParticipantSchema.extend({
+/** People details are a directory, not facts, so they are edited in place. */
+export const participantUpdateSchema = z.object(personDetails).partial()
+
+export const participantSchema = z.object({
   id,
+  ...personDetails,
+  lenses: z.array(lensSchema),
+  /** Only people with a link can reach the coach. */
+  hasLink: z.boolean(),
+  addedBy: z.enum(ADDED_BY),
   createdAt: timestamp,
+  removedAt: timestamp.nullable(),
 })
 
 /** Anything a person said or pasted, kept word for word. */
@@ -216,7 +256,8 @@ export const roomSnapshotSchema = z.object({
 })
 
 export type Project = z.infer<typeof projectSchema>
-export type NewParticipant = z.infer<typeof newParticipantSchema>
+export type NewParticipant = z.input<typeof newParticipantSchema>
+export type ParticipantUpdate = z.input<typeof participantUpdateSchema>
 export type Participant = z.infer<typeof participantSchema>
 export type Item = z.infer<typeof itemSchema>
 export type NewPersonFact = z.infer<typeof newPersonFactSchema>

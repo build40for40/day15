@@ -20,42 +20,68 @@ person in Claude or ChatGPT
   -> reports back in the room, which the coach reads on its next turn
 ```
 
-- **Persona:** a real person on a project (agency lead, marketing lead, procurement, CFO, delivery lead), on a side (agency or client).
+- **Persona:** the seat a real person fills on a project (agency lead, marketing lead, procurement, CFO, delivery lead), on a side (agency or client).
+- **People:** everyone involved in a project, whether or not they can talk to the coach. Each has a name, job title, organisation, side, persona, notes (who they report to, what they sign off), and the lenses that speak for what they care about. Lenses default to the persona's own lens (`PERSONA_LENS`) but need not match it. Only people with a link can connect over MCP. The agency owner adds people on the setup page, and the coach adds people who come up in conversation, with no link.
 - **Data room:** the shared memory for one project, in the ProjectRoom's built-in SQLite. No privacy tiers yet: everything is shared, but every row records who added it and their side.
 - **Lens:** a headless simulation of a persona, built from the files in `persona-harnesses/`. A lens reads the whole room and writes a report (coverage, conflicts, questions, done) plus optional proposed facts. Lenses never address people.
-- **Coach:** the one agent people talk to. In one turn it reads the room and the latest lens reports, takes facts from what the person just said, closes any ask they answered, and replies with what it noted plus one next ask for that person. Only the coach asks people things.
+- **Coach:** the one agent people talk to. In one turn it reads the room and the latest lens reports, takes facts from what the person just said, closes any ask they answered, adds anyone they named who isn't on the people list yet, and replies with what it noted plus one next ask for that person. Only the coach asks people things.
+- **Routing:** a lens's asks go to the people on the relevant side whose lenses include it. When nobody on a side who has a link speaks for a lens, its asks may go to anyone on that side, marked as nobody's, and the coach tells agency-side people about the gap rather than inventing an owner. The selection is `askCandidates` in `workers/api/src/coach/select.ts`, and the coach's prompt shows who speaks for each lens on each side.
 
 ### The room
 
 | Table | What it holds |
 | --- | --- |
-| `participants` | The people: side, persona, name, and a SHA-256 hash of their key's secret |
+| `participants` | The people list: name, job title, organisation, side, persona, lenses, notes, whether they have a link, who added them (`owner` or `coach`), when they were removed, and a SHA-256 hash of their key's secret |
 | `items` | What each person said or pasted, word for word |
 | `facts` | One statement each, under a topic, with its status and where it came from |
 | `lens_runs` | Each lens run: lens, round, watermark (highest fact id it saw), report |
 | `asks` | What the coach needs from one person, open until answered or dropped |
 
-- Nothing is edited. A changed fact is a new row that supersedes the old one, and the old one reads as `superseded`. Its `statedAs` keeps the status it was written with, so its line in the room text never changes.
+- People are a directory, not facts, so their details are edited in place. Removing a person sets `removed_at` and never deletes the row, since facts and asks point at it: their key stops working at once, their open asks are dropped, they leave the people list and routing, and their facts stay. A person with no link has `has_link` 0 and a placeholder in `key_hash`, which older rooms keep as NOT NULL.
+- Columns added after rooms already existed are added by `migrate` in `workers/api/src/room/schema.ts`, which checks the table's columns first, so it is safe on every start and on old rooms. It runs in a transaction.
+- Facts are never edited. A changed fact is a new row that supersedes the old one, and the old one reads as `superseded`. Its `statedAs` keeps the status it was written with, so its line in the room text never changes.
 - Every person fact points at the item and the quote it came from. Every lens fact points at the facts it was worked out from. Person and lens facts are always told apart.
 - Every fact has a topic from a client brief template: background, objective, audience, insight, kpis, budget, deliverables, timeline, sign_off, legal_ip, other.
 - Models see short per-project ids: `f12` a fact, `i3` an item, `p2` a person, `a4` an ask, `r5` a lens run.
-- **Loading the room into a model:** no retrieval, the whole room every time, through the one renderer in `workers/api/src/room/render.ts`. One fact per line, each readable alone, in id order. Facts only ever grow at the end, so the start of the text stays the same between calls and caches well. Room text goes first in a prompt, agent instructions after.
+- **Loading the room into a model:** no retrieval, the whole room every time, through the one renderer in `workers/api/src/room/render.ts`. One fact per line, each readable alone, in id order. Facts only ever grow at the end, so the start of the text stays the same between calls and caches well. A fact line names its person by id and the side stored on the fact, never by editable details, so editing someone never moves it. The people list comes after the facts, one current person per line, then the open asks. Room text goes first in a prompt, agent instructions after.
 - **Lens rounds:** after each coach turn, all five lenses run in parallel on one snapshot. If a round adds proposed facts, another round runs, up to 3. They run in the Worker through `ctx.waitUntil`, never inside the Durable Object, so slow model calls never block the room. A lease in the room lets one set of rounds run at a time. The runtime cuts `waitUntil` off about 30 seconds after the response, so a set of rounds gets a 25 second budget (`LENS_ROUNDS_BUDGET_MS`): a round only starts with 8 seconds left, a model call still running at the end is aborted and saved as a failed run, and each lens's run is saved as soon as it answers. The lease runs out after a minute in case the runtime kills the Worker anyway. In practice that means round 1 and sometimes round 2, so moving lens rounds to a Durable Object alarm, a Queue or a Workflow is still an open decision.
 
 ### Who can get in
 
-- **People on a project** reach the MCP server at `/mcp/<projectId>.<secret>`. Only the hash of the secret is stored, so the address is shown once when the person is added (or when their key is reset). Workers invocation logs and traces are off in `wrangler.jsonc`, so request URLs, and the keys in them, stay out of Workers Logs. A room only creates its tables when its project is created, so guessed project ids leave nothing stored. One function, `identify` in `workers/api/src/mcp/identify.ts`, works out who is calling, so OAuth can replace the key later without touching the tools.
+- **People on a project** reach the MCP server at `/mcp/<projectId>.<secret>`. Only the hash of the secret is stored, so the address is shown once when the person is given a link (or when their key is reset). People with no link, and removed people, can't get in. Workers invocation logs and traces are off in `wrangler.jsonc`, so request URLs, and the keys in them, stay out of Workers Logs. A room only creates its tables when its project is created, so guessed project ids leave nothing stored. One function, `identify` in `workers/api/src/mcp/identify.ts`, works out who is calling, so OAuth can replace the key later without touching the tools.
 - **The agency owner** signs in with WorkOS AuthKit on the web page. The Worker checks the WorkOS access token with `jose`. One `TeamDirectory` Durable Object per owner, named by their WorkOS user id, holds the team name and its project list.
 
 ### Team API
 
-The signed-in agency API under `/api`, every route behind the WorkOS Bearer token (401 without it): `GET /api/session`, `POST /api/team`, `GET` and `POST /api/projects`, `POST /api/projects/<id>/people`, and `POST /api/projects/<id>/people/<personId>/address` to reset a person's key.
+The signed-in agency API under `/api`, every route behind the WorkOS Bearer token (401 without it). Projects come back with their current people as `participants`.
+
+| Route | Body | Answer |
+| --- | --- | --- |
+| `GET /api/session` | | `{ userId, team, projects }` |
+| `POST /api/team` | `{ name }` | `{ team }` |
+| `GET /api/projects` | | `{ projects }` |
+| `POST /api/projects` | `{ name }` | `{ project }` |
+| `POST /api/projects/<id>/people` | `{ name, persona, side, jobTitle?, organisation?, lenses?, notes?, link? }` | 201 `{ participant, address }`, with `address` null when `link` is false |
+| `PATCH /api/projects/<id>/people/<personId>` | any of `name, persona, side, jobTitle, organisation, lenses, notes` | `{ participant }` |
+| `DELETE /api/projects/<id>/people/<personId>` | | `{ participant }`, with `removedAt` set |
+| `POST /api/projects/<id>/people/<personId>/address` | | `{ participant, address }`: a fresh link, or a first one for someone with none |
+
+The address is only ever in the answer that made it.
 
 ### MCP tools
 
 - `open_room`: who you are, where the project stands, and what the coach most needs from you.
 - `tell_coach`: free text in, the coach's reply out.
 - `read_room`: facts and open conflicts, by topic.
+
+### The setup page
+
+`apps/web/src/`, phone first: on a phone the sidebar sits above the pane.
+
+- Signed out, `SignInScreen` offers WorkOS sign-in. Signed in with no team, `NameForm` names it.
+- `ProjectWorkspace` holds the state: the projects, the current one, who is selected, and any address made this session. With no project yet it asks for one.
+- `PeopleSidebar` lists the current project's people (name, job title, and whether they have a link or were only mentioned to the coach), with "Add person" at the top and a project switcher plus "New project".
+- `PersonPanel` shows one person: `PersonLink` (copy the address while it's fresh, get a new link, or give them one), `PersonForm` to edit their details, and remove with a confirm step. Adding a person uses the same `PersonForm`, with lenses that follow the persona until ticked by hand.
 
 ## Worker secrets
 
@@ -73,7 +99,7 @@ A pnpm workspace with three packages. `pnpm-workspace.yaml` lists them, the only
 
 | Folder | Package | What it is |
 | --- | --- | --- |
-| `apps/web/` | `web` | The agency setup page: sign in, create a project, add people, copy each person's MCP address |
+| `apps/web/` | `web` | The agency setup page: sign in, then one page with a sidebar of the project's people and a pane for the one selected |
 | `workers/api/` | `api` | The Cloudflare Worker (`src/`), its `wrangler.jsonc` and `.dev.vars.example` |
 | `packages/shared/` | `@day15/shared` | The zod schemas and types both sides import: `schema`, `lenses` and `refs` |
 

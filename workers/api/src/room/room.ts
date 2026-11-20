@@ -5,7 +5,10 @@ import {
   newFactSchema,
   newLensRunSchema,
   newParticipantSchema,
+  participantUpdateSchema,
   MAX_ITEM_LENGTH,
+  PERSONA_LENS,
+  type AddedBy,
   type Ask,
   type AskStatus,
   type CloseAsk,
@@ -17,6 +20,7 @@ import {
   type NewLensRun,
   type NewParticipant,
   type Participant,
+  type ParticipantUpdate,
   type Persona,
   type Project,
   type RoomSnapshot,
@@ -31,7 +35,20 @@ export class RoomError extends Error {
 }
 
 type ProjectRow = { id: string; name: string; owner_id: string; created_at: string }
-type ParticipantRow = { id: number; side: string; persona: string; name: string; created_at: string }
+type ParticipantRow = {
+  id: number
+  side: string
+  persona: string
+  name: string
+  job_title: string
+  organisation: string
+  lenses: string
+  notes: string
+  has_link: number
+  added_by: string
+  created_at: string
+  removed_at: string | null
+}
 type ItemRow = { id: number; participant_id: number; text: string; created_at: string }
 type FactRow = {
   id: number
@@ -78,13 +95,23 @@ const toProject = (row: ProjectRow): Project => ({
   createdAt: row.created_at,
 })
 
-const toParticipant = (row: ParticipantRow): Participant => ({
-  id: row.id,
-  side: row.side as Side,
-  persona: row.persona as Persona,
-  name: row.name,
-  createdAt: row.created_at,
-})
+const toParticipant = (row: ParticipantRow): Participant => {
+  const lenses = JSON.parse(row.lenses) as string[]
+  return {
+    id: row.id,
+    side: row.side as Side,
+    persona: row.persona as Persona,
+    name: row.name,
+    jobTitle: row.job_title,
+    organisation: row.organisation,
+    lenses: LENS_IDS.filter((lens) => lenses.includes(lens)),
+    notes: row.notes,
+    hasLink: row.has_link === 1,
+    addedBy: row.added_by as AddedBy,
+    createdAt: row.created_at,
+    removedAt: row.removed_at,
+  }
+}
 
 const toItem = (row: ItemRow): Item => ({
   id: row.id,
@@ -157,41 +184,110 @@ export function createProject(sql: Sql, input: { id: string; name: string; owner
   return readProject(sql)!
 }
 
+const PARTICIPANT = `SELECT id, side, persona, name, job_title, organisation, lenses, notes, has_link, added_by, created_at,
+  removed_at FROM participants`
+
+/** Old rooms keep `key_hash` NOT NULL UNIQUE, so a person with no link holds a value no secret ever hashes to. */
+const noKeyHash = () => `none:${crypto.randomUUID()}`
+
+/** The people on the project now. Removed people stay in the table, since facts and asks point at them. */
 export function listParticipants(sql: Sql): Participant[] {
-  return all<ParticipantRow>(sql, 'SELECT id, side, persona, name, created_at FROM participants ORDER BY id').map(
-    toParticipant,
-  )
+  return all<ParticipantRow>(sql, `${PARTICIPANT} WHERE removed_at IS NULL ORDER BY id`).map(toParticipant)
 }
 
 export function getParticipant(sql: Sql, id: number): Participant | null {
-  const row = first<ParticipantRow>(sql, 'SELECT id, side, persona, name, created_at FROM participants WHERE id = ?', id)
+  const row = first<ParticipantRow>(sql, `${PARTICIPANT} WHERE id = ? AND removed_at IS NULL`, id)
   return row ? toParticipant(row) : null
 }
 
-/** Stores only the hash of the person's key. */
-export function addParticipant(sql: Sql, input: NewParticipant, keyHash: string, now: Date): Participant {
-  const { name, persona, side } = newParticipantSchema.parse(input)
+const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
+
+export function findParticipantByName(sql: Sql, name: string, side: Side): Participant | null {
+  return listParticipants(sql).find((person) => person.side === side && sameName(person.name, name)) ?? null
+}
+
+/** Stores only the hash of the person's key. A null hash adds them with no link. */
+export function addParticipant(
+  sql: Sql,
+  input: NewParticipant,
+  keyHash: string | null,
+  now: Date,
+  addedBy: AddedBy = 'owner',
+): Participant {
+  const person = newParticipantSchema.parse(input)
   const row = first<{ id: number }>(
     sql,
-    'INSERT INTO participants (side, persona, name, key_hash, created_at) VALUES (?, ?, ?, ?, ?) RETURNING id',
-    side,
-    persona,
-    name,
-    keyHash,
+    `INSERT INTO participants (side, persona, name, job_title, organisation, lenses, notes, key_hash, has_link, added_by,
+       created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+    person.side,
+    person.persona,
+    person.name,
+    person.jobTitle ?? '',
+    person.organisation ?? '',
+    JSON.stringify(person.lenses ?? [PERSONA_LENS[person.persona]]),
+    person.notes ?? '',
+    keyHash ?? noKeyHash(),
+    keyHash ? 1 : 0,
+    addedBy,
     now.toISOString(),
   )!
   return getParticipant(sql, row.id)!
 }
 
-export function replaceKeyHash(sql: Sql, participantId: number, keyHash: string): Participant | null {
-  sql.exec('UPDATE participants SET key_hash = ? WHERE id = ?', keyHash, participantId)
+/** Changes only the fields given. Returns null when there is no such person on the project. */
+export function updateParticipant(sql: Sql, participantId: number, input: ParticipantUpdate): Participant | null {
+  const current = getParticipant(sql, participantId)
+  if (!current) return null
+  const changes = Object.entries(participantUpdateSchema.parse(input)).filter(([, value]) => value !== undefined)
+  const next: Participant = { ...current, ...Object.fromEntries(changes) }
+  sql.exec(
+    `UPDATE participants SET side = ?, persona = ?, name = ?, job_title = ?, organisation = ?, lenses = ?, notes = ?
+     WHERE id = ?`,
+    next.side,
+    next.persona,
+    next.name,
+    next.jobTitle,
+    next.organisation,
+    JSON.stringify(next.lenses),
+    next.notes,
+    participantId,
+  )
   return getParticipant(sql, participantId)
+}
+
+/** Gives a person a new key hash, which also gives a link to someone who had none. */
+export function replaceKeyHash(sql: Sql, participantId: number, keyHash: string): Participant | null {
+  sql.exec('UPDATE participants SET key_hash = ?, has_link = 1 WHERE id = ? AND removed_at IS NULL', keyHash, participantId)
+  return getParticipant(sql, participantId)
+}
+
+/**
+ * Takes a person off the project without deleting them, so their facts keep their source. Their key stops working
+ * at once and their open asks are dropped. Returns the removed person, or null when there was nobody to remove.
+ */
+export function removeParticipant(sql: Sql, participantId: number, now: Date): Participant | null {
+  if (!getParticipant(sql, participantId)) return null
+  const at = now.toISOString()
+  sql.exec(
+    'UPDATE participants SET removed_at = ?, has_link = 0, key_hash = ? WHERE id = ?',
+    at,
+    noKeyHash(),
+    participantId,
+  )
+  sql.exec(
+    `UPDATE asks SET status = 'dropped', closed_at = ? WHERE addressed_to = ? AND status = 'open'`,
+    at,
+    participantId,
+  )
+  const row = first<ParticipantRow>(sql, `${PARTICIPANT} WHERE id = ?`, participantId)
+  return row ? toParticipant(row) : null
 }
 
 export function findParticipantByKeyHash(sql: Sql, keyHash: string): Participant | null {
   const row = first<ParticipantRow>(
     sql,
-    'SELECT id, side, persona, name, created_at FROM participants WHERE key_hash = ?',
+    `${PARTICIPANT} WHERE key_hash = ? AND has_link = 1 AND removed_at IS NULL`,
     keyHash,
   )
   return row ? toParticipant(row) : null

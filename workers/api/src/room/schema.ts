@@ -1,4 +1,5 @@
-import type { Sql } from './sql'
+import { PERSONA_LENS, PERSONAS } from '@day15/shared/schema'
+import { all, type Sql } from './sql'
 
 /** Facts are never edited: `supersedes` is unique, so a fact can only be replaced once, by a newer row. */
 const STATEMENTS = [
@@ -15,7 +16,14 @@ const STATEMENTS = [
     persona TEXT NOT NULL,
     name TEXT NOT NULL,
     key_hash TEXT NOT NULL UNIQUE,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    job_title TEXT NOT NULL DEFAULT '',
+    organisation TEXT NOT NULL DEFAULT '',
+    lenses TEXT NOT NULL DEFAULT '[]',
+    notes TEXT NOT NULL DEFAULT '',
+    has_link INTEGER NOT NULL DEFAULT 1,
+    added_by TEXT NOT NULL DEFAULT 'owner',
+    removed_at TEXT
   )`,
   `CREATE TABLE IF NOT EXISTS items (
     id INTEGER PRIMARY KEY,
@@ -73,6 +81,32 @@ export function hasSchema(sql: Sql): boolean {
   return sql.exec(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'project'`).toArray().length > 0
 }
 
+/** Columns added to `participants` after rooms already existed, in the order they arrived. */
+const PARTICIPANT_COLUMNS: [name: string, definition: string][] = [
+  ['job_title', `TEXT NOT NULL DEFAULT ''`],
+  ['organisation', `TEXT NOT NULL DEFAULT ''`],
+  ['lenses', `TEXT NOT NULL DEFAULT '[]'`],
+  ['notes', `TEXT NOT NULL DEFAULT ''`],
+  ['has_link', 'INTEGER NOT NULL DEFAULT 1'],
+  ['added_by', `TEXT NOT NULL DEFAULT 'owner'`],
+  ['removed_at', 'TEXT'],
+]
+
+function addParticipantColumns(sql: Sql) {
+  const have = new Set(all<{ name: string }>(sql, 'PRAGMA table_info(participants)').map((column) => column.name))
+  for (const [name, definition] of PARTICIPANT_COLUMNS) {
+    if (have.has(name)) continue
+    sql.exec(`ALTER TABLE participants ADD COLUMN ${name} ${definition}`)
+    if (name === 'lenses') {
+      for (const persona of PERSONAS) {
+        sql.exec('UPDATE participants SET lenses = ? WHERE persona = ?', JSON.stringify([PERSONA_LENS[persona]]), persona)
+      }
+    }
+  }
+}
+
+/** Safe to run on every start, on a new room or one made before any later column. Run it in a transaction. */
 export function migrate(sql: Sql): void {
   for (const statement of STATEMENTS) sql.exec(statement)
+  addParticipantColumns(sql)
 }

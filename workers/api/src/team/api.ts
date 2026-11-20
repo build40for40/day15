@@ -1,4 +1,4 @@
-import { MAX_NAME_LENGTH, newParticipantSchema } from '@day15/shared/schema'
+import { MAX_NAME_LENGTH, newParticipantSchema, participantUpdateSchema } from '@day15/shared/schema'
 import { z } from 'zod'
 
 import { API_PATH, MCP_PATH, type Env, type HandleTeamApi } from '../contracts'
@@ -9,6 +9,10 @@ import { RoomError } from '../room/room'
 export type SignedIn = (request: Request, env: Env) => Promise<string | null>
 
 const nameBody = z.object({ name: z.string().trim().min(1).max(MAX_NAME_LENGTH) })
+
+const newPersonBody = newParticipantSchema.extend({ link: z.boolean().optional() })
+
+const PERSON_RULES = 'Each person needs a name, a persona and a side, and the rest has to be short enough.'
 
 const json = (body: unknown, status = 200) => Response.json(body, { status })
 const fail = (message: string, status: number) => json({ error: message }, status)
@@ -77,15 +81,33 @@ export function createTeamApi(signedIn: SignedIn): HandleTeamApi {
 
         if (segments.length === 3) {
           if (method !== 'POST') return fail('Use POST.', 405)
-          const body = await readBody(request, newParticipantSchema)
-          if (!body) return fail('Each person needs a name, a persona and a side.', 400)
-          const { participant, secret } = await room.addParticipant(body)
-          return json({ participant, address: address(url, projectId, secret) }, 201)
+          const body = await readBody(request, newPersonBody)
+          if (!body) return fail(PERSON_RULES, 400)
+          const { link, ...person } = body
+          const { participant, secret } = await room.addParticipant(person, { link })
+          return json({ participant, address: secret ? address(url, projectId, secret) : null }, 201)
+        }
+
+        const id = Number(personId)
+        if (!Number.isSafeInteger(id) || id < 1) return fail('No such person.', 404)
+
+        if (segments.length === 4) {
+          if (method === 'PATCH') {
+            const body = await readBody(request, participantUpdateSchema)
+            if (!body) return fail(PERSON_RULES, 400)
+            const participant = await room.updateParticipant(id, body)
+            return participant ? json({ participant }) : fail('No such person.', 404)
+          }
+          if (method === 'DELETE') {
+            const participant = await room.removeParticipant(id)
+            return participant ? json({ participant }) : fail('No such person.', 404)
+          }
+          return fail('Use PATCH or DELETE.', 405)
         }
 
         if (segments.length === 5 && action === 'address') {
           if (method !== 'POST') return fail('Use POST.', 405)
-          const result = await room.resetKey(Number(personId))
+          const result = await room.resetKey(id)
           if (!result) return fail('No such person.', 404)
           return json({ participant: result.participant, address: address(url, projectId, result.secret) })
         }

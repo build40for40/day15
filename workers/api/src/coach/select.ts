@@ -1,5 +1,5 @@
 import { LENS_IDS, type LensId } from '@day15/shared/lenses'
-import { PERSONA_LENS, TOPICS, type LensReport, type Participant, type RoomSnapshot, type Topic } from '@day15/shared/schema'
+import { OTHER_SIDE, SIDES, TOPICS, type LensReport, type Participant, type RoomSnapshot, type Side, type Topic } from '@day15/shared/schema'
 
 export type CandidateKind = 'fundamental_conflict' | 'workable_conflict' | 'priority_gap' | 'least_heard' | 'missing_topic'
 
@@ -13,7 +13,11 @@ export interface AskCandidate {
   because: string
   /** A plain question to fall back on when the model asks nothing. */
   question: string
+  /** True when nobody on this person's side speaks for the lens, so it falls to them without being theirs. */
+  unowned: boolean
 }
+
+type Found = Omit<AskCandidate, 'unowned'>
 
 /** The lens each brief topic matters most to, so a missing topic still has an owner. */
 export const TOPIC_LENS: Record<Exclude<Topic, 'other'>, LensId> = {
@@ -50,22 +54,44 @@ const lowerFirst = (text: string) => (/^[A-Z][a-z]/.test(text) ? text[0]!.toLowe
 
 const askAbout = (findOut: string) => `Could you tell me ${lowerFirst(sentence(findOut))}?`
 
-/** This person's own lens first, then the rest in their usual order. */
+/** The people on a side whose lenses include this one. */
+export function speakersFor(room: RoomSnapshot, lens: LensId, side: Side): Participant[] {
+  return room.participants.filter((person) => person.side === side && person.lenses.includes(lens))
+}
+
+/** Each side's lenses that nobody on that side speaks for. The other side's own lens is never a gap. */
+export function lensGaps(room: RoomSnapshot): Record<Side, LensId[]> {
+  const gaps = (side: Side) =>
+    LENS_IDS.filter((lens) => lens !== OTHER_SIDE[side] && !speakersFor(room, lens, side).length)
+  return Object.fromEntries(SIDES.map((side) => [side, gaps(side)])) as Record<Side, LensId[]>
+}
+
+/**
+ * A lens's asks go to the people on a side who speak for it, or to anyone on that side when nobody who can be
+ * asked does. People with no link can't be asked.
+ */
+export function routedTo(room: RoomSnapshot, participant: Participant, lens: LensId): boolean {
+  return (
+    participant.lenses.includes(lens) ||
+    !speakersFor(room, lens, participant.side).some((person) => person.hasLink)
+  )
+}
+
+/** This person's own lenses first, then the rest in their usual order. */
 function lensOrder(participant: Participant): LensId[] {
-  const own = PERSONA_LENS[participant.persona]
-  return [own, ...LENS_IDS.filter((lens) => lens !== own)]
+  return [...participant.lenses, ...LENS_IDS.filter((lens) => !participant.lenses.includes(lens))]
 }
 
 function reportsInOrder(room: RoomSnapshot, participant: Participant): [LensId, LensReport][] {
   return lensOrder(participant).flatMap((lens) => {
     const report = room.latestRuns[lens]?.report
-    return report ? [[lens, report] as [LensId, LensReport]] : []
+    return report && routedTo(room, participant, lens) ? [[lens, report] as [LensId, LensReport]] : []
   })
 }
 
-function conflicts(reports: [LensId, LensReport][], severity: 'fundamental' | 'workable'): AskCandidate[] {
+function conflicts(reports: [LensId, LensReport][], severity: 'fundamental' | 'workable'): Found[] {
   const seen = new Set<string>()
-  const found: AskCandidate[] = []
+  const found: Found[] = []
   for (const [lens, report] of reports) {
     for (const conflict of report.conflicts) {
       const key = conflict.topic.trim().toLowerCase()
@@ -90,7 +116,7 @@ function questionsFor(report: LensReport, participant: Participant) {
   return report.questions.filter((question) => question.ask === participant.side).sort((a, b) => a.priority - b.priority)
 }
 
-function priorityGaps(reports: [LensId, LensReport][], participant: Participant): AskCandidate[] {
+function priorityGaps(reports: [LensId, LensReport][], participant: Participant): Found[] {
   return reports.flatMap(([lens, report]) =>
     questionsFor(report, participant)
       .filter((question) => question.priority === 1)
@@ -112,7 +138,7 @@ export function heardFrom(room: RoomSnapshot, participant: Participant): Record<
   return counts
 }
 
-function leastHeard(room: RoomSnapshot, reports: [LensId, LensReport][], participant: Participant): AskCandidate[] {
+function leastHeard(room: RoomSnapshot, reports: [LensId, LensReport][], participant: Participant): Found[] {
   const counts = heardFrom(room, participant)
   const order = lensOrder(participant)
   return [...reports]
@@ -134,14 +160,14 @@ function leastHeard(room: RoomSnapshot, reports: [LensId, LensReport][], partici
 }
 
 /** Brief topics nobody on this person's side has a standing fact on, their own lens's topics first. */
-function missingTopics(room: RoomSnapshot, participant: Participant): AskCandidate[] {
+function missingTopics(room: RoomSnapshot, participant: Participant): Found[] {
   const covered = new Set(
     room.facts
       .filter((fact) => fact.status !== 'superseded' && fact.side === participant.side)
       .map((fact) => fact.topic),
   )
   const order = lensOrder(participant)
-  return BRIEF_TOPICS.filter((topic) => !covered.has(topic))
+  return BRIEF_TOPICS.filter((topic) => !covered.has(topic) && routedTo(room, participant, TOPIC_LENS[topic]))
     .sort((a, b) => order.indexOf(TOPIC_LENS[a]) - order.indexOf(TOPIC_LENS[b]))
     .map((topic) => ({
       kind: 'missing_topic' as const,
@@ -155,17 +181,22 @@ function missingTopics(room: RoomSnapshot, participant: Participant): AskCandida
 
 /**
  * What the coach could ask this person next, best first: fundamental conflicts, workable conflicts, priority 1
- * gaps for their side (their own lens first), then the lens they have heard least from. Brief topics their side
- * has said nothing about come last, so a room with no lens reports yet still has something to ask.
+ * gaps for their side (their own lenses first), then the lens they have heard least from. Brief topics their side
+ * has said nothing about come last, so a room with no lens reports yet still has something to ask. Only lenses
+ * routed to this person count: ones they speak for, and ones nobody on their side speaks for.
  */
 export function askCandidates(room: RoomSnapshot, participant: Participant): AskCandidate[] {
   if (LENS_IDS.every((lens) => room.latestRuns[lens]?.report?.done)) return []
   const reports = reportsInOrder(room, participant)
-  return [
+  const found: Found[] = [
     ...conflicts(reports, 'fundamental'),
     ...conflicts(reports, 'workable'),
     ...priorityGaps(reports, participant),
     ...leastHeard(room, reports, participant),
     ...missingTopics(room, participant),
   ]
+  return found.map((candidate) => ({
+    ...candidate,
+    unowned: !!candidate.lens && !participant.lenses.includes(candidate.lens),
+  }))
 }

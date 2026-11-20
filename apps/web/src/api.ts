@@ -1,3 +1,4 @@
+import type { LensId } from '@day15/shared/lenses'
 import type { Participant, Persona, Side } from '@day15/shared/schema'
 
 import { getAccessToken } from './auth'
@@ -20,9 +21,21 @@ export interface Session {
   projects: Project[]
 }
 
-export interface AddedPerson {
+/** Everything the owner can set about a person. */
+export interface PersonDetails {
+  name: string
+  jobTitle: string
+  organisation: string
+  side: Side
+  persona: Persona
+  lenses: LensId[]
+  notes: string
+}
+
+/** The address is shown once: right after the person is added with a link, or their link is reissued. */
+export interface PersonWithAddress {
   participant: Participant
-  address: string
+  address: string | null
 }
 
 export class ApiError extends Error {
@@ -49,10 +62,16 @@ async function request<T>(path: string, method = 'GET', body?: unknown): Promise
   return data as T
 }
 
+const person = (projectId: string, participantId: number) => `projects/${projectId}/people/${participantId}`
+
 export const getSession = () => request<Session>('session')
 export const createTeam = (name: string) => request<{ team: Team }>('team', 'POST', { name })
 export const createProject = (name: string) => request<{ project: Project }>('projects', 'POST', { name })
-export const addPerson = (projectId: string, person: { name: string; persona: Persona; side: Side }) =>
-  request<AddedPerson>(`projects/${projectId}/people`, 'POST', person)
+export const addPerson = (projectId: string, details: PersonDetails, link: boolean) =>
+  request<PersonWithAddress>(`projects/${projectId}/people`, 'POST', { ...details, link })
+export const updatePerson = (projectId: string, participantId: number, details: Partial<PersonDetails>) =>
+  request<{ participant: Participant }>(person(projectId, participantId), 'PATCH', details)
+export const removePerson = (projectId: string, participantId: number) =>
+  request<{ participant: Participant }>(person(projectId, participantId), 'DELETE')
 export const freshAddress = (projectId: string, participantId: number) =>
-  request<AddedPerson>(`projects/${projectId}/people/${participantId}/address`, 'POST')
+  request<PersonWithAddress & { address: string }>(`${person(projectId, participantId)}/address`, 'POST')

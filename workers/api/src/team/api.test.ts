@@ -88,6 +88,50 @@ describe('team API', () => {
     expect((await room.identify(secretOf(fresh.address)))?.id).toBe(added.participant.id)
   })
 
+  it('adds a person with their details and no link, and gives them one later', async () => {
+    const { call, rooms, projectId } = await teamWithProject()
+    const res = await call('POST', `/api/projects/${projectId}/people`, {
+      name: 'Robin',
+      persona: 'cfo',
+      side: 'client',
+      jobTitle: 'Finance Director',
+      organisation: 'Fake Juice Co',
+      lenses: ['procurement', 'cfo'],
+      notes: 'Signs anything over £10k.',
+      link: false,
+    })
+    expect(res.status).toBe(201)
+    const { participant, address } = await data(res)
+    expect(address).toBeNull()
+    expect(participant).toMatchObject({ jobTitle: 'Finance Director', lenses: ['cfo', 'procurement'], hasLink: false })
+
+    const linked = await data(await call('POST', `/api/projects/${projectId}/people/${participant.id}/address`))
+    expect(linked.participant.hasLink).toBe(true)
+    expect((await rooms.get(projectId)!.identify(parseKey(linked.address.split('/mcp/')[1])!.secret))?.id).toBe(participant.id)
+  })
+
+  it('updates a person in place', async () => {
+    const { call, projectId } = await teamWithProject()
+    const { participant } = await data(await call('POST', `/api/projects/${projectId}/people`, { name: 'Dana', persona: 'cfo', side: 'client' }))
+    const res = await call('PATCH', `/api/projects/${projectId}/people/${participant.id}`, { jobTitle: 'CFO', lenses: ['cfo', 'cto'] })
+    expect(res.status).toBe(200)
+    expect((await data(res)).participant).toMatchObject({ id: participant.id, name: 'Dana', jobTitle: 'CFO', lenses: ['cfo', 'cto'] })
+    expect((await call('PATCH', `/api/projects/${projectId}/people/${participant.id}`, { side: 'neither' })).status).toBe(400)
+    expect((await call('PATCH', `/api/projects/${projectId}/people/999`, { name: 'Nobody' })).status).toBe(404)
+  })
+
+  it('removes a person: their address stops working and they leave the list', async () => {
+    const { call, rooms, projectId } = await teamWithProject()
+    const added = await data(await call('POST', `/api/projects/${projectId}/people`, { name: 'Pat', persona: 'procurement', side: 'client' }))
+    const res = await call('DELETE', `/api/projects/${projectId}/people/${added.participant.id}`)
+    expect(res.status).toBe(200)
+    expect((await data(res)).participant.removedAt).toEqual(expect.any(String))
+    expect(await rooms.get(projectId)!.identify(parseKey(added.address.split('/mcp/')[1])!.secret)).toBeNull()
+    const { projects } = await data(await call('GET', '/api/projects'))
+    expect(projects[0].participants).toEqual([])
+    expect((await call('DELETE', `/api/projects/${projectId}/people/${added.participant.id}`)).status).toBe(404)
+  })
+
   it('rejects a person with no side', async () => {
     const { call, projectId } = await teamWithProject()
     expect((await call('POST', `/api/projects/${projectId}/people`, { name: 'Pat', persona: 'cfo' })).status).toBe(400)

@@ -1,11 +1,16 @@
 import { parseRef } from '@day15/shared/refs'
 import {
+  MAX_JOB_TITLE_LENGTH,
+  MAX_NAME_LENGTH,
+  MAX_NOTES_LENGTH,
+  MAX_ORGANISATION_LENGTH,
   MAX_QUOTE_LENGTH,
   MAX_STATEMENT_LENGTH,
   type Ask,
   type Fact,
   type Item,
   type NewAsk,
+  type NewParticipant,
   type NewPersonFact,
   type Participant,
   type RoomSnapshot,
@@ -28,6 +33,8 @@ export interface NextAskPlan {
 export interface TurnPlan extends NextAskPlan {
   facts: NewPersonFact[]
   answered: number[]
+  /** People named in the message, to add with no link. The room skips anyone already listed. */
+  people: NewParticipant[]
   noted: string
 }
 
@@ -109,6 +116,24 @@ export function planFacts(output: CoachTurnOutput, context: PlanContext & { item
   return facts
 }
 
+/** People the message named, cleaned up, on the speaker's side unless the model was sure of the other. */
+export function planPeople(output: CoachTurnOutput, participant: Participant): NewParticipant[] {
+  return (output.people_mentioned ?? []).flatMap((person) => {
+    const name = clip(person.name, MAX_NAME_LENGTH)
+    if (!name) return []
+    return [
+      {
+        name,
+        persona: person.persona,
+        side: person.side ?? participant.side,
+        jobTitle: clip(person.job_title, MAX_JOB_TITLE_LENGTH),
+        organisation: clip(person.organisation, MAX_ORGANISATION_LENGTH),
+        notes: clip(person.notes, MAX_NOTES_LENGTH),
+      },
+    ]
+  })
+}
+
 /** Open asks anywhere in the room that this message answered. */
 export function planAnswered(output: CoachTurnOutput, room: RoomSnapshot): number[] {
   const open = new Set(room.asks.filter((ask) => ask.status === 'open').map((ask) => ask.id))
@@ -164,6 +189,7 @@ export function planTurn(output: CoachTurnOutput, context: PlanContext & { item:
   return {
     facts: planFacts(output, context),
     answered,
+    people: planPeople(output, context.participant),
     noted: output.noted.trim(),
     ...planNextAsk(output.next_ask, { ...context, answered }),
   }

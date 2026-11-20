@@ -11,6 +11,7 @@ import type {
   NewLensRun,
   NewParticipant,
   Participant,
+  ParticipantUpdate,
   Project,
   RoomSnapshot,
 } from '@day15/shared/schema'
@@ -34,7 +35,7 @@ export class RoomStore {
     private readonly now: () => Date = () => new Date(),
   ) {
     this.migrated = hasSchema(sql)
-    if (this.migrated) migrate(sql)
+    if (this.migrated) this.transaction(() => migrate(sql))
   }
 
   /** A room nobody created writes nothing, so guessing project ids leaves no storage behind. */
@@ -47,7 +48,7 @@ export class RoomStore {
   }
 
   async create(input: { id: string; name: string; ownerId: string }): Promise<Project> {
-    if (!this.migrated) migrate(this.sql)
+    if (!this.migrated) this.transaction(() => migrate(this.sql))
     this.migrated = true
     return room.createProject(this.sql, input, this.now())
   }
@@ -56,16 +57,46 @@ export class RoomStore {
     return this.readProject()
   }
 
-  /** The secret comes back once and is never stored: only its hash is. */
-  async addParticipant(input: NewParticipant): Promise<{ participant: Participant; secret: string }> {
+  /**
+   * The secret comes back once and is never stored: only its hash is. With `link: false` the person is added with
+   * no way in, and the secret is null.
+   */
+  async addParticipant(
+    input: NewParticipant,
+    options: { link?: boolean } = {},
+  ): Promise<{ participant: Participant; secret: string | null }> {
     this.exists()
-    const secret = newSecret()
-    const keyHash = await hashSecret(secret)
+    const secret = options.link === false ? null : newSecret()
+    const keyHash = secret ? await hashSecret(secret) : null
     return { participant: room.addParticipant(this.sql, input, keyHash, this.now()), secret }
   }
 
-  /** Gives a person a new secret, so their old address stops working. */
+  /** People the coach heard about, with no link. Anyone already listed by that name on that side is skipped. */
+  async addMentioned(people: NewParticipant[]): Promise<Participant[]> {
+    this.exists()
+    return this.transaction(() => {
+      const added: Participant[] = []
+      for (const person of people) {
+        if (room.findParticipantByName(this.sql, person.name, person.side)) continue
+        added.push(room.addParticipant(this.sql, person, null, this.now(), 'coach'))
+      }
+      return added
+    })
+  }
+
+  async updateParticipant(participantId: number, input: ParticipantUpdate): Promise<Participant | null> {
+    this.exists()
+    return room.updateParticipant(this.sql, participantId, input)
+  }
+
+  async removeParticipant(participantId: number): Promise<Participant | null> {
+    this.exists()
+    return this.transaction(() => room.removeParticipant(this.sql, participantId, this.now()))
+  }
+
+  /** Gives a person a new secret, so their old address stops working. Gives a link to someone who had none. */
   async resetKey(participantId: number): Promise<{ participant: Participant; secret: string } | null> {
+    this.exists()
     const secret = newSecret()
     const participant = room.replaceKeyHash(this.sql, participantId, await hashSecret(secret))
     return participant ? { participant, secret } : null

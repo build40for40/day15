@@ -9,7 +9,7 @@ import { asStub, fixtureRoom, memoryRoom } from '../testing'
 import { COACH_FAILED, NO_CONFLICTS, NO_PROJECT, NOT_CHECKED, OPEN_ROOM_GUIDE } from './text'
 import { openRoom, readRoom, tellCoach, type McpDeps } from './tools'
 
-const COACH_REPLY = { reply: 'Noted: launch in July.\n\nWhat does done look like for the board?', itemId: 1, noted: [], closed: [], ask: null }
+const COACH_REPLY = { reply: 'Noted: launch in July.\n\nWhat does done look like for the board?', itemId: 1, noted: [], people: [], closed: [], ask: null }
 
 async function setup(deps: Partial<McpDeps> = {}) {
   const fixture = await fixtureRoom()
