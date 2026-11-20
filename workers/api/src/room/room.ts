@@ -1,4 +1,4 @@
-import { LENS_IDS, type LensId } from '@day15/shared/lenses'
+import { currentLens, currentLenses, LENS_IDS, type LensId } from '@day15/shared/lenses'
 import {
   lensReportSchema,
   upgradeStoredReport,
@@ -108,7 +108,7 @@ const toParticipant = (row: ParticipantRow): Participant => {
     name: row.name,
     jobTitle: row.job_title,
     organisation: row.organisation,
-    lenses: LENS_IDS.filter((lens) => lenses.includes(lens)),
+    lenses: currentLenses(lenses),
     notes: row.notes,
     hasLink: row.has_link === 1,
     addedBy: row.added_by as AddedBy,
@@ -133,7 +133,7 @@ const toFact = (row: FactRow): Fact => ({
   authorKind: row.author_kind as Fact['authorKind'],
   participantId: row.participant_id,
   lensRunId: row.lens_run_id,
-  lens: row.lens as LensId | null,
+  lens: row.lens ? currentLens(row.lens) : null,
   side: row.side as Side | null,
   sourceItemId: row.source_item_id,
   sourceQuote: row.source_quote,
@@ -146,7 +146,7 @@ const toFact = (row: FactRow): Fact => ({
 
 const toLensRun = (row: LensRunRow): LensRun => ({
   id: row.id,
-  lens: row.lens as LensId,
+  lens: currentLens(row.lens)!,
   round: row.round,
   watermark: row.watermark,
   report: row.report ? lensReportSchema.parse(upgradeStoredReport(JSON.parse(row.report))) : null,
@@ -159,7 +159,7 @@ const toAsk = (row: AskRow): Ask => ({
   addressedTo: row.addressed_to,
   ask: row.ask,
   because: row.because,
-  lens: row.lens as LensId | null,
+  lens: row.lens ? currentLens(row.lens) : null,
   status: row.status as AskStatus,
   answeredBy: row.answered_by,
   createdAt: row.created_at,
@@ -410,11 +410,11 @@ export function saveLensRun(sql: Sql, input: NewLensRun, now: Date): LensRun {
 export function latestRuns(sql: Sql): Partial<Record<LensId, LensRun>> {
   const rows = all<LensRunRow>(
     sql,
-    `SELECT * FROM lens_runs WHERE id IN (SELECT MAX(id) FROM lens_runs WHERE status = 'done' GROUP BY lens)`,
+    `SELECT * FROM lens_runs WHERE id IN (SELECT MAX(id) FROM lens_runs WHERE status = 'done' GROUP BY lens) ORDER BY id DESC`,
   )
   const runs: Partial<Record<LensId, LensRun>> = {}
   for (const lens of LENS_IDS) {
-    const row = rows.find((run) => run.lens === lens)
+    const row = rows.find((run) => currentLens(run.lens) === lens)
     if (row) runs[lens] = toLensRun(row)
   }
   return runs

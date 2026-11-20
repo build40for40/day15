@@ -31,18 +31,18 @@ describe('RoomStore', () => {
   it("gives a person their persona's lens unless told otherwise, in the usual lens order", async () => {
     const room = memoryRoom()
     await room.create({ id: 'project-1', name: 'Fake', ownerId: 'user_fake' })
-    const add = (lenses?: ('cfo' | 'procurement' | 'agency')[]) =>
+    const add = (lenses?: ('procurement' | 'client' | 'agency')[]) =>
       room.addParticipant({ name: 'Fake Person', persona: 'delivery_lead', side: 'agency', lenses })
-    expect((await add()).participant.lenses).toEqual(['cto'])
-    expect((await add(['procurement', 'cfo', 'procurement'])).participant.lenses).toEqual(['cfo', 'procurement'])
+    expect((await add()).participant.lenses).toEqual(['procurement'])
+    expect((await add(['procurement', 'agency', 'procurement'])).participant.lenses).toEqual(['agency', 'procurement'])
     expect((await add([])).participant.lenses).toEqual([])
   })
 
   it('edits a person in place, changing only what it is given', async () => {
     const { room, people } = await fixtureRoom()
     const casey = people.casey.participant
-    const edited = await room.updateParticipant(casey.id, { jobTitle: 'Head of Brand', lenses: ['client', 'cfo'] })
-    expect(edited).toEqual({ ...casey, jobTitle: 'Head of Brand', lenses: ['cfo', 'client'] })
+    const edited = await room.updateParticipant(casey.id, { jobTitle: 'Head of Brand', lenses: ['client', 'procurement'] })
+    expect(edited).toEqual({ ...casey, jobTitle: 'Head of Brand', lenses: ['client', 'procurement'] })
     expect(await room.identify(people.casey.secret)).toEqual(edited)
   })
 
@@ -100,13 +100,13 @@ describe('RoomStore', () => {
     const snapshot = (await room.read())!
     expect(snapshot.project.id).toBe(FIXTURE_PROJECT.id)
     expect(snapshot.participants.map((person) => person.side)).toEqual(['agency', 'agency', 'client', 'client', 'client', 'client'])
-    expect(snapshot.participants.find((person) => person.lenses.length > 1)).toMatchObject({ name: 'Alex Example', lenses: ['cfo', 'agency'] })
+    expect(snapshot.participants.find((person) => person.lenses.length > 1)).toMatchObject({ name: 'Alex Example', lenses: ['agency', 'procurement'] })
     expect(snapshot.participants.at(-1)).toMatchObject({ name: 'Morgan Madeup', hasLink: false, addedBy: 'coach' })
     expect(facts.monthlyBoard!.id).toBe(facts.fortnightlyBoard!.supersedes)
     expect(snapshot.facts.find((fact) => fact.id === facts.monthlyBoard!.id)!.status).toBe('superseded')
-    expect(snapshot.facts.at(-1)).toMatchObject({ authorKind: 'lens', lens: 'cfo', topic: 'budget' })
+    expect(snapshot.facts.at(-1)).toMatchObject({ authorKind: 'lens', lens: 'procurement', topic: 'budget' })
     expect(snapshot.watermark).toBe(facts.budgetGap!.id)
-    expect(snapshot.latestRuns.cfo!.report!.conflicts[0]!.priority).toBe(1)
+    expect(snapshot.latestRuns.procurement!.report!.conflicts[0]!.priority).toBe(1)
     expect(snapshot.asks.filter((ask) => ask.status === 'open')).toHaveLength(1)
   })
 })

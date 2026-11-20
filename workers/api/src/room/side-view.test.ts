@@ -20,7 +20,7 @@ describe('sideView', () => {
     expect(view.facts.map((fact) => fact.id)).toContain(facts.twelveWeeks!.id)
     expect(view.participants.find((person) => person.name === 'Alex Example')).toMatchObject({
       notes: "Signs off the agency's quotes.",
-      lenses: ['cfo', 'agency'],
+      lenses: ['agency', 'procurement'],
     })
     expect(view.openQuestions.find((question) => question.id === 2)).toMatchObject({ withheld: false })
   })

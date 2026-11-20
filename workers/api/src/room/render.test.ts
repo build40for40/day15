@@ -25,14 +25,14 @@ describe('renderRoom', () => {
     const text = renderRoom((await room.read())!)
     expect(text).toContain(`Replaces f${facts.monthlyBoard!.id}.`)
     expect(text).toContain(
-      `f${facts.budgetGap!.id} [budget] proposed by the CFO lens in r1, from f${facts.quoteCovers!.id} and f${facts.wholeBudget!.id}:`,
+      `f${facts.budgetGap!.id} [budget] proposed by the Procurement lens in r1, from f${facts.quoteCovers!.id} and f${facts.wholeBudget!.id}:`,
     )
   })
 
   it('only grows at the end of the facts, so the prefix stays the same for caching', async () => {
     const { room, people, items } = await fixtureRoom()
     const before = renderRoom((await room.read())!)
-    await room.addAsk({ addressedTo: people.robin.participant.id, ask: 'Is VAT in that?', because: '', lens: 'cfo' })
+    await room.addAsk({ addressedTo: people.robin.participant.id, ask: 'Is VAT in that?', because: '', lens: 'procurement' })
     await room.addFacts([
       {
         authorKind: 'person',
@@ -48,7 +48,7 @@ describe('renderRoom', () => {
     const factsEnd = before.indexOf('\n\n## Private facts')
     expect(after.startsWith(before.slice(0, factsEnd))).toBe(true)
     expect(after).toContain('proposed, to be confirmed by p4 (client side) in i4: The budget includes VAT.')
-    expect(after).toContain('to p4 Robin Fakeworth, for the CFO lens: Is VAT in that?')
+    expect(after).toContain('to p4 Robin Fakeworth, for the Procurement lens: Is VAT in that?')
   })
 
   it('keeps a proposed fact\'s line as it was once a later fact replaces it', async () => {
@@ -68,8 +68,8 @@ describe('renderRoom', () => {
     const text = renderRoom((await room.read())!)
     const people = text.slice(text.indexOf('## People'), text.indexOf('## Open asks'))
     expect(people).toContain(
-      "p1 Alex Example, Managing Director at Make-Believe Studio. Agency side, Agency lead. Speaks for the CFO and " +
-        "Agency lenses. Has a link. Notes: Signs off the agency's quotes.\n",
+      "p1 Alex Example, Managing Director at Make-Believe Studio. Agency side, Agency lead. Speaks for the Agency and " +
+        "Procurement lenses. Has a link. Notes: Signs off the agency's quotes.\n",
     )
     expect(people).toContain(
       'p6 Morgan Madeup, Chair of the brand board at Pipsqueak Juice. Client side, Marketing lead. Speaks for the ' +
@@ -105,7 +105,7 @@ describe('renderRoom', () => {
     const text = renderRoom((await room.read())!)
     const open = text.slice(text.indexOf('## Open questions'), text.indexOf('## Open asks'))
     expect(text.indexOf('## Open questions')).toBeGreaterThan(text.indexOf('## People'))
-    expect(open.indexOf('q2 [high (1) priority] gap in Budget, for the client side, raised by the CFO lens in r1')).toBeGreaterThan(0)
+    expect(open.indexOf('q2 [high (1) priority] gap in Budget, for the client side, raised by the Procurement lens in r1')).toBeGreaterThan(0)
     expect(open.indexOf('q2 ')).toBeLessThan(open.indexOf('q1 [medium (2) priority] conflict on "What the price covers"'))
   })
 

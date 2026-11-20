@@ -35,7 +35,5 @@ export const TOPIC_AREA: Record<Topic, AlignmentAreaId> = {
 export const LENS_AREA: Record<LensId, AlignmentAreaId> = {
   client: 'goal_and_success',
   agency: 'ways_of_working',
-  cto: 'scope',
-  cfo: 'budget',
-  procurement: 'procurement_and_contract',
+  procurement: 'scope',
 }
