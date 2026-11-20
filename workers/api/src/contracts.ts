@@ -32,6 +32,8 @@ export interface CoachReply {
   itemId: number
   /** Facts the coach took from it. */
   noted: Fact[]
+  /** People it named who were not on the list, now added with no link. */
+  people: Participant[]
   /** Asks it answered or made moot. */
   closed: Ask[]
   /** The one thing the coach needs next from this person, or null when it needs nothing. */

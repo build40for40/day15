@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 import { LENS_IDS } from '@day15/shared/lenses'
-import { topicSchema } from '@day15/shared/schema'
+import { personaSchema, SIDES, topicSchema } from '@day15/shared/schema'
 
 const noteSchema = z.object({
   topic: topicSchema,
@@ -31,10 +31,26 @@ export const nextAskSchema = z.object({
     .describe("The id (like a4) of this person's open ask when you are asking it again, otherwise null."),
 })
 
+const mentionedPersonSchema = z.object({
+  name: z.string().describe('Their name as it was said. Only people named, never "the CFO" or "my boss".'),
+  job_title: z.string().describe('Their job title if it was said, otherwise empty.'),
+  organisation: z.string().describe('Their organisation if it was said, otherwise empty.'),
+  side: z
+    .enum(SIDES)
+    .nullable()
+    .describe("The side they are on if it is clear, otherwise null for the speaker's own side."),
+  persona: personaSchema.describe('The seat closest to their role, your best guess from what was said.'),
+  notes: z.string().describe('What was said about them: who they report to, what they sign off. Empty if nothing.'),
+})
+
 export const coachTurnOutputSchema = z.object({
   facts: z.array(noteSchema).describe('Every separate fact in this message. Empty when there are none.'),
   answered_asks: z.array(z.string()).describe('Ids (like a4) of open asks this message answers.'),
   confirmed: z.array(confirmationSchema).describe('Proposed facts this person clearly agreed with.'),
+  people_mentioned: z
+    .array(mentionedPersonSchema)
+    .optional()
+    .describe('People named in this message who are involved in the project and not in the people list yet.'),
   noted: z.string().describe('One or two warm sentences playing back what you noted. No question here.'),
   next_ask: nextAskSchema.nullable().describe('The one next thing you need from this person, or null if nothing.'),
 })
@@ -47,5 +63,6 @@ export const openingOutputSchema = z.object({
 })
 
 export type NextAskOutput = z.infer<typeof nextAskSchema>
+export type MentionedPersonOutput = z.infer<typeof mentionedPersonSchema>
 export type CoachTurnOutput = z.infer<typeof coachTurnOutputSchema>
 export type OpeningOutput = z.infer<typeof openingOutputSchema>

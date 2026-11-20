@@ -4,19 +4,18 @@ import { PERSONA_NAMES, type Ask, type Fact, type Participant, type RoomSnapshot
 
 const oneLine = (text: string) => text.replace(/\s+/g, ' ').trim()
 
-const person = (participant: Participant) =>
-  `${participant.name} (${ref('participant', participant.id)}, ${participant.side} side, ${PERSONA_NAMES[participant.persona]})`
+const list = (items: string[]) =>
+  items.length > 1 ? `${items.slice(0, -1).join(', ')} and ${items.at(-1)}` : (items[0] ?? '')
 
-const list = (refs: string[]) =>
-  refs.length > 1 ? `${refs.slice(0, -1).join(', ')} and ${refs.at(-1)}` : (refs[0] ?? '')
-
-/** One fact, readable on its own. Built only from what never changes once written, so old lines never move. */
-export function renderFact(fact: Fact, people: Map<number, Participant>): string {
+/**
+ * One fact, readable on its own. Built only from what never changes once written, so old lines never move: the
+ * person is named by id and the side stored on the fact, since names and roles can be edited in the people list.
+ */
+export function renderFact(fact: Fact): string {
   const head = `${ref('fact', fact.id)} [${fact.topic}]`
   let source: string
   if (fact.authorKind === 'person') {
-    const who = fact.participantId && people.get(fact.participantId)
-    const by = who ? person(who) : ref('participant', fact.participantId ?? 0)
+    const by = `${ref('participant', fact.participantId ?? 0)}${fact.side ? ` (${fact.side} side)` : ''}`
     source = `${fact.statedAs === 'proposed' ? 'proposed, to be confirmed by' : 'said by'} ${by} in ${ref('item', fact.sourceItemId ?? 0)}`
   } else {
     const lens = fact.lens ? `the ${LENS_NAMES[fact.lens]} lens` : 'a lens'
@@ -26,6 +25,24 @@ export function renderFact(fact: Fact, people: Map<number, Participant>): string
   const replaces = fact.supersedes ? ` Replaces ${ref('fact', fact.supersedes)}.` : ''
   const quote = fact.sourceQuote ? ` Quote: "${oneLine(fact.sourceQuote)}"` : ''
   return `${head} ${source}${basedOn}: ${oneLine(fact.statement)}${replaces}${quote}`
+}
+
+function link(person: Participant): string {
+  if (person.hasLink) return 'Has a link.'
+  return person.addedBy === 'coach' ? 'No link: mentioned in conversation.' : 'No link yet.'
+}
+
+/** One person on one line: who they are, their side and seat, the lenses that speak for them, and their link. */
+export function renderPerson(person: Participant): string {
+  const role = [person.jobTitle, person.organisation].map(oneLine).filter(Boolean).join(' at ')
+  const lenses = person.lenses.length
+    ? `Speaks for the ${list(person.lenses.map((lens) => LENS_NAMES[lens]))} ${person.lenses.length > 1 ? 'lenses' : 'lens'}.`
+    : 'Speaks for no lens.'
+  const notes = oneLine(person.notes) ? ` Notes: ${oneLine(person.notes)}` : ''
+  return (
+    `${ref('participant', person.id)} ${oneLine(person.name)}${role ? `, ${role}` : ''}. ` +
+    `${person.side === 'agency' ? 'Agency' : 'Client'} side, ${PERSONA_NAMES[person.persona]}. ${lenses} ${link(person)}${notes}`
+  )
 }
 
 function renderAsk(ask: Ask, people: Map<number, Participant>): string {
@@ -48,10 +65,11 @@ export function renderRoom(room: RoomSnapshot): string {
     'An agency and a client are agreeing brief, scope and budget before work starts. Everything below is shared ' +
       'by both sides. Ids are short: f is a fact, i something a person said, p a person, a an ask, r a lens run.',
     '## Facts, oldest first',
-    'Each line stands alone. When a line replaces an earlier one, the earlier one no longer holds.',
-    room.facts.length ? room.facts.map((fact) => renderFact(fact, people)).join('\n') : 'No facts yet.',
+    'Each line stands alone. When a line replaces an earlier one, the earlier one no longer holds. Who said what ' +
+      'is given by person id: the people list below says who each one is.',
+    room.facts.length ? room.facts.map(renderFact).join('\n') : 'No facts yet.',
     '## People',
-    room.participants.length ? room.participants.map((participant) => person(participant)).join('\n') : 'Nobody yet.',
+    room.participants.length ? room.participants.map(renderPerson).join('\n') : 'Nobody yet.',
     '## Open asks',
     open.length ? open.map((ask) => renderAsk(ask, people)).join('\n') : 'None.',
   ].join('\n\n')

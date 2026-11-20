@@ -1,7 +1,7 @@
 import { generateText, Output, type SystemModelMessage } from 'ai'
 import type { z } from 'zod'
 
-import type { Ask, Fact, NewPersonFact, Participant, RoomSnapshot } from '@day15/shared/schema'
+import type { Ask, Fact, NewParticipant, NewPersonFact, Participant, RoomSnapshot } from '@day15/shared/schema'
 import type { CoachReply, CoachTurn, Env, OpeningBrief, OpeningBriefFn, RoomStub } from '../contracts'
 import { anthropicModel, logModelError, ModelUnavailableError, PROVIDER_OPTIONS } from '../model'
 import { composeReply, planNextAsk, planTurn, type NextAskPlan } from './plan'
@@ -71,6 +71,17 @@ async function writeFacts(room: RoomStub, facts: NewPersonFact[]): Promise<Fact[
   }
 }
 
+/** A person the room refuses is not worth losing the turn over. */
+async function writePeople(room: RoomStub, people: NewParticipant[]): Promise<Participant[]> {
+  if (!people.length) return []
+  try {
+    return await room.addMentioned(people)
+  } catch (error) {
+    console.error('Coach people write failed:', error instanceof Error ? error.name : 'Unknown error')
+    return []
+  }
+}
+
 async function writeNextAsk(room: RoomStub, participant: Participant, plan: NextAskPlan) {
   const closed: Ask[] = []
   for (const id of plan.dropped) {
@@ -109,6 +120,7 @@ export async function runCoachTurn(
 
   const plan = planTurn(output, { room: snapshot, participant, item, candidates })
   const noted = await writeFacts(room, plan.facts)
+  const people = await writePeople(room, plan.people)
   const closed: Ask[] = []
   for (const id of plan.answered) {
     const answered = await room.closeAsk(id, { status: 'answered', answeredBy: item.id })
@@ -120,6 +132,7 @@ export async function runCoachTurn(
     reply: composeReply(plan.noted, plan.text),
     itemId: item.id,
     noted,
+    people,
     closed: [...closed, ...next.closed],
     ask: next.next,
   }

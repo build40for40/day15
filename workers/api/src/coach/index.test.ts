@@ -47,6 +47,39 @@ describe('runCoachTurn', () => {
     expect(calls[0]!.prompt).toContain('We mean the tone.')
   })
 
+  it('adds people the message named with no link, without duplicating anyone already listed', async () => {
+    const { room, stub, people } = await fixtureRoom()
+    const before = (await room.participants()).length
+    const mentioned = { job_title: '', organisation: '', side: null, notes: '' }
+    const { generate } = fake({
+      facts: [],
+      answered_asks: [],
+      confirmed: [],
+      people_mentioned: [
+        { ...mentioned, name: 'robin fakeworth', persona: 'cfo' },
+        { ...mentioned, name: 'Sam Pretend', persona: 'procurement', job_title: 'Legal Counsel', notes: 'Reviews every contract.' },
+        { ...mentioned, name: 'SAM PRETEND', persona: 'procurement' },
+      ],
+      noted: 'Noted: Sam reviews contracts.',
+      next_ask: null,
+    })
+
+    const reply = await runCoachTurn(generate, stub, people.casey.participant, 'Robin and Sam Pretend, our Legal Counsel, see every contract.')
+
+    expect(reply.people).toEqual([
+      expect.objectContaining({
+        name: 'Sam Pretend',
+        side: 'client',
+        jobTitle: 'Legal Counsel',
+        lenses: ['procurement'],
+        notes: 'Reviews every contract.',
+        hasLink: false,
+        addedBy: 'coach',
+      }),
+    ])
+    expect(await room.participants()).toHaveLength(before + 1)
+  })
+
   it('keeps what the person said even when the model is not set up', async () => {
     const { room, stub, people } = await fixtureRoom()
     const { generate } = fake(new ModelUnavailableError())

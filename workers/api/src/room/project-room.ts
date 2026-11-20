@@ -23,6 +23,15 @@ export class ProjectRoom extends DurableObject<Env> {
   addParticipant(...args: Args<'addParticipant'>) {
     return this.store.addParticipant(...args)
   }
+  addMentioned(...args: Args<'addMentioned'>) {
+    return this.store.addMentioned(...args)
+  }
+  updateParticipant(...args: Args<'updateParticipant'>) {
+    return this.store.updateParticipant(...args)
+  }
+  removeParticipant(...args: Args<'removeParticipant'>) {
+    return this.store.removeParticipant(...args)
+  }
   resetKey(...args: Args<'resetKey'>) {
     return this.store.resetKey(...args)
   }

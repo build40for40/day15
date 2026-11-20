@@ -13,7 +13,7 @@ async function setup() {
   const fixture = await fixtureRoom()
   const env = { ROOMS: { getByName: () => fixture.stub } } as unknown as Env
   const deps = {
-    coachTurn: vi.fn(async () => ({ reply: 'Noted. What does done look like?', itemId: 1, noted: [], closed: [], ask: null })),
+    coachTurn: vi.fn(async () => ({ reply: 'Noted. What does done look like?', itemId: 1, noted: [], people: [], closed: [], ask: null })),
     openingBrief: vi.fn(async () => ({ reply: 'Hello Casey.', ask: null })),
     runLensRounds: vi.fn(async () => {}),
   }
