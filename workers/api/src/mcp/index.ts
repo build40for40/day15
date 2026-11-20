@@ -1,7 +1,6 @@
+import { coachTurn, openingBrief } from '../coach'
 import type { HandleMcp } from '../contracts'
-import { identify } from './identify'
+import { runLensRounds } from '../lenses'
+import { createHandleMcp } from './server'
 
-export const handleMcp: HandleMcp = async (request, env) => {
-  if (!(await identify(request, env))) return new Response("That address doesn't lead anywhere.", { status: 404 })
-  return new Response('The MCP server is not built yet.', { status: 501 })
-}
+export const handleMcp: HandleMcp = createHandleMcp({ coachTurn, openingBrief, runLensRounds })

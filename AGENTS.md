@@ -114,7 +114,7 @@ All from the repo root.
 
 ## Persona harnesses
 
-`persona-harnesses/` holds the five persona harnesses (client, agency, CFO, procurement, delivery) as plain markdown, with the shared wrapper and report format in its `README.md`. Each is written as AIM: Actor, Instructions, Mission. Samira owns the five persona files. Ben owns the shared wrapper, the report format and how they are wired in, so don't change those when asked to edit a persona. They are the lenses: the Worker bundles these files as they are (a `rules` entry in `wrangler.jsonc`, and a small plugin in `workers/api/vitest.config.ts` for tests), so editing a persona file changes what that lens does on the next deploy, with no code change. The `##` headings (Actor, Instructions, Mission) are checked by a test. Lens id `cto` is the delivery persona.
+`persona-harnesses/` holds the five persona harnesses (client, agency, CFO, procurement, delivery) as plain markdown, with the shared wrapper and report format in its `README.md`. Each is written as AIM: Actor, Instructions, Mission. Samira owns the five persona files. Ben owns the shared wrapper, the report format and how they are wired in, so don't change those when asked to edit a persona. They are the lenses: the Worker bundles these files as they are (a `rules` entry in `wrangler.jsonc`, and a small plugin in `workers/api/vitest.config.ts` for tests), so editing a persona file changes what that lens does on the next deploy, with no code change. The `##` headings (Actor, Instructions, Mission) are checked by a test. Lens id `cto` is the delivery persona. The coach's own harness sits beside them as `coach.md`, with the background it leans on in `coach-reference.md`.
 
 ## The problem
 

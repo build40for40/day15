@@ -1,4 +1,5 @@
 import type { HandleTeamApi } from '../contracts'
+import { createTeamApi } from './api'
+import { signedInUser } from './auth'
 
-export const handleTeamApi: HandleTeamApi = async () =>
-  Response.json({ error: 'The team API is not built yet.' }, { status: 501 })
+export const handleTeamApi: HandleTeamApi = createTeamApi(signedInUser)
