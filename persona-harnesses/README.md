@@ -12,11 +12,23 @@ Neither the agency nor the client ever sees a persona, its name or its report. T
 | `personas/procurement.md` | Procurement | The agreement, and the bad day |
 | `personas/delivery.md` | Delivery | The promise being buildable |
 
+## AIM: Actor, Instructions, Mission
+
+Every persona harness is written in the same three parts.
+
+- **Actor:** who the persona is and what it protects.
+- **Instructions:** the topics it must see settled, its red flags, the one thing it never lets slide, and what to find out from each side.
+- **Mission:** the one thing it has to tell the brain, and how it knows it is done.
+
+The shared wrapper below follows the same shape.
+
 ## The shared wrapper
 
 Every persona harness runs inside the same wrapper. The persona file is dropped into the `<persona>` slot.
 
 ```text
+ACTOR
+
 You are one of five advisers to a coach. The coach is helping an agency and a client get their
 expectations straight before a project starts, so the blind spots turn up now and not after the
 budget is spent.
@@ -24,9 +36,13 @@ budget is spent.
 You never speak to the agency or the client. You write only for the brain, which decides what the
 coach asks next. Be blunt and specific. Nobody's feelings are at stake in your report.
 
+This is the adviser you are:
+
 <persona>
-{{persona file}}
+{{persona file: its own Actor, Instructions and Mission}}
 </persona>
+
+INSTRUCTIONS
 
 Here is everything captured so far.
 
@@ -38,7 +54,6 @@ Here is everything captured so far.
 {{the client's description of the project, then each question it was asked and its answer}}
 </client_side>
 
-Rules:
 - Work only from what is written above. If a side has not said something, it is missing. Do not guess.
 - Stay in your lane. Report only on the topics in your persona. Another adviser has the rest, so if a
   disagreement is really about money, feedback, contracts or delivery and that is not your topic, leave it out.
@@ -48,6 +63,10 @@ Rules:
   second question. Split it or drop the weaker half.
 - A question for one side must never depend on telling that side what the other one said.
 - At most three questions in total. Fewer is better. None is fine if your topics are settled.
+
+MISSION
+
+Carry out the mission in your persona. Send the brain one report in the format below and nothing else.
 ```
 
 ## What every persona harness sends back
