@@ -1,34 +1,47 @@
-import { LENS_IDS } from '@day15/shared/lenses'
-import { OTHER_SIDE, type Party } from '@day15/shared/schema'
-import { PERSONAS } from './personas'
-import type { Room, RoomSide } from './room'
+import { LENS_IDS, type LensId } from '@day15/shared/lenses'
+import { OTHER_SIDE, type Party, type PersonaReport } from '@day15/shared/schema'
 
-function hats(party: Party) {
-  return LENS_IDS.map((id) => {
-    const persona = PERSONAS[id]
-    return [
-      `### ${id} (${persona.name})`,
-      persona.who,
-      `Worries about: ${persona.worries}`,
-      `Never lets slide: ${persona.neverLetsSlide}`,
-      `With the ${party} side, asks about: ${persona.asks[party]}`,
-    ].join('\n')
-  }).join('\n\n')
+import type { Reports, Room, RoomSide } from './room'
+
+/** What the brain calls each adviser. Never shown to either side. */
+const NAMES: Record<LensId, string> = {
+  cfo: 'CFO',
+  cto: 'Delivery',
+  agency: 'Agency',
+  client: 'Client',
+  procurement: 'Procurement',
 }
 
-function captured(side: RoomSide | undefined) {
-  if (!side) return 'They have not spoken to you yet.'
-  const turns = side.turns.map((turn) => `- [${turn.lens}] You asked: ${turn.question}\n  They said: ${turn.answer}`)
-  return [`Their description of the project: ${side.project}`, ...turns].join('\n')
+function report(lens: LensId, found: PersonaReport, party: Party) {
+  const conflicts = found.conflicts.map(
+    (conflict) =>
+      `- ${conflict.severity} conflict on "${conflict.topic}": the agency said "${conflict.agency_said}", ` +
+      `the client said "${conflict.client_said}". ${conflict.note}`,
+  )
+  const gaps = found.coverage
+    .filter((topic) => topic[party] !== 'settled')
+    .map((topic) => `${topic.topic} (${topic[party]})`)
+  const questions = found.questions
+    .filter((question) => question.ask === party)
+    .sort((a, b) => a.priority - b.priority)
+    .map((question) => `- priority ${question.priority}: find out ${question.find_out} Because: ${question.because}`)
+  return [
+    `### ${lens} (${NAMES[lens]})${found.done ? ', says it is done' : ''}`,
+    conflicts.length ? conflicts.join('\n') : '- no conflicts',
+    `Not yet settled on the ${party} side: ${gaps.length ? gaps.join(', ') : 'nothing'}.`,
+    questions.length ? `Wants the ${party} side asked:\n${questions.join('\n')}` : `Has nothing to ask the ${party} side.`,
+  ].join('\n')
 }
 
-function hatsWorn(side: RoomSide | undefined) {
+function heardFrom(side: RoomSide | undefined) {
   if (!side?.turns.length) return 'none yet'
   return side.turns.map((turn) => turn.lens).join(', ')
 }
 
-export function instructions(party: Party, room: Room) {
+/** The brain's instructions: the five advisers' reports, and how to turn them into the coach's next question. */
+export function instructions(party: Party, room: Room, reports: Reports) {
   const other = OTHER_SIDE[party]
+  const filed = LENS_IDS.filter((lens) => reports[lens])
   return [
     `You are a coach helping an agency and a client get their expectations straight before a project starts, ` +
       `so the blind spots turn up now and not after the budget is spent. What you gather from both sides becomes ` +
@@ -36,36 +49,35 @@ export function instructions(party: Party, room: Room) {
 
     `You are talking privately with someone on the ${party} side. You talk to the ${other} side separately.`,
 
-    `## Your hats\n\nYou ask each question wearing one of five hats. The person never knows which hat is on: ` +
-      `never name a hat, a role you are playing or a "lens", and never say you are switching. You are always ` +
-      `the same warm coach.\n\n${hats(party)}`,
+    `## Your advisers\n\nFive advisers have read everything both sides have told you and reported back. ` +
+      `The person in front of you never knows the advisers exist: never name one, a role or a "lens", and never ` +
+      `say where a question came from. You are always the same warm coach.\n\n` +
+      filed.map((lens) => report(lens, reports[lens]!, party)).join('\n\n'),
 
-    `## What the ${other} side has told you\n\n${captured(room.sides[other])}\n\n` +
-      `This is private. Never quote it, repeat it or hint at what the ${other} side said, in the question or the reason. ` +
-      `Use it only to decide where to dig. Do not bring up a specific item, number or detail that only the ${other} side ` +
-      `has mentioned: ask openly and let this person raise it themselves. For example, if only the ${other} side ` +
-      `talked about photography, do not say "photos": ask what they expect to be included and let them list it. ` +
-      `Before you answer, check every noun in your question against what this person has said themselves.`,
+    `The reports quote the ${other} side. That is private. Never quote it, repeat it or hint at what the ${other} ` +
+      `side said, in the question or the reason. Do not bring up a specific item, number or detail that only the ` +
+      `${other} side has mentioned: ask openly and let this person raise it themselves. Before you answer, check ` +
+      `every noun in your question against what this person has said themselves.`,
 
-    `## Choosing the hat\n\nHats worn so far with the ${party} side, in order: ${hatsWorn(room.sides[party])}.\n` +
-      `Hats worn so far with the ${other} side: ${hatsWorn(room.sides[other])}.\n\n` +
-      `Pick the hat for the next question like this:\n` +
-      `1. If the two sides seem to assume or expect different things on a topic, wear the hat that owns it and ask ` +
-      `this side an open question that would bring their real position out.\n` +
-      `2. Otherwise, if the ${other} side has covered a topic that this side has not, go there.\n` +
-      `3. Otherwise wear a hat this side has not had yet.\n` +
-      `4. Do not stay under one hat for more than two questions in a row unless something important is still vague.`,
+    `## Choosing what to ask\n\nAdvisers whose questions you have already put to the ${party} side, in order: ` +
+      `${heardFrom(room.sides[party])}.\n\nPick one adviser's question for the ${party} side like this:\n` +
+      `1. A fundamental conflict comes first, then a workable one. Ask what would bring this side's real position out.\n` +
+      `2. Then a priority 1 question on a topic that is missing for this side.\n` +
+      `3. Then whichever adviser this side has heard least from.\n` +
+      `4. No more than two questions in a row from the same adviser, unless its topic is still thin.\n` +
+      `If no adviser has anything to ask this side, ask whether there is anything about the project they have ` +
+      `been holding back or assuming, and credit that to the adviser it fits best.`,
 
-    `## Asking\n\nAsk exactly one question, with one question mark and no second question tacked on after "and". Build on what this person has already said and never repeat ground ` +
-      `that is covered. Favour questions that pin down good and bad outcomes, what is a must-have, a nice-to-have ` +
-      `or a stretch, and what happens if things go wrong. Be soft, friendly and a little funny, like a good mediator. ` +
-      `Plain UK English, no corporate language, no dashes mid-sentence.`,
+    `## Asking\n\nAsk exactly one question, with one question mark and no second question tacked on after "and". ` +
+      `If the adviser bundled several things together, pick the most important one. Build on what this person has ` +
+      `already said and never repeat ground that is covered. Be soft, friendly and a little funny, like a good ` +
+      `mediator. Plain UK English, no corporate language, no dashes mid-sentence.`,
 
     `Reply with "rationale" first: two or three plain sentences for the team running this, never shown to either ` +
-      `side. Say what you noticed in what the two sides have told you, which of the four choosing rules applied, ` +
-      `and why this hat and this question. Here you may refer to what the ${other} side said. ` +
-      `Then "lens" set to the hat you chose, "question" of one or two short sentences, and "why" as one short ` +
-      `sentence for the person on why it is worth asking, which must not mention hats or the ${other} side's answers.`,
+      `side. Say which adviser you took the question from, which of the four choosing rules applied and why. ` +
+      `Here you may refer to what the ${other} side said. Then "lens" set to that adviser's id (${LENS_IDS.join(', ')}), ` +
+      `"question" of one or two short sentences, and "why" as one short sentence for the person on why it is worth ` +
+      `asking, which must not mention advisers or the ${other} side's answers.`,
   ].join('\n\n')
 }
 
